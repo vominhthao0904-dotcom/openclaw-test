@@ -1052,7 +1052,10 @@ def cmd_export(a, db):
 
 def cmd_import(a, db):
     data = doc_json(a.file)                     # nhận cả .json lẫn .json.gz
-    items = data if isinstance(data, list) else data.get("notes", [])
+    items = data if isinstance(data, list) else (data.get("notes") if isinstance(data, dict) else None)
+    if not isinstance(items, list):
+        out({"ok": False, "error": "File không đúng dạng: cần danh sách ghi chú, hoặc object có khoá \"notes\""}, 2)
+    items = [x for x in items if isinstance(x, dict)]
     added, skipped = 0, 0
     b = backup(db, "before-import") if db.execute("SELECT count(*) c FROM notes").fetchone()["c"] else None
     for it in items:
@@ -1308,7 +1311,13 @@ def doc_nguon(path, tach):
         return ra
     if duoi in (".json", ".json.gz"):
         data = doc_json(f)
-        return data if isinstance(data, list) else data.get("notes", [])
+        ds = data if isinstance(data, list) else (data.get("notes") if isinstance(data, dict) else None)
+        if not isinstance(ds, list):
+            raise ValueError("JSON phải là danh sách ghi chú, hoặc object có khoá \"notes\" là danh sách")
+        sai = sum(1 for x in ds if not isinstance(x, dict))
+        if sai:
+            raise ValueError(f"{sai} phần tử không phải ghi chú (cần dạng {{\"title\": …, \"content\": …}})")
+        return ds
     raise ValueError(f"chưa hỗ trợ đuôi {duoi or '(không đuôi)'}")
 
 
@@ -1363,6 +1372,9 @@ def nap_vao(db, muc, category="", tags="", kind_mac_dinh=None, url="", cite="", 
     với kho, rồi ghi tất cả trong MỘT giao dịch — hỏng giữa chừng thì không có gì được ghi."""
     da_thay, them, trung, rong, ket_qua, nhom_moi = set(), [], 0, 0, [], set()
     for d in muc:
+        if not isinstance(d, dict):
+            rong += 1
+            continue
         title = gon(str(d.get("title") or ""))[:200]
         content = str(d.get("content") or "").strip()
         if not title or len(content) < 3:

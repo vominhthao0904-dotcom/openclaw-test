@@ -165,6 +165,12 @@ check "nạp lại: bỏ trùng" \
   'post /api/ingest "{\"text\":\"# Mục một\\nNội dung một\\n# Mục hai\\nNội dung hai\"}" | jq_ "(d[\"da_them\"], d[\"bo_qua_trung\"])"' "(0, 2)"
 check "nạp file .md gửi từ trình duyệt" \
   'post /api/ingest "{\"files\":[{\"name\":\"bai-hoc.md\",\"text\":\"Nội dung bài học từ file\"}]}" | jq_ "d[\"ghi_chu\"][0][\"title\"]"' "Bai hoc"
+check "nhóm sai kiểu (object) bị từ chối" \
+  'post /api/add "{\"title\":\"x\",\"content\":\"y z\",\"category\":{\"a\":1}}" | jq_ "d[\"ok\"]"' "False"
+check "thẻ dạng danh sách được nhận" \
+  'post /api/add "{\"title\":\"Thẻ list\",\"content\":\"thử thẻ danh sách\",\"tags\":[\"a\",\"b c\"]}" | jq_ "d[\"ok\"]"' "True"
+check "nạp: phần tử file sai kiểu bị bỏ, không lỗi 500" \
+  'post /api/ingest "{\"files\":[\"chuoi\",5,{\"name\":5,\"text\":[\"a\"]}]}" | jq_ "d[\"ok\"]"' "False"
 check "thông tin chi tiết có ghi chú liên kết kèm tên" \
   'curl -sS "$U/api/note?id='"$VID"'" | jq_ "type(d[\"note\"][\"linked\"]).__name__"' "list"
 

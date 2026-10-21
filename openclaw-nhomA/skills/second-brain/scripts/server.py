@@ -162,15 +162,21 @@ def api_ingest(conn, _q, body):
     """Nạp từ trang web: dán văn bản hoặc chọn file .md/.txt (trình duyệt đọc rồi gửi chữ lên).
     PDF/CSV/thư mục thì nạp bằng dòng lệnh (brain.py nap) hoặc nhờ Mây."""
     tep = body.get("files") if isinstance(body.get("files"), list) else []
-    if body.get("text"):
+    # chỉ nhận {name: chuỗi, text: chuỗi}; phần tử sai kiểu bỏ qua, không để lọt "['a']" vào kho
+    tep = [t for t in tep if isinstance(t, dict) and isinstance(t.get("text"), str)]
+    if isinstance(body.get("text"), str) and body.get("text").strip():
         tep = tep + [{"name": "", "text": body.get("text")}]
+    try:
+        body = {**body, **lam_sach(body, ("title", "category", "tags", "kind", "url", "cite"))}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     if not tep:
         return {"ok": False, "error": "Chưa có nội dung để nạp"}
     tach = body.get("tach") if body.get("tach") in ("tu-dong", "heading", "khong") else "tu-dong"
     muc = []
     for t in tep[:200]:
         text = str(t.get("text") or "")
-        ten = str(t.get("name") or "")
+        ten = t.get("name") if isinstance(t.get("name"), str) else ""
         meta, than = brain._frontmatter(text)
         mac_dinh = meta.get("title") or (brain._tieu_de_tu_ten(ten) if ten else "") or \
             (str(body.get("title") or "").strip()) or "Ghi chú dán vào"
@@ -256,7 +262,29 @@ def api_search(conn, q, _body):
     return {"ok": True, "query": text, "che_do": che_do, "notes": [note_row(r, r["snip"]) for r in rows]}
 
 
+def chuoi(v, ten):
+    """Trường văn bản từ trình duyệt: chuỗi; thẻ có thể là danh sách chuỗi. Kiểu khác -> từ chối,
+    để kho không bao giờ chứa rác kiểu "{'a': 1}"."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        return v
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return str(v)
+    if ten == "tags" and isinstance(v, list) and all(isinstance(x, str) for x in v):
+        return ",".join(v)
+    raise ValueError(f"Trường '{ten}' phải là chữ")
+
+
+def lam_sach(body, ten_truong):
+    return {k: chuoi(body.get(k), k) for k in ten_truong}
+
+
 def api_add(conn, _q, body):
+    try:
+        body = lam_sach(body, ("title", "content", "category", "tags", "url", "cite", "due", "kind", "source"))
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     title = brain.gon(str(body.get("title") or ""))
     content = str(body.get("content") or "").strip()
     if not title or not content:
@@ -287,6 +315,11 @@ def api_add(conn, _q, body):
 
 
 def api_update(conn, _q, body):
+    try:
+        body = {"id": chuoi(body.get("id"), "id"),
+                **lam_sach(body, ("title", "content", "category", "tags", "url", "cite", "due", "kind"))}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     nid = body.get("id") or ""
     r = conn.execute("SELECT * FROM notes WHERE id=?", (nid,)).fetchone()
     if not r:

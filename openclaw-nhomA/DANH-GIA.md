@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **90** |
-| Test `test-web.sh` | 30 | **62** |
+| Test `test-brain.sh` | 50 | **92** |
+| Test `test-web.sh` | 30 | **67** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -136,6 +136,13 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Vẽ bằng hình học** chứ không dán ảnh: Thái Cực ghép từ các nửa đường tròn chuẩn, 8 quẻ đặt vuông góc với bán kính, hào sơ ở trong; nét sắc ở mọi kích thước và mọi độ phân giải màn hình. Vẽ một lần vào bộ đệm, mỗi khung hình chỉ dán lại.
 - Lõi đứng yên (Càn luôn ở trên), lúc nghỉ nhỏ gọn Ø 60px như chữ BRAIN cũ (hào vẽ dày hơn ở cỡ nhỏ để vẫn đọc được quẻ); rê chuột thì phóng to mượt, hiện tên quẻ + phương vị. Có favicon SVG cùng hình học.
 - **Test tự động khoá chuẩn Kinh Dịch**: đúng hào 8 quẻ, đúng số Tiên Thiên, quẻ đối có hào ngược nhau, tổng mỗi cặp bằng 9, Càn trên – Khôn dưới – Ly trái. Đã thử đổi chỗ Đoài/Tốn: test báo hỏng ngay.
+
+## Rà soát cuối (chạy như người cài mới từ file zip)
+- Giải nén gói vào thư mục trống → `truoc-khi-cai.sh` → `validate.py` → `install.sh` → `kiemtra.sh` → 2 bộ test: tất cả đạt.
+- Sửa: `truoc-khi-cai.sh` trước đây có thể kiểm thư mục `/root/...` trong khi `install.sh` cài vào thư mục của user đang đăng nhập → nay dùng cùng một công thức với `install.sh`.
+- Sửa: `nap`/`import` gặp JSON có phần tử không phải ghi chú thì sập (traceback) → nay báo lỗi rõ, không ghi gì.
+- Sửa: API web nhận trường sai kiểu (nhóm là object, nội dung là danh sách) từng lưu thẳng `{'a': 1}` vào kho hoặc lỗi 500 → nay từ chối với thông báo rõ; thẻ dạng danh sách được nhận đúng.
+- Thêm 5 test cho các trường hợp trên (brain 92, web 67).
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.

@@ -78,13 +78,9 @@ fi
 echo
 echo "2. CHỖ SẼ CÀI VÀO"
 
-if [ -z "$SKILLS_DIR" ]; then
-  for c in "$HOME/.openclaw/workspace/skills" "/root/.openclaw/workspace/skills" \
-           "$HOME/openclaw/workspace/skills"; do
-    [ -d "$(dirname "$c")" ] && { SKILLS_DIR="$c"; break; }
-  done
-  [ -n "$SKILLS_DIR" ] || SKILLS_DIR="$HOME/.openclaw/workspace/skills"
-fi
+# Kiểm ĐÚNG chỗ install.sh sẽ cài (cùng công thức), không tự đoán sang thư mục của user khác —
+# trước đây có thể báo /root/... trong khi install.sh cài vào thư mục của user đang đăng nhập.
+[ -n "$SKILLS_DIR" ] || SKILLS_DIR="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}/skills"
 
 pad "  thư mục skills" 26
 if [ -d "$SKILLS_DIR" ]; then
@@ -92,7 +88,7 @@ if [ -d "$SKILLS_DIR" ]; then
 elif [ -d "$(dirname "$SKILLS_DIR")" ]; then
   luu "chưa có $SKILLS_DIR — install.sh sẽ tự tạo, không sao"
 else
-  hong "không tìm thấy workspace của OpenClaw. Tìm bằng: find / -name 'workspace' -path '*openclaw*' 2>/dev/null | head"
+  hong "không thấy workspace OpenClaw ở $(dirname "$SKILLS_DIR") — đang đăng nhập đúng user chạy OpenClaw chưa? Tìm bằng: find / -name 'workspace' -path '*openclaw*' 2>/dev/null | head  rồi chạy lại với --dir"
 fi
 
 pad "  quyền ghi" 26

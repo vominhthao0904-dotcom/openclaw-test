@@ -86,7 +86,7 @@ ps aux | grep -i openclaw | grep -v grep
 ```
 Cột đầu của `ps aux` là tên user đang chạy nó.
 
-**`không tìm thấy workspace của OpenClaw`**
+**`thư mục skills — CHƯA ĐẠT — không thấy workspace OpenClaw ở …`**
 ```bash
 find / -name "workspace" -path "*openclaw*" 2>/dev/null | head
 ```
@@ -242,11 +242,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 90 trường hợp: phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 92 trường hợp: phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 64 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 67 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```

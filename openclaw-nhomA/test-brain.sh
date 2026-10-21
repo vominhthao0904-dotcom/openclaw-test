@@ -258,6 +258,10 @@ check "nạp lại: bỏ hết bản trùng" 'BR nap "$TMP/nap" | jq_ "(d[\"da_t
 check "bỏ qua file trong thư mục ẩn" 'BR search "an" --kind kien-thuc | jq_ "[n for n in d[\"notes\"] if n[\"title\"]==\"X\"]"' "[]"
 check "nạp từ stdin" 'echo "Dán nhanh vào kho từ chat" | BR nap - --title "Ghi chú dán" | jq_ "d[\"da_them\"]"' "1"
 check "đường dẫn không có báo lỗi rõ" 'BR nap "$TMP/khong-co" | jq_ "d[\"ok\"]"' "False"
+echo '["chuoi", 5, {"title":"Hợp lệ","content":"Nội dung hợp lệ"}]' > "$TMP/hong.json"
+check "JSON có phần tử rác: báo lỗi, không traceback" 'BR nap "$TMP/hong.json" 2>&1 | jq_ "(d[\"ok\"], len(d[\"loi\"]))"' "(False, 1)"
+echo '{"notes": "khong phai list"}' > "$TMP/hong2.json"
+check "import file sai dạng: báo lỗi rõ" 'BR import --file "$TMP/hong2.json" 2>&1 | jq_ "d[\"ok\"]"' "False"
 
 echo
 echo "======================================================================"

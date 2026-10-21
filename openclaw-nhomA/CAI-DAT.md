@@ -390,7 +390,7 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 
 # PHẦN 6 — An toàn: gói này làm gì và không làm gì
 
-| | |
+| Mục | Gói này làm gì / không làm gì |
 |---|---|
 | **Không cần** | `sudo` khi chép skill, khoá API, tài khoản, mở cổng firewall |
 | **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Chỉ `fetch_images.py` (tuỳ chọn, cần khoá Pexels) gọi Internet; trang web tải font chữ từ Google Fonts |

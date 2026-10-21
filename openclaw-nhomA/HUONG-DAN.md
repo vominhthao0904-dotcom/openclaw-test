@@ -243,11 +243,12 @@ Trang web **cố ý không có nút xoá hẳn** — một cú bấm nhầm khô
 
 ### Sao lưu
 
-Đặt lịch sao lưu hằng ngày, làm một lần rồi quên:
+Lịch sao lưu hằng ngày đã bật ở **Bước 5 khi cài** (CAI-DAT.md). Chưa bật thì dán khối này — dán lại bao nhiêu lần cũng không tạo dòng trùng:
 ```bash
-crontab -e
-# dán dòng này — 2h sáng mỗi ngày
-0 2 * * * python3 ~/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1
+( crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot'
+  echo '17 2 * * * python3 $HOME/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1'
+) | crontab -
+crontab -l | grep snapshot
 ```
 
 Mỗi tuần kéo về máy cá nhân một bản (Termius/WinSCP: kéo file này qua SFTP cũng được):

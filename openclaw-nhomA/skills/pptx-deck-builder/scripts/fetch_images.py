@@ -46,7 +46,9 @@ def score(p):
 
 def download(url, dest):
     host = urllib.parse.urlparse(url)
-    if host.scheme != "https" or not (host.hostname or "").endswith("pexels.com"):
+    h = (host.hostname or "").lower()
+    # endswith("pexels.com") cũ cho lọt cả "evilpexels.com"
+    if host.scheme != "https" or not (h == "pexels.com" or h.endswith(".pexels.com")):
         raise ValueError("chỉ tải ảnh từ pexels.com qua https")
     with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "pptx-deck-builder/1.0"}), timeout=60) as r:
         data = r.read(MAX_BYTES + 1)

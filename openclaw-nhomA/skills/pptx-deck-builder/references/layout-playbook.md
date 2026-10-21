@@ -5,7 +5,7 @@
 Deck phải nhìn như proposal/pitch deck chuyên nghiệp cho tệp **chủ doanh nghiệp khó tính**, không còn cảm giác slide text thuần hoặc template phổ thông.
 
 Bắt buộc nâng chất theo 3 trục:
-1. **Ảnh thật đúng chủ đề**: dùng ảnh có giấy phép rõ ràng (Pexels API, ảnh do người dùng cung cấp, ảnh tự tạo bằng skill geminigen-image), query chính xác theo từng slide.
+1. **Ảnh thật đúng chủ đề**: dùng ảnh có giấy phép rõ ràng (Pexels API, ảnh do người dùng cung cấp, ảnh AI tự tạo (nếu có skill tạo ảnh riêng)), query chính xác theo từng slide.
 2. **Chart xịn hơn**: chart thật trong PPTX + insight + KPI phụ, phân cấp rõ, có câu chuyện dữ liệu.
 3. **Graphic premium hơn**: spacing thoáng, typography rõ cấp bậc, màu sang và tiết chế.
 

@@ -4,9 +4,11 @@
 Backends: poppler (pdftotext / pdftoppm) + Pillow. No network, no PDF modification.
 Coordinates: PDF points (1/72 in), origin top-left, as reported by `pdftotext -bbox`.
 """
-import argparse, html, json, os, re, shutil, subprocess, sys, tempfile
+import argparse, html, json, os, re, shutil, subprocess, sys, tempfile, unicodedata
 from pathlib import Path
 
+DPI_MIN, DPI_MAX = 36, 600          # 600 dpi trang A4 đã ~35 triệu điểm ảnh; cao hơn dễ ngốn hết RAM VPS
+TEXT_MAX_CHARS = 30000              # `text` không --out: cắt bớt để không đổ cả catalogue vào ngữ cảnh agent
 DEFAULT_OUT = Path(os.environ.get("OPENCLAW_WORKSPACE", Path.home() / ".openclaw" / "workspace")) / ".openclaw" / "pdf-crops"
 
 
@@ -28,10 +30,24 @@ def run(cmd, **kw):
 
 
 def check_pdf(path):
-    p = Path(path)
+    p = Path(path).expanduser()
     if not p.is_file():
         die(f"Không thấy file: {path}")
-    return str(p)
+    # đường dẫn tuyệt đối: tên file bắt đầu bằng "-" không bị poppler hiểu nhầm thành tuỳ chọn
+    return str(p.resolve())
+
+
+def check_dpi(dpi):
+    if not DPI_MIN <= dpi <= DPI_MAX:
+        die(f"--dpi phải trong khoảng {DPI_MIN}-{DPI_MAX} (đang là {dpi})")
+    return dpi
+
+
+def need_pillow():
+    try:
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        die("Thiếu Pillow. Cài: python3 -m pip install --user pillow  (hoặc sudo apt install -y python3-pil)")
 
 
 def page_count(pdf):
@@ -51,60 +67,92 @@ def parse_pages(spec, total):
     if not spec:
         return list(range(1, total + 1))
     pages = set()
-    for part in spec.split(","):
-        part = part.strip()
-        if "-" in part:
-            a, b = part.split("-", 1)
-            pages.update(range(int(a), int(b) + 1))
-        elif part:
-            pages.add(int(part))
+    try:
+        for part in spec.split(","):
+            part = part.strip()
+            if "-" in part:
+                a, b = part.split("-", 1)
+                pages.update(range(int(a), int(b) + 1))
+            elif part:
+                pages.add(int(part))
+    except ValueError:
+        die(f"--pages không hợp lệ: '{spec}' (ví dụ đúng: 3 hoặc 3-5 hoặc 1,4,7-9)")
     bad = [p for p in pages if p < 1 or p > total]
     if bad:
         die(f"Trang ngoài phạm vi 1..{total}: {sorted(bad)}")
     return sorted(pages)
 
 
+_PAGE_RE = re.compile(r'<page width="([\d.]+)" height="([\d.]+)">(.*?)</page>', re.S)
+_WORD_RE = re.compile(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>')
+
+
+def words_on_pages(pdf, first, last):
+    """Một lần gọi pdftotext cho cả khoảng trang (bản cũ gọi riêng từng trang — catalogue
+    300 trang là 300 tiến trình). Trả về {số trang: (rộng, cao, [(chữ, x0, y0, x1, y1)])}."""
+    need("pdftotext")
+    out = run(["pdftotext", "-bbox", "-f", str(first), "-l", str(last), pdf, "-"]).stdout
+    res = {}
+    for k, pm in enumerate(_PAGE_RE.finditer(out)):
+        words = [(html.unescape(t), float(x0), float(y0), float(x1), float(y1))
+                 for x0, y0, x1, y1, t in _WORD_RE.findall(pm.group(3))]
+        res[first + k] = (float(pm.group(1)), float(pm.group(2)), words)
+    return res
+
+
 def words_on_page(pdf, page):
     """Return (page_w, page_h, words) where words = [(text, x0, y0, x1, y1)] in points."""
-    need("pdftotext")
-    out = run(["pdftotext", "-bbox", "-f", str(page), "-l", str(page), pdf, "-"]).stdout
-    pm = re.search(r'<page width="([\d.]+)" height="([\d.]+)"', out)
-    pw, ph = (float(pm.group(1)), float(pm.group(2))) if pm else (595.0, 842.0)
-    words = []
-    for m in re.finditer(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>', out):
-        x0, y0, x1, y1, t = m.groups()
-        words.append((html.unescape(t), float(x0), float(y0), float(x1), float(y1)))
-    return pw, ph, words
+    return words_on_pages(pdf, page, page).get(page, (595.0, 842.0, []))
 
 
 def norm(s):
-    return re.sub(r"\s+", "", s).lower()
+    # NFC: PDF tiếng Việt hay lưu dấu ở dạng tách rời (e + dấu sắc), gõ vào lại là dạng dựng sẵn (é)
+    return re.sub(r"\s+", "", unicodedata.normalize("NFC", s)).lower()
+
+
+def _khop_trang(words, target):
+    """Mọi vị trí cụm chữ trên một trang.
+
+    Nối chữ của cả trang thành một chuỗi (bỏ khoảng trắng) kèm bảng ký tự -> chữ thứ mấy, rồi tìm
+    chuỗi con. Nhờ vậy khớp được cả khi cụm chữ dính dấu câu ("HA1600," / "(HA1600)"), nằm giữa
+    một chữ dài, hay vắt qua nhiều chữ.
+    """
+    chuoi, chu_thu = [], []
+    for i, w in enumerate(words):
+        t = norm(w[0])
+        chuoi.append(t)
+        chu_thu.extend([i] * len(t))
+    chuoi = "".join(chuoi)
+    ra, pos = [], chuoi.find(target)
+    while pos != -1:
+        ra.append((chu_thu[pos], chu_thu[pos + len(target) - 1]))
+        pos = chuoi.find(target, pos + len(target))
+    return ra
 
 
 def find_phrase(pdf, phrase, pages=None):
-    """Find phrase (whitespace/case-insensitive; also matches inside a single word). Bbox in points."""
+    """Find phrase (whitespace/case-insensitive, Unicode-normalised; also matches inside a word). Bbox in points."""
     total = page_count(pdf)
     target = norm(phrase)
     if not target:
         die("Cụm chữ rỗng")
+    pages = sorted(pages or range(1, total + 1))
     hits = []
-    for pg in (pages or range(1, total + 1)):
-        pw, ph, words = words_on_page(pdf, pg)
-        n = len(words)
-        for i in range(n):
-            acc = ""
-            for j in range(i, min(n, i + 40)):
-                acc += norm(words[j][0])
-                if (j == i and target in acc) or acc == target:
-                    seg = words[i:j + 1]
-                    hits.append({
-                        "page": pg, "page_size": [pw, ph],
-                        "bbox": [min(w[1] for w in seg), min(w[2] for w in seg), max(w[3] for w in seg), max(w[4] for w in seg)],
-                        "text": " ".join(w[0] for w in seg),
-                    })
-                    break
-                if not target.startswith(acc):
-                    break
+    # gom các trang liền nhau thành từng khoảng để gọi pdftotext ít lần nhất
+    khoang, dau = [], pages[0]
+    for a, b in zip(pages, pages[1:] + [None]):
+        if b != a + 1:
+            khoang.append((dau, a))
+            dau = b
+    for first, last in khoang:
+        for pg, (pw, ph, words) in sorted(words_on_pages(pdf, first, last).items()):
+            for i, j in _khop_trang(words, target):
+                seg = words[i:j + 1]
+                hits.append({
+                    "page": pg, "page_size": [pw, ph],
+                    "bbox": [min(w[1] for w in seg), min(w[2] for w in seg), max(w[3] for w in seg), max(w[4] for w in seg)],
+                    "text": " ".join(w[0] for w in seg),
+                })
     return hits
 
 
@@ -125,7 +173,9 @@ def out_path(out, default_name):
 
 
 def crop_points(pdf, page, box, out, dpi):
+    need_pillow()
     from PIL import Image
+    check_dpi(dpi)
     total = page_count(pdf)
     if page < 1 or page > total:
         die(f"Trang ngoài phạm vi 1..{total}")
@@ -137,11 +187,11 @@ def crop_points(pdf, page, box, out, dpi):
         die(f"Vùng cắt rỗng sau khi giới hạn trong trang ({pw:.0f}x{ph:.0f} pt)")
     with tempfile.TemporaryDirectory() as td:
         img_path = render_page(pdf, page, dpi, td)
-        img = Image.open(img_path)
-        s = dpi / 72.0
-        crop = img.crop((int(x0 * s), int(y0 * s), int(x1 * s), int(y1 * s)))
-        dest = out_path(out, f"{Path(pdf).stem}-p{page}-crop.png")
-        crop.save(dest)
+        with Image.open(img_path) as img:
+            s = dpi / 72.0
+            crop = img.crop((int(x0 * s), int(y0 * s), int(x1 * s), int(y1 * s)))
+            dest = out_path(out, f"{Path(pdf).stem}-p{page}-crop.png")
+            crop.save(dest)
     return {"ok": True, "file": str(dest), "page": page, "box_pt": [round(v, 1) for v in (x0, y0, x1, y1)], "size_px": list(crop.size)}
 
 
@@ -162,12 +212,16 @@ def cmd_text(a):
         t = run(["pdftotext", "-layout", "-f", str(pg), "-l", str(pg), pdf, "-"]).stdout
         chunks.append(f"=== Trang {pg} ===\n{t.strip()}")
     text = "\n\n".join(chunks)
-    if not text.replace("=", "").strip():
+    if not re.sub(r"=== Trang \d+ ===", "", text).strip():
         print("(Không có lớp chữ: có thể là PDF scan. Dùng page-shot rồi đọc ảnh/OCR.)", file=sys.stderr)
     if a.out:
         Path(a.out).parent.mkdir(parents=True, exist_ok=True)
         Path(a.out).write_text(text, encoding="utf-8")
-        print(json.dumps({"ok": True, "file": a.out, "chars": len(text)}, ensure_ascii=False))
+        print(json.dumps({"ok": True, "file": a.out, "chars": len(text), "pages": len(pages)}, ensure_ascii=False))
+    elif a.max_chars and len(text) > a.max_chars:
+        print(text[:a.max_chars])
+        print(f"\n[… đã cắt: còn {len(text) - a.max_chars} ký tự. Thu hẹp bằng --pages, "
+              "tìm đúng chỗ bằng find, hoặc ghi ra file bằng --out rồi đọc từng phần]")
     else:
         print(text)
 
@@ -176,7 +230,14 @@ def cmd_find(a):
     pdf = check_pdf(a.pdf)
     pages = parse_pages(a.pages, page_count(pdf)) if a.pages else None
     hits = find_phrase(pdf, a.phrase, pages)
-    print(json.dumps({"ok": True, "phrase": a.phrase, "matches": len(hits), "hits": [dict(h, index=i) for i, h in enumerate(hits)]}, ensure_ascii=False, indent=2))
+    res = {"ok": True, "phrase": a.phrase, "matches": len(hits),
+           "pages_with_matches": sorted({h["page"] for h in hits}),
+           "hits": [dict(h, index=i) for i, h in enumerate(hits[:a.limit])]}
+    if len(hits) > a.limit:
+        res["note"] = f"Chỉ liệt kê {a.limit}/{len(hits)} kết quả đầu; thu hẹp bằng --pages hoặc tăng --limit"
+    if not hits:
+        res["note"] = "Không thấy. PDF scan (không có lớp chữ) thì find luôn rỗng — thử: text --pages 1 xem có chữ không"
+    print(json.dumps(res, ensure_ascii=False, indent=2))
 
 
 def cmd_page_shot(a):
@@ -184,6 +245,7 @@ def cmd_page_shot(a):
     total = page_count(pdf)
     if a.page < 1 or a.page > total:
         die(f"Trang ngoài phạm vi 1..{total}")
+    check_dpi(a.dpi)
     with tempfile.TemporaryDirectory() as td:
         img = render_page(pdf, a.page, a.dpi, td)
         dest = out_path(a.out, f"{Path(pdf).stem}-p{a.page}.png")
@@ -227,8 +289,10 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("info"); s.add_argument("pdf"); s.set_defaults(fn=cmd_info)
-    s = sub.add_parser("text"); s.add_argument("pdf"); s.add_argument("--pages"); s.add_argument("--out"); s.set_defaults(fn=cmd_text)
-    s = sub.add_parser("find"); s.add_argument("pdf"); s.add_argument("phrase"); s.add_argument("--pages"); s.set_defaults(fn=cmd_find)
+    s = sub.add_parser("text"); s.add_argument("pdf"); s.add_argument("--pages"); s.add_argument("--out")
+    s.add_argument("--max-chars", type=int, default=TEXT_MAX_CHARS, help="0 = không cắt"); s.set_defaults(fn=cmd_text)
+    s = sub.add_parser("find"); s.add_argument("pdf"); s.add_argument("phrase"); s.add_argument("--pages")
+    s.add_argument("--limit", type=int, default=50); s.set_defaults(fn=cmd_find)
     s = sub.add_parser("page-shot"); s.add_argument("pdf"); s.add_argument("--page", type=int, required=True)
     s.add_argument("--out"); s.add_argument("--dpi", type=int, default=150); s.set_defaults(fn=cmd_page_shot)
     s = sub.add_parser("crop"); s.add_argument("pdf"); s.add_argument("--page", type=int, required=True)

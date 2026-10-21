@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build an ASS subtitle file from a scenes JSON spec (short lines, keyword highlight, dot-milliseconds)."""
-import argparse, json, re, subprocess, sys
+import argparse, json, re, shutil, subprocess, sys
 from pathlib import Path
 
 HEADER = """[Script Info]
@@ -31,6 +31,24 @@ def duration(path):
         die(f"ffprobe không đọc được độ dài: {path}")
 
 
+def kich_thuoc(path):
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                        "-of", "csv=p=0:s=x", str(path)], capture_output=True, text=True)
+    try:
+        w, h = r.stdout.strip().split("x")[:2]
+        return int(w), int(h)
+    except ValueError:
+        return None
+
+
+def font_co_san(font):
+    """Font không có trên máy thì libass lặng lẽ thay font khác — tiếng Việt dễ vỡ dấu. Báo trước."""
+    if not shutil.which("fc-list"):
+        return None                       # không kiểm được, đừng báo động giả
+    r = subprocess.run(["fc-list", ":", "family"], capture_output=True, text=True)
+    return any(font.lower() == f.strip().lower() for line in r.stdout.splitlines() for f in line.split(","))
+
+
 def ass_time(sec):
     cs = int(round(sec * 100))
     h, cs = divmod(cs, 360000)
@@ -44,8 +62,9 @@ def escape(text):
 
 
 def highlight(words, kw):
+    """Tô vàng từ khoá. Trả về (danh sách chữ, đã tô được hay chưa)."""
     if not kw:
-        return words
+        return words, False
     kws = escape(kw).split()
     low = [w.lower().strip(".,!?;:") for w in words]
     target = [k.lower().strip(".,!?;:") for k in kws]
@@ -54,8 +73,8 @@ def highlight(words, kw):
             out = list(words)
             out[i] = "{\\c&H00FFFF&}" + out[i]
             out[i + len(kws) - 1] += "{\\c&HFFFFFF&}"
-            return out
-    return words
+            return out, True
+    return words, False
 
 
 def layout_lines(words, max_words):
@@ -120,13 +139,35 @@ def main():
     ap.add_argument("--spec", required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    spec = json.loads(Path(a.spec).read_text(encoding="utf-8"))
-    w, h = spec.get("width", 1080), spec.get("height", 1920)
-    max_words = int(spec.get("max_words_per_line", 5))
-    head = HEADER.format(w=w, h=h, font=spec.get("font", "DejaVu Sans"), size=spec.get("font_size", 72),
-                         outline=spec.get("outline", 4), marginv=spec.get("margin_v", 260))
-    events, offset = [], 0.0
+    try:
+        spec = json.loads(Path(a.spec).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        die(f"Không đọc được spec {a.spec}: {e}")
     base = Path(a.spec).parent
+    canh_bao = []
+    # PlayRes phải cùng tỉ lệ với video sẽ in phụ đề, nếu không libass kéo giãn chữ. Thứ tự ưu tiên:
+    # width/height khai báo tay > kích thước "video" trong spec > file của cảnh đầu tiên > 1080x1920 (dọc)
+    w, h = spec.get("width"), spec.get("height")
+    if not (w and h):
+        nguon = [spec.get("video")] + [sc.get("file") for sc in spec.get("scenes", [])[:1]]
+        for f in filter(None, nguon):
+            for cand in (Path(f), base / f):
+                if cand.is_file() and (kt := kich_thuoc(cand)):
+                    w, h = kt
+                    break
+            if w and h:
+                break
+    w, h = w or 1080, h or 1920
+    font = spec.get("font", "DejaVu Sans")
+    if font_co_san(font) is False:
+        canh_bao.append(f"Không thấy font '{font}' trên máy — ffmpeg sẽ thay font khác, dấu tiếng Việt có thể vỡ. "
+                        "Cài: sudo apt install -y fonts-dejavu-core, hoặc đổi 'font' trong spec")
+    # cỡ chữ mặc định theo cạnh ngắn: 72 cho 1080 chiều ngang dọc, tự co cho video nhỏ/ngang
+    size = spec.get("font_size") or max(24, round(min(w, h) * 72 / 1080))
+    max_words = int(spec.get("max_words_per_line", 5))
+    head = HEADER.format(w=w, h=h, font=font, size=size,
+                         outline=spec.get("outline", 4), marginv=spec.get("margin_v", round(h * 260 / 1920)))
+    events, offset = [], 0.0
     for si, scene in enumerate(spec["scenes"]):
         f = scene.get("file")
         if scene.get("duration") is not None:
@@ -140,13 +181,22 @@ def main():
         chunks = scene["chunks"]
         times = resolve_times(chunks, dur, si + 1)
         for c, (t0, t1) in zip(chunks, times):
-            words = highlight(escape(c["text"]).split(), c.get("keyword"))
+            words, to_duoc = highlight(escape(c["text"]).split(), c.get("keyword"))
+            if not to_duoc:
+                canh_bao.append(f"Cảnh {si + 1}: không tô được từ khoá cho dòng '{c['text'][:40]}'"
+                                + (f" (không thấy '{c['keyword']}' trong câu)" if c.get("keyword") else " (thiếu 'keyword')"))
+            if len(c["text"].split()) > max_words * 2:
+                canh_bao.append(f"Cảnh {si + 1}: dòng '{c['text'][:40]}…' dài {len(c['text'].split())} từ — "
+                                f"sẽ thành 3+ hàng chữ, nên tách thành nhiều chunk")
             lines = layout_lines(words, max_words)
             text = "\\N".join(" ".join(l) for l in lines)
             events.append(f"Dialogue: 0,{ass_time(offset + t0)},{ass_time(offset + t1)},Main,,0,0,0,,{text}")
         offset += dur
     Path(a.out).write_text(head + "\n".join(events) + "\n", encoding="utf-8")
-    print(json.dumps({"ok": True, "file": a.out, "events": len(events), "total_seconds": round(offset, 2)}))
+    kq = {"ok": True, "file": a.out, "events": len(events), "total_seconds": round(offset, 2), "play_res": [w, h]}
+    if canh_bao:
+        kq["canh_bao"] = canh_bao
+    print(json.dumps(kq, ensure_ascii=False))
 
 
 if __name__ == "__main__":

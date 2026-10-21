@@ -66,16 +66,23 @@ bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh restart
 
 Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `web.sh stop`. Xem đang chạy không và tốn bao nhiêu RAM: `web.sh status`.
 
-Trong trang có bốn ô ở cột trái:
+### Ba chế độ xem (nút trên cùng)
 
-- **Thêm** — lưu ghi chú mới. Điền ô *Nguồn* nếu lấy từ bài viết hay khoá học; sáu tháng sau anh sẽ cần biết điều này lấy ở đâu ra. Nếu kho đã có ghi chú gần giống, trang hiện cảnh báo kèm tên ghi chú cũ — bấm vào để xem rồi tự quyết gộp hay giữ cả hai.
-- **Tìm** — tìm toàn văn tiếng Việt có dấu, bấm kết quả để mở ghi chú. Gõ cả câu dài cũng được: không ghi chú nào có đủ mọi từ thì nó đưa ra ghi chú khớp nhiều từ nhất.
-- **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho (gọi `openclaw agent` ngay trên VPS).
-- **Ôn** — ba phần: *Chưa xếp chỗ* (ghi chú thiếu nhóm/thẻ), *Kho lưu* (ghi chú đã cất, bấm vào để mở và lấy lại), và hàng chờ ôn lại.
+- **Toàn cảnh** — lõi **BRAIN** ở giữa, mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
+- **Thư viện** — chỗ truy xuất có hệ thống. Bên trái là **cây Vùng › Nhóm › Nhóm con** kèm số ghi chú (bấm ▸ để mở nhóm con; *Chưa xếp chỗ* màu vàng là chỗ cần dọn). Bên phải là các thẻ ghi chú, lọc nhanh bằng **chip loại** (Kiến thức, Quy trình, Khái niệm, Tài liệu…; số trên chip đếm trong nhóm đang xem), sắp theo mới sửa / mới tạo / cũ nhất / tên, bấm *Xem thêm* để xem tiếp. Mỗi thẻ ghi rõ loại, đường dẫn nhóm, có nguồn/trích dẫn không, hạn (nếu là việc).
+- **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
 
-Trên đồ thị: bấm một chấm để mở ghi chú; bấm tên nhóm ở dải chú giải dưới cùng để chỉ làm nổi nhóm đó; nút **Dừng xoay** ở góc phải nếu thấy chóng mặt.
+### Cột trái
 
-Trong thẻ chi tiết có **Sửa** (đổi nhóm, thẻ, nguồn, nội dung ngay tại chỗ), **Nhớ rồi** (đánh dấu đã ôn) và **Cất vào kho lưu**.
+- **Thêm** — lưu ghi chú mới: chủ đề, **loại**, **nhóm** (gõ vài chữ là hiện các nhóm đã có — chọn lại nhóm cũ thay vì gõ ra nhóm mới gần giống), thẻ, nội dung. Chọn loại *Việc* thì hiện ô **Hạn**; chọn *Tài liệu* hay *Khái niệm* thì hiện ô **Trích dẫn**. Lưu bản y hệt ghi chú đã có thì bị chặn kèm nút mở bản cũ; gần giống thì được lưu nhưng có cảnh báo; gõ nhóm/thẻ thiếu dấu hay sai chính tả thì có gợi ý.
+- **Nạp** — kéo thả file **.md / .txt** (nhiều file một lúc) hoặc dán văn bản. Markdown có nhiều tiêu đề `#`/`##` được tách mỗi mục thành một ghi chú. Đặt nhóm, loại, thẻ chung cho cả lô; bấm **Xem trước** để thấy sẽ thêm gì, rồi **Nạp vào kho**. Bản trùng tự bỏ qua.
+- **Tìm** — tìm toàn văn tiếng Việt có dấu, lọc thêm theo **loại** và **vùng**. Khớp ở tiêu đề/thẻ được xếp trên. Gõ cả câu dài cũng được.
+- **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho; câu trả lời kèm danh sách ghi chú nguồn bấm được.
+- **Ôn** — *Chưa xếp chỗ*, *Kho lưu* (ghi chú đã cất, lấy lại được), và hàng chờ ôn lại (không gồm việc).
+
+### Thẻ chi tiết (bấm vào bất kỳ ghi chú nào)
+
+Trên cùng là **đường dẫn nhóm** — bấm từng tầng để mở đúng nhóm đó trong Thư viện. Rồi tới nhãn **loại**, các **thẻ** (bấm để lọc Thư viện theo thẻ), tiêu đề, ngày ghi/sửa/ôn, mã ghi chú. Khối **Nguồn · Trích dẫn · Hạn** cho biết kiến thức này lấy từ đâu — để kiểm lại khi cần. Cuối là **Ghi chú liên kết** (bấm để chuyển sang). Nút: **Sửa** (đổi được mọi trường), **Nhớ rồi**, **Đánh dấu xong** (với việc), **Cất vào kho lưu**.
 
 Đổi cổng khi 8787 đã bận: `BRAIN_PORT=9090 bash .../web.sh start` (nhớ đổi cả hai số trong lệnh `ssh -L`).
 
@@ -86,6 +93,43 @@ Trong thẻ chi tiết có **Sửa** (đổi nhóm, thẻ, nguồn, nội dung n
 ## Dùng Second Brain vào việc thật
 
 Kho ghi chú chết là kho chỉ có người bỏ vào, không ai lấy ra. Phần này là cách dùng để nó không chết.
+
+### Hệ phân loại: ba trục, mỗi trục trả lời một câu hỏi
+
+| Trục | Câu hỏi | Ví dụ |
+|---|---|---|
+| **Nhóm** — cây tối đa 3 tầng `Vùng/Nhóm/Nhóm con` | Thuộc **mảng nào**? | `Kinh doanh/Lọc nước/Khách hàng` |
+| **Loại** — 8 loại cố định | Là **dạng** kiến thức gì? | Quy trình |
+| **Thẻ** — tự do | **Liên quan** tới ai/cái gì, cắt ngang các nhóm? | `khach-lan`, `bao-gia` |
+
+**8 loại kiến thức:** *Kiến thức* (kết luận, bài học) · *Quy trình* (cách làm từng bước) · *Khái niệm* (định nghĩa, công thức) · *Tài liệu* (sách, bài báo, quy chuẩn — kèm trích dẫn) · *Ý tưởng* (chưa kiểm chứng) · *Việc* (có hạn) · *Người* (khách hàng, đối tác) · *Nhật ký* (biên bản họp, sự kiện).
+
+Nhờ có loại mà lấy ra đúng thứ cần: *"lấy hết quy trình nhóm Lọc nước"* khác hẳn *"lấy hết kiến thức nhóm Lọc nước"*.
+
+**Vùng gợi ý khởi đầu** (tầng 1, ít thay đổi): `Kinh doanh` · `Marketing` · `Kỹ thuật` · `Học tập` · `Đầu tư` · `Cá nhân`. Tầng 2-3 mọc dần theo việc thật — đừng dựng sẵn cả cây rỗng. Nhóm dưới ~50 ghi chú thì chưa cần chia nhóm con.
+
+Kho tự giữ cây gọn: gõ `kinh doanh / lọc  nước` vẫn vào đúng `Kinh doanh/Lọc nước` đã có; gõ `Loc nuoc` (thiếu dấu) hay `Maketing` (sai chính tả) thì được nhắc "có phải ý là…". Mây luôn xem cây nhóm trước khi xếp chỗ, và báo khi tạo nhóm mới.
+
+### Nạp tài liệu có sẵn
+
+Có sẵn ghi chép cũ (Obsidian, Notion xuất Markdown, file Word lưu thành .txt), tài liệu khoá học, quy chuẩn PDF, danh sách Excel lưu .csv? Nhờ Mây:
+> "Nạp thư mục ~/ghi-chep vào kho, nhóm Học tập/Khoá học."
+
+> "Nạp file QCVN-nuoc.pdf vào kho, loại tài liệu, nhóm Kỹ thuật/Tiêu chuẩn, mỗi trang một ghi chú."
+
+Mây xem trước rồi báo *sẽ thêm bao nhiêu ghi chú, vào nhóm nào*, anh đồng ý mới nạp. Hoặc tự chạy:
+```bash
+BR="python3 ~/.openclaw/workspace/skills/second-brain/scripts/brain.py"
+$BR nap ~/ghi-chep --category "Học tập/Khoá học" --dry-run    # xem trước
+$BR nap ~/ghi-chep --category "Học tập/Khoá học"              # nạp thật
+```
+Markdown có tiêu đề `##` → mỗi mục một ghi chú; có frontmatter (`category:`, `tags:`, `kind:`, `url:`) thì dùng luôn. CSV cần dòng tiêu đề cột: `tieu_de,noi_dung,nhom,the,loai,han`. Nạp lại cùng thư mục không sinh bản trùng.
+
+### Việc cần làm
+
+> "Nhắc anh gọi chị Lan về bảo trì vào thứ sáu."
+
+Mây lưu thành ghi chú loại *Việc*, đổi "thứ sáu" ra ngày cụ thể và đọc lại cho anh xác nhận. Hỏi *"hôm nay có việc gì?"* là Mây liệt kê việc quá hạn trước. Trên web: chế độ **Việc**, tích là xong.
 
 ### Ghi cái gì
 
@@ -219,7 +263,9 @@ Ba thư mục cạnh kho, nên biết để khỏi nhầm:
 
 ### Chống trùng lặp
 
-Hai lớp:
+Ba lớp:
+
+**Trùng y hệt** — cùng tiêu đề và nội dung (kể cả khác hoa/thường, khoảng trắng, kiểu gõ dấu) thì **không lưu bản thứ hai**, dù ghi bằng chat, trên web hay nạp hàng loạt. Mây báo ghi chú đó đã có, kèm mã.
 
 **Lúc ghi** — thêm ghi chú gần giống cái đã có, nó báo ngay kèm tên ghi chú cũ. Không chặn lưu, chỉ nhắc. Nhận ra được cả khi anh viết lại cùng ý bằng câu khác (so theo cụm từ như "dấu chấm", "mili giây", không theo từng chữ rời). Muốn gộp thì Mây dùng `merge` — ghi chú thừa được cất kho, không bị xoá.
 

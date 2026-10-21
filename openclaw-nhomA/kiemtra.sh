@@ -33,7 +33,7 @@ ok()   { echo "ĐẠT"; DAT=$((DAT+1)); }
 hong() { echo "CHƯA ĐẠT — $1"; HONG=$((HONG+1)); }
 
 echo "======================================================================"
-echo " KIỂM TRA 4 SKILL NHÓM A (26 mục)"
+echo " KIỂM TRA 4 SKILL NHÓM A (27 mục)"
 echo " Thư mục skills: $SKILLS_DIR"
 echo "======================================================================"
 
@@ -113,6 +113,16 @@ if [ -n "$THU_ID" ] &&
    SB delete --id "$THU_ID" --yes 2>/dev/null | grep -q '"ban_sao_vinh_vien"' &&
    SB restore --file "$THU_ID" 2>/dev/null | grep -q '"lay_lai"'
 then ok; else hong "cất kho / xoá có bản sao / lấy lại không hoạt động"; fi
+
+pad "  second-brain (phân loại, nạp)" 32
+mkdir -p "$TMP/nap"
+printf '## Mục một thử\nNội dung một\n\n## Mục hai thử\nNội dung hai\n' > "$TMP/nap/a.md"
+if SB add --title "Phân loại thử" --content "Thử nhóm phân cấp" --category "kiểm tra / nhóm con" --kind quy-trinh 2>/dev/null \
+     | grep -q '"category": "Kiểm tra/Nhóm con"' &&
+   SB nap "$TMP/nap" 2>/dev/null | grep -q '"da_them": 2' &&
+   SB nap "$TMP/nap" 2>/dev/null | grep -q '"bo_qua_trung": 2' &&
+   SB categories 2>/dev/null | grep -q '"Kiểm tra"'
+then ok; else hong "phân loại hoặc nạp không chạy đúng — chạy: bash test-brain.sh để xem chi tiết"; fi
 
 pad "  second-brain (trang web)" 32
 if [ -f "$SKILLS_DIR/second-brain/public/index.html" ] &&

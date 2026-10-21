@@ -41,6 +41,11 @@ Kiểu chart: `column`, `bar`, `line`, `area`, `pie`, `doughnut`. Chart **bắt 
 - `notes` (chuỗi hoặc danh sách) ở mọi slide → ghi vào Speaker Notes cho người thuyết trình.
 - `metrics` (tối đa 4 thẻ KPI: label/value/note) dùng được ở mọi bố cục trừ split. `process` tối đa 6 bước; `cards` tối đa 4 thẻ.
 
+## Lấy nội dung từ kho kiến thức
+Người dùng có skill `second-brain` thì lấy ý, số liệu, case study **từ kho của họ** trước khi viết outline:
+`brain.py export --out y.md --category "…" [--kind kien-thuc]` hoặc `search`. Dẫn mã ghi chú nguồn trong `notes` của slide
+để sau còn kiểm lại. Số liệu không có trong kho thì hỏi người dùng — không bịa.
+
 ## Quy tắc nội dung
 - Mỗi slide một ý chốt; nội dung cụ thể, có lợi ích rõ ràng cho người xem; không viết sơ sài một dòng.
 - Dẫn dắt từ vấn đề của khách hàng đến giải pháp của **chính người dùng** (không gắn tên sản phẩm của bên khác); tránh ép mua lộ liễu ("mua ngay", "cơ hội duy nhất").

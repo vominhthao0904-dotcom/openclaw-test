@@ -222,6 +222,7 @@ Script kiểm tra 5 phần:
 - `second-brain`: ghi một ghi chú rồi tìm lại bằng tiếng Việt có dấu
 - `second-brain (duy trì kho)`: chạy `inbox`, `review`, `digest`, `stats`
 - `second-brain (giữ dữ liệu)`: cất kho → lấy lại → xoá hẳn → khôi phục từ bản sao
+- `second-brain (phân loại, nạp)`: nhóm phân cấp tự chuẩn hoá, nạp một file Markdown tách 2 mục, nạp lại thì bỏ trùng
 - `second-brain (trang web)`: kiểm tra file giao diện và `server.py`
 - `pdf-extract-crop`: tự tạo một PDF mẫu (không cần cài thêm gì), tìm chữ rồi cắt ảnh thật
 - `css-video (khuôn hình)`: kiểm B-roll tự khớp khung video chính
@@ -241,11 +242,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 65 trường hợp: kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 90 trường hợp: phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 45 trường hợp: mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 62 trường hợp: thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
@@ -259,16 +260,16 @@ Cả hai chạy trên kho tạm rồi tự xoá, **không đụng dữ liệu th
 ### Kết quả phải ra
 
 ```
- ĐẠT: 26     CHƯA ĐẠT: 0
+ ĐẠT: 27     CHƯA ĐẠT: 0
 
  Xong. Cả 4 skill đã sẵn sàng.
 ```
 
-**26 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
+**27 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
 
-Con số có thể khác 26 trong hai trường hợp bình thường, không phải lỗi:
+Con số có thể khác 27 trong hai trường hợp bình thường, không phải lỗi:
 
-- **Ra 22 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
+- **Ra 23 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
 - **Chỉ cài mỗi Second Brain** — các dòng của 3 skill kia sẽ báo CHƯA ĐẠT. Đúng như vậy. Chỉ cần 4 dòng `second-brain*` đều ĐẠT là ổn.
 
 ### Kiểm tra thêm bằng mắt
@@ -335,7 +336,25 @@ ssh -N -L 8787:127.0.0.1:8787 root@IP_VPS
 ```
 Giữ cửa sổ đó mở, dán **đường link có mã** vào trình duyệt. Thử mở **http://127.0.0.1:8787** trong một cửa sổ ẩn danh (không có mã): phải thấy trang báo "cần mở bằng đường link có mã" — đó là đúng.
 
-*Đạt khi:* thấy lõi BRAIN đỏ ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ.
+*Đạt khi:* thấy lõi BRAIN đỏ ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ. Bấm **Thư viện**: thấy cây vùng/nhóm bên trái kèm số ghi chú, bấm một nhóm thì chỉ hiện ghi chú của nhóm đó.
+
+**Test 4 — phân loại.** Nói với Mây:
+> "Ghi lại: quy trình lắp hệ lọc tổng gồm khảo sát nước, chọn cột lọc, lắp bypass, xả rửa 30 phút, bàn giao."
+
+*Đạt khi:* Mây xếp vào loại **Quy trình**, nhóm kiểu `Kỹ thuật/Lọc nước` (hoặc hỏi anh nhóm nào), và báo nếu tạo nhóm mới. Nói lại **y hệt** câu đó lần nữa: Mây phải báo *đã có ghi chú này*, không lưu bản thứ hai.
+
+**Test 5 — việc.**
+> "Nhắc anh gọi chị Lan về bảo trì vào thứ sáu tuần này."
+
+*Đạt khi:* Mây đọc lại **ngày cụ thể** của thứ sáu để anh xác nhận. Sau đó hỏi *"tuần này anh có việc gì?"* phải thấy việc đó. Trên web, chế độ **Việc** hiện nó đúng nhóm theo hạn.
+
+**Test 6 — nạp tài liệu.** Tạo nhanh một file thử rồi nhờ Mây nạp:
+```bash
+printf '## Bài 1: Hero\nTiêu đề hero nói lợi ích trong 5 giây.\n\n## Bài 2: CTA\nMỗi trang một mục tiêu.\n' > ~/thu-nap.md
+```
+> "Nạp file ~/thu-nap.md vào kho, nhóm Học tập/Khoá học."
+
+*Đạt khi:* Mây xem trước, báo **2 ghi chú**, nạp xong thấy chúng trong Thư viện › Học tập › Khoá học. Nhờ nạp lại lần nữa: phải báo *bỏ 2 bản trùng*.
 
 ### pdf-extract-crop
 
@@ -442,8 +461,12 @@ Ba skill còn lại không sinh dữ liệu — chúng đọc file anh đưa, gh
 
 | Việc | Thời gian |
 |---|---|
-| Thêm một ghi chú | 0,04 giây |
-| Tìm kiếm trong 2.000 ghi chú | 0,05 giây |
+| Thêm một ghi chú (có chống trùng, chuẩn hoá nhóm) — kho 10.000 ghi chú | 0,11 giây |
+| Tìm kiếm trong 10.000 ghi chú | 0,08-0,11 giây |
+| Lọc theo nhóm + loại, cây nhóm, danh sách việc — kho 10.000 | 0,1-0,15 giây |
+| `duplicates` quét cả 10.000 ghi chú | 1,4 giây |
+| `doctor` khám kho 10.000 ghi chú | 0,26 giây |
+| `snapshot` kho 10.000 ghi chú (8 MB) | 0,9 giây |
 | `stats` | 0,05 giây |
 | `digest --days 7` | 0,41 giây |
 | `duplicates` quét cả 2.000 ghi chú | 0,24 giây |
@@ -471,7 +494,7 @@ top -bn1 | head -5
 
 ### Khi nào cần để mắt
 
-Kho vượt khoảng **10.000 ghi chú** thì xem lại: lúc đó sao lưu chiếm ~150 MB và tìm kiếm bắt đầu chậm thấy được. Với nhịp ghi vài ghi chú mỗi ngày, mốc đó cách đây nhiều năm.
+Kho vượt khoảng **10.000 ghi chú** thì xem lại dung lượng sao lưu (~150 MB với 60 bản; giảm bằng `SECOND_BRAIN_KEEP_BACKUPS`). Tốc độ vẫn ổn: đo thật ở 10.000 ghi chú, mọi thao tác hằng ngày dưới 0,2 giây. Với nhịp ghi vài ghi chú mỗi ngày, mốc đó cách đây nhiều năm.
 
 Trang web nếu quên tắt sẽ chạy mãi với ~28 MB RAM (không sao, nhưng không cần). Xem và tắt:
 ```bash

@@ -10,9 +10,9 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **65** |
-| Test `test-web.sh` | 30 | **45** |
-| Mục `kiemtra.sh` | 22 | **26** (thêm phần An toàn) |
+| Test `test-brain.sh` | 50 | **90** |
+| Test `test-web.sh` | 30 | **62** |
+| Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
 | Tìm bằng câu hỏi dài ("anh từng ghi gì về lỗi phụ đề") | 0 kết quả | **Ra kết quả** |
@@ -91,6 +91,44 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | Thấp | `deepcheck.py` dùng thư mục cố định `/tmp/deepcheck-home` (user khác có thể tạo trước/gài symlink). | Thư mục tạm ngẫu nhiên, tự xoá. |
 
 **Nên chạy Second Brain ở đâu:** trên VPS cùng OpenClaw (như gói này). Lý do và so sánh với chạy trên máy tính / web công khai / Notion: xem đầu `HUONG-DAN.md`.
+
+## Nâng cấp lần 3 — Second Brain thành bộ não thứ hai chuyên nghiệp
+
+### Phân loại: ba trục độc lập
+| | Bản trước | Bản này |
+|---|---|---|
+| Nhóm | Một tầng, gõ tự do — "Landing page", "landing page", "Landing  Page" thành 3 nhóm | **Cây `Vùng/Nhóm/Nhóm con`** (≤ 3 tầng). Tự gộp khác hoa/thường, khoảng trắng, kiểu gõ dấu (NFC/NFD) về nhóm đã có. Gõ thiếu dấu / sai chính tả → gợi ý, không tự đổi (vì "Ban" ≠ "Bán"). Lọc nhóm cha lấy cả nhóm con |
+| Loại | Không có | **8 loại**: kiến thức, quy trình, khái niệm, tài liệu (có trích dẫn), ý tưởng, việc (có hạn), người, nhật ký. Nhận bí danh (task → việc, meeting → nhật ký) |
+| Thẻ | Có | Thêm gợi ý khi thẻ mới chỉ khác thẻ cũ ở dấu (`phu-de` / `phụ-đề`) |
+| Nguồn | `url` | `url` + **`cite`** (trích dẫn học thuật) + ngày ghi/sửa/ôn + ghi chú liên kết kèm tên |
+
+### Chống trùng: ba lớp
+1. **Trùng y hệt** (dấu vân tay SHA-256 của tiêu đề + nội dung đã chuẩn hoá): không lưu bản thứ hai — ở mọi đường vào (chat, web, nạp, nhập, khôi phục), và chặn cả việc *sửa* một ghi chú thành bản sao của ghi chú khác.
+2. **Gần giống**: lưu nhưng nhắc, đề xuất gộp/nối (đã có từ trước).
+3. **Nhóm/thẻ gần giống**: gợi ý dùng chung — cây nhóm không phình vì lỗi gõ.
+
+### Nạp đa nguồn (`nap`, tab Nạp trên web)
+Markdown (tách theo tiêu đề, đọc frontmatter kiểu Obsidian) · TXT (dòng đầu làm tên, giữ dấu) · PDF (cả file hoặc mỗi trang một ghi chú kèm trích dẫn trang) · CSV (tên cột tiếng Việt hoặc tiếng Anh) · HTML (bỏ script/menu) · JSON · cả thư mục · stdin.
+An toàn: xem trước (`--dry-run`), bỏ file ẩn và symlink, giới hạn 5 MB/file và 2000 file/lần, sao lưu trước khi nạp, cả lô ghi trong **một giao dịch**, bỏ trùng trong lô và với kho. Nội dung nạp vào là dữ liệu, không phải lệnh cho agent.
+
+### Công việc
+Loại `viec` có hạn (`--due`, nhận `2026-11-05` / `5/11/2026`), trạng thái xong; lệnh `viec` chia **quá hạn / hôm nay / 7 ngày tới / sau này / không hạn**. Việc không lẫn vào hàng chờ ôn.
+
+### Tìm kiếm
+Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nhóm ×2**, nội dung ×1. Lọc theo loại và nhóm (gồm nhóm con).
+
+### Giao diện
+- **Toàn cảnh**: đồ thị theo **vùng** (tầng 1) thay vì từng nhóm — kho nhiều nhóm con vẫn gọn.
+- **Thư viện** (mới): cây vùng/nhóm có số đếm, chip lọc loại (đếm trong nhóm đang xem), lọc thẻ, 4 cách sắp xếp, phân trang — duyệt **toàn bộ** kho, không giới hạn như đồ thị.
+- **Việc** (mới): theo hạn, tích là xong.
+- **Nạp** (tab mới): kéo thả nhiều file .md/.txt hoặc dán, xem trước, nạp.
+- **Thẻ chi tiết**: đường dẫn nhóm bấm được, nhãn loại, thẻ bấm được, khối Nguồn · Trích dẫn · Hạn (quá hạn tô đỏ), ghi chú liên kết, sửa được mọi trường.
+- Đã kiểm bằng trình duyệt thật (Chromium) ở 1440×900 và 390×844 (điện thoại), không lỗi JavaScript, chạy dưới CSP chặt.
+
+### Bền vững
+- **Nâng cấp tại chỗ**: kho tạo bằng bản gốc mở bằng bản mới tự thêm cột, tính bù dấu vân tay, giữ nguyên dữ liệu và trạng thái cất kho; bản gốc vẫn đọc được kho đã nâng cấp (quay về được). Đã thử cả hai chiều.
+- Hiệu năng đo ở **10.000 ghi chú**: thêm 0,11 s, tìm 0,08-0,11 s, lọc/cây nhóm/việc ≤ 0,15 s, `duplicates` 1,4 s, kho 8 MB.
+- `SKILL.md` viết lại: quy trình lưu chuẩn từng bước (xem cây nhóm → lưu → xử lý từng loại kết quả), quy tắc phân loại bắt buộc, cách tìm và trả lời có dẫn nguồn, nạp, việc.
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.

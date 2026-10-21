@@ -131,9 +131,12 @@ def nang_cap(db):
     if them:   # chỉ quét cả bảng ngay sau khi nâng cấp, không phải mỗi lần mở kho
         db.execute("UPDATE notes SET status='active' WHERE status IS NULL OR trim(status)=''")
         db.execute("UPDATE notes SET kind='kien-thuc' WHERE kind IS NULL OR trim(kind)=''")
-        for r in db.execute("SELECT id,title,content FROM notes WHERE content_hash IS NULL").fetchall():
-            db.execute("UPDATE notes SET content_hash=? WHERE id=?", (van_tay(r["title"], r["content"]), r["id"]))
     db.execute("CREATE INDEX IF NOT EXISTS ix_notes_hash ON notes(content_hash)")
+    # ghi chú thêm bằng bản cũ (người dùng quay về bản cũ rồi lên lại) chưa có dấu vân tay -> tính bù.
+    # Có chỉ mục nên khi không còn dòng nào thiếu, câu này gần như không tốn gì.
+    for r in db.execute("SELECT id,title,content FROM notes WHERE content_hash IS NULL").fetchall():
+        db.execute("UPDATE notes SET content_hash=?, kind=coalesce(nullif(trim(kind),''),'kien-thuc') WHERE id=?",
+                   (van_tay(r["title"], r["content"]), r["id"]))
     db.execute("CREATE INDEX IF NOT EXISTS ix_notes_cat ON notes(status, category)")
     db.execute("CREATE INDEX IF NOT EXISTS ix_notes_kind ON notes(status, kind)")
     db.commit()

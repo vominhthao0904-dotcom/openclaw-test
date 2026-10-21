@@ -35,6 +35,11 @@ Ghi chú:
 - PDF scan (ảnh) không có lớp chữ nên `text`/`find` trả rỗng: dùng `page-shot` rồi đọc ảnh, hoặc OCR riêng.
 - Kết quả mặc định lưu ở `~/.openclaw/workspace/.openclaw/pdf-crops/` nếu không có `--out`.
 
+## Kết hợp với skill khác
+- Muốn **lưu nội dung PDF vào kho kiến thức** (tài liệu học, quy chuẩn, catalogue): dùng skill `second-brain`,
+  lệnh `nap file.pdf --kind tai-lieu --category "…"` (thêm `--tach trang` để mỗi trang một ghi chú có trích dẫn trang).
+- Ảnh cắt ra đưa vào slide: skill `pptx-deck-builder`, trường `image_path`.
+
 ## Quy tắc
 - Không sửa file PDF gốc. Chỉ ghi ảnh/text ra thư mục đầu ra.
 - Báo rõ cho người dùng: file nào, trang nào, cụm chữ nào đã khớp (và có bao nhiêu chỗ khớp), đường dẫn ảnh.

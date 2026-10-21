@@ -10,7 +10,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **92** |
+| Test `test-brain.sh` | 50 | **100** |
 | Test `test-web.sh` | 30 | **67** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
@@ -143,6 +143,11 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - Sửa: `nap`/`import` gặp JSON có phần tử không phải ghi chú thì sập (traceback) → nay báo lỗi rõ, không ghi gì.
 - Sửa: API web nhận trường sai kiểu (nhóm là object, nội dung là danh sách) từng lưu thẳng `{'a': 1}` vào kho hoặc lỗi 500 → nay từ chối với thông báo rõ; thẻ dạng danh sách được nhận đúng.
 - Thêm 5 test cho các trường hợp trên (brain 92, web 67).
+
+## Sao lưu Google Drive mã hoá (bổ sung)
+- `scripts/sao-luu-drive.sh` (`kiem` · `chay` · `ds` · `khoi-phuc [ngày]` · `lich`): mỗi đêm 2h47 chụp kho thành một file nhất quán, **mã hoá trên VPS bằng rclone crypt** (cả tên file lẫn nội dung) rồi mới gửi lên Drive; gửi cả `deleted/`; giữ 90 ngày, tự dọn bản cũ; ghi trạng thái cho `doctor` và `kiemtra.sh`.
+- An toàn: **chỉ chịu gửi qua remote kiểu `crypt`** (cấu hình nhầm sang kết nối thường là từ chối); quyền Google `drive.file` — rclone chỉ thấy file do nó tạo; khôi phục ra **file riêng**, kiểm toàn vẹn, không đè kho đang dùng; sai mật khẩu báo đúng "không giải mã được"; khoá chống chạy chồng; nhật ký `drive.log`.
+- Thử thật bằng "Drive giả" (thư mục cục bộ, cùng cơ chế crypt, rclone 1.60 — bản của Ubuntu 24.04): sao lưu, kiểm không lộ chữ thô, liệt kê, khôi phục, dọn bản > 90 ngày, sai mật khẩu, remote không mã hoá, đặt lịch 2 lần không trùng. 8 test tự động (brain 100). **Chưa thử với Google Drive thật** (cần tài khoản Google của anh) — phần đăng nhập Google làm theo Bước 6 trong CAI-DAT.md.
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.

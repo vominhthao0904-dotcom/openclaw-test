@@ -200,6 +200,17 @@ Biến môi trường: `BRAIN_PORT` (8787), `BRAIN_AGENT` (agent cho ô Hỏi, v
 - Kéo về máy mỗi tuần: `scp user@IP:~/.openclaw/workspace/second-brain/backups/notes-latest.sqlite .`
   **Không** chép thẳng `notes.sqlite` (chế độ WAL: bản chép có thể thiếu, thậm chí rỗng).
 - `doctor` báo "Bản sao lưu mới nhất đã N ngày" → cron đã ngừng; nhắc người dùng kiểm `crontab -l`.
+- **Bản ngoài VPS — Google Drive, mã hoá** (cài ở Bước 6 của `CAI-DAT.md`): `scripts/sao-luu-drive.sh` dùng rclone crypt —
+  mã hoá ngay trên VPS rồi mới gửi, Google không đọc được tên file lẫn nội dung; chỉ chịu gửi qua remote kiểu `crypt`.
+  ```bash
+  bash {baseDir}/scripts/sao-luu-drive.sh kiem               # đã cài đủ chưa, kết nối được không, lần cuối khi nào
+  bash {baseDir}/scripts/sao-luu-drive.sh chay               # sao lưu ngay
+  bash {baseDir}/scripts/sao-luu-drive.sh ds                 # các bản trên Drive (giữ 90 ngày)
+  bash {baseDir}/scripts/sao-luu-drive.sh khoi-phuc [2026-11-05]   # tải + giải mã ra file RIÊNG, không đè kho đang dùng
+  ```
+  Người dùng nhờ khôi phục: chạy `khoi-phuc`, báo số ghi chú trong bản tải về, và **hỏi trước** khi thay kho đang dùng
+  (lệnh thay kho được script in ra). Báo "không giải mã được" = sai mật khẩu mã hoá — nhắc họ dùng 2 mật khẩu đã ghi lại,
+  không tự tạo mật khẩu mới. Không bao giờ in hay gửi mật khẩu mã hoá / file `rclone.conf` vào cuộc trò chuyện.
 
 ## 11. An toàn dữ liệu
 Xem `references/DATA-SAFETY.md`. Tóm tắt:

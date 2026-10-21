@@ -214,6 +214,15 @@ if crontab -l 2>/dev/null | grep -v '^[[:space:]]*#' | grep -q 'second-brain/scr
 elif ! command -v crontab >/dev/null 2>&1; then hong "máy chưa có cron — cài: sudo apt install -y cron, rồi làm Bước 5 trong CAI-DAT.md"
 else hong "chưa có lịch sao lưu — làm Bước 5 trong CAI-DAT.md (dán một khối lệnh)"; fi
 
+# Sao lưu Google Drive là TUỲ CHỌN (Bước 6) — chỉ hiện thông tin, không tính vào ĐẠT/CHƯA ĐẠT
+pad "  sao lưu Google Drive" 32
+DRV="$(dirname "$SKILLS_DIR")/second-brain/backups/drive-last.json"
+if [ -f "$DRV" ]; then
+  TUOI=$(python3 -c "import json,sys;from datetime import datetime as d;t=d.fromisoformat(json.load(open(sys.argv[1]))['luc']);print(int((d.now(t.tzinfo)-t).total_seconds()//86400))" "$DRV" 2>/dev/null || echo 99)
+  if [ "$TUOI" -le 2 ]; then echo "có — bản mới nhất ${TUOI} ngày trước"
+  else echo "CẦN XEM — bản mới nhất đã ${TUOI} ngày: bash .../sao-luu-drive.sh kiem"; fi
+else echo "chưa bật (tuỳ chọn, nên bật — Bước 6 trong CAI-DAT.md)"; fi
+
 # ---------- KẾT LUẬN ----------
 echo
 echo "======================================================================"

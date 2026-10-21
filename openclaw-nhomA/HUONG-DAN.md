@@ -243,18 +243,46 @@ Trang web **cố ý không có nút xoá hẳn** — một cú bấm nhầm khô
 
 ### Sao lưu
 
-Lịch sao lưu hằng ngày đã bật ở **Bước 5 khi cài** (CAI-DAT.md). Chưa bật thì dán khối này — dán lại bao nhiêu lần cũng không tạo dòng trùng:
+Kiến thức được giữ ở **3 nơi**, mất một nơi vẫn còn hai:
+
+| Nơi | Bản nào | Tự động? | Chống được |
+|---|---|---|---|
+| **VPS** | Kho + 60 bản chụp gần nhất | Mỗi đêm 2h17 (Bước 5) | Xoá nhầm, sửa nhầm, file kho hỏng |
+| **Google Drive — mã hoá** | Mỗi ngày một bản, giữ 90 ngày | Mỗi đêm 2h47 (Bước 6) | VPS hỏng / hết hạn / bị xoá; mất máy tính |
+| **Máy tính của anh** | Một bản mỗi tháng | Anh tự kéo về | Mất cả VPS lẫn tài khoản Google |
+
+**Google Drive** (sau khi làm Bước 6): không phải làm gì thêm. Xem nhanh tình trạng:
 ```bash
-( crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot'
+bash ~/.openclaw/workspace/skills/second-brain/scripts/sao-luu-drive.sh kiem
+```
+Hoặc nhờ Mây: *"bản sao lưu Drive gần nhất là khi nào?"*. Trên Drive, thư mục **SecondBrain** chỉ toàn tên vô nghĩa — đúng, đó là dữ liệu đã mã hoá; Google không đọc được.
+
+**Khi gặp sự cố — lấy lại từ Drive:**
+```bash
+BRAIN_SH=~/.openclaw/workspace/skills/second-brain/scripts
+bash $BRAIN_SH/sao-luu-drive.sh ds
+bash $BRAIN_SH/sao-luu-drive.sh khoi-phuc
+bash $BRAIN_SH/sao-luu-drive.sh khoi-phuc 2026-11-05
+```
+`ds` liệt kê các bản theo ngày; `khoi-phuc` tải bản mới nhất (hoặc đúng ngày chỉ định) về **file riêng**, kiểm tra nguyên vẹn, báo số ghi chú, rồi in sẵn lệnh để thay kho — kho đang dùng không bị đụng cho tới khi anh tự chạy lệnh đó.
+
+**VPS mới hoàn toàn** (VPS cũ mất hẳn): cài lại theo CAI-DAT.md Bước 1-5; Bước 6 tạo lại 2 kết nối, riêng ở 6.4 chọn **y** (tự gõ mật khẩu) và gõ **đúng 2 mật khẩu đã ghi lại**; rồi chạy `sao-luu-drive.sh khoi-phuc` và làm theo lệnh nó in ra.
+
+**Máy tính:** mỗi tháng kéo một bản về (Termius/WinSCP: kéo file qua SFTP cũng được):
+```bash
+scp root@IP_VPS:~/.openclaw/workspace/second-brain/backups/notes-latest.sqlite ~/brain-$(date +%Y-%m).sqlite
+```
+> Nếu thư mục trên máy tính đang **đồng bộ với Google Drive** thì file kéo về sẽ lên Drive ở dạng **chưa mã hoá**. Để nó ở thư mục không đồng bộ, hoặc nén bằng 7-Zip có mật khẩu (AES-256) trước.
+
+Lịch sao lưu trên VPS đã bật ở **Bước 5 khi cài** (CAI-DAT.md). Chưa bật thì dán khối này — dán lại bao nhiêu lần cũng không tạo dòng trùng:
+```bash
+CU="$(crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot')"
+{ [ -n "$CU" ] && printf '%s\n' "$CU"
   echo '17 2 * * * python3 $HOME/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1'
-) | crontab -
+} | crontab -
 crontab -l | grep snapshot
 ```
 
-Mỗi tuần kéo về máy cá nhân một bản (Termius/WinSCP: kéo file này qua SFTP cũng được):
-```bash
-scp root@IP_VPS:~/.openclaw/workspace/second-brain/backups/notes-latest.sqlite ~/backup-brain-$(date +%F).sqlite
-```
 > **Đừng** chép thẳng `notes.sqlite`. Kho chạy chế độ WAL: ghi chú mới có thể còn nằm trong file `notes.sqlite-wal` bên cạnh, chép mỗi file chính là được bản thiếu — đã thử, có lúc **rỗng hoàn toàn**. `notes-latest.sqlite` do lệnh `snapshot` tạo ra là bản đầy đủ, một file duy nhất.
 
 Mỗi tháng khám sức khoẻ kho một lần (hoặc nhờ Mây: *"kiểm tra kho ghi chú giúp anh"*):
@@ -276,6 +304,7 @@ Ba thư mục cạnh kho, nên biết để khỏi nhầm:
 | `backups/*.json.gz` | Ảnh chụp toàn kho | Có — giữ 60 bản gần nhất |
 | `backups/notes-latest.sqlite` | Bản sao đầy đủ mới nhất — **file để kéo về máy** | Ghi đè mỗi lần `snapshot` |
 | `.web-token` | Mã truy cập trang web | Không |
+| `backups/drive-last.json`, `drive.log` | Lần sao lưu Drive gần nhất, nhật ký | `drive.log` không tự dọn (rất nhỏ) |
 
 `backups/` là để cứu hộ cả kho khi hỏng file, **không phải** nơi giữ ghi chú đã xoá — cái đó nằm ở `deleted/`.
 

@@ -264,6 +264,37 @@ echo '{"notes": "khong phai list"}' > "$TMP/hong2.json"
 check "import file sai dạng: báo lỗi rõ" 'BR import --file "$TMP/hong2.json" 2>&1 | jq_ "d[\"ok\"]"' "False"
 
 echo
+echo "19. SAO LƯU GOOGLE DRIVE MÃ HOÁ (thử bằng 'Drive giả' là thư mục cục bộ, cùng cơ chế crypt)"
+SLD="$(dirname "$BR_PY")/sao-luu-drive.sh"
+if command -v rclone >/dev/null 2>&1; then
+  export RCLONE_CONFIG="$TMP/rclone.conf"
+  mkdir -p "$TMP/drive-gia"
+  rclone config create gdrive alias remote "$TMP/drive-gia" >/dev/null 2>&1
+  rclone config create brain-mahoa crypt remote gdrive:SecondBrain \
+    password "$(rclone obscure mk-thu-1)" password2 "$(rclone obscure mk-thu-2)" --no-obscure >/dev/null 2>&1
+  rclone config create brain-sai crypt remote gdrive:SecondBrain \
+    password "$(rclone obscure SAI)" password2 "$(rclone obscure mk-thu-2)" --no-obscure >/dev/null 2>&1
+  check "sao lưu lên Drive chạy được" 'bash "$SLD" chay | grep -c "ĐÃ SAO LƯU"' "1"
+  check "Drive không có chữ thô (đã mã hoá)" \
+    'grep -rlE "Tiêu chí đất|notes-|sqlite" "$TMP/drive-gia" | wc -l' "0"
+  check "từ chối remote không mã hoá" 'SB_DRIVE_REMOTE=gdrive bash "$SLD" chay 2>&1 | grep -c "Từ chối"' "1"
+  check "khôi phục: tải + giải mã nguyên vẹn" 'bash "$SLD" khoi-phuc | grep -c "nguyên vẹn"' "1"
+  check "khôi phục không đè kho đang dùng" 'ls "$TMP" | grep -c "^khoi-phuc-.*\.sqlite$"' "1"
+  check "sai mật khẩu báo đúng bệnh" 'SB_DRIVE_REMOTE=brain-sai bash "$SLD" khoi-phuc 2>&1 | grep -c "không giải mã được"' "1"
+  if command -v crontab >/dev/null 2>&1; then
+    CRON_CU="$(crontab -l 2>/dev/null)"
+    printf '17 2 * * * brain.py snapshot\n5 4 * * * /usr/bin/viec-khac\n' | crontab -
+    check "đặt lịch Drive giữ nguyên các lịch khác" \
+      'bash "$SLD" lich >/dev/null; bash "$SLD" lich >/dev/null; crontab -l | grep -cE "brain.py snapshot|viec-khac|sao-luu-drive"' "3"
+    printf '%s\n' "$CRON_CU" | crontab -
+  fi
+  check "doctor đọc được trạng thái Drive" 'BR doctor | jq_ "\"goi_y\" not in d"' "True"
+  unset RCLONE_CONFIG
+else
+  echo "  (máy này chưa có rclone — bỏ qua 7 test Drive)"
+fi
+
+echo
 echo "======================================================================"
 printf " ĐẠT: %-5s HỎNG: %s\n" "$OK" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo " Tất cả test đều qua." || echo " CÓ TEST HỎNG — xem các dòng HỎNG ở trên."

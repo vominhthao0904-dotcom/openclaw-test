@@ -105,7 +105,7 @@ sudo apt install --reinstall -y python3
 
 # PHẦN 2 — Cài đặt
 
-Năm bước. Làm đúng thứ tự.
+Sáu bước. Làm đúng thứ tự (Bước 6 nên làm, không bắt buộc).
 
 ### Bước 1 — Cài công cụ cho 3 skill kia
 
@@ -186,14 +186,101 @@ Cài skill trước rồi mới cài công cụ cũng không sao: **không phả
 
 Làm một lần rồi quên. Dán nguyên khối này (chạy lại bao nhiêu lần cũng không tạo dòng trùng):
 ```bash
-( crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot'
+CU="$(crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot')"
+{ [ -n "$CU" ] && printf '%s\n' "$CU"
   echo '17 2 * * * python3 $HOME/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1'
-) | crontab -
+} | crontab -
 crontab -l | grep snapshot
 ```
 Báo `crontab: command not found` thì cài trước: `sudo apt install -y cron`.
 
-Mỗi đêm 2h17 nó chụp toàn kho vào `backups/` (giữ 60 bản) và làm mới `backups/notes-latest.sqlite` — file để anh kéo về máy cá nhân mỗi tuần (xem `HUONG-DAN.md`, mục Sao lưu).
+Mỗi đêm 2h17 nó chụp toàn kho vào `backups/` (giữ 60 bản) và làm mới `backups/notes-latest.sqlite` — file để anh kéo về máy cá nhân mỗi tháng (xem `HUONG-DAN.md`, mục Sao lưu).
+
+### Bước 6 (nên làm) — Sao lưu MÃ HOÁ lên Google Drive mỗi đêm
+
+Bước 5 giữ bản sao **trên VPS**. VPS hỏng, hết hạn hay bị xoá thì mất cả kho lẫn bản sao. Bước này gửi thêm một bản **ra ngoài** — lên Google Drive của anh — tự động mỗi đêm 2h47.
+
+Bản lên Drive được **mã hoá ngay trên VPS** (công cụ `rclone`, chế độ *crypt*) trước khi gửi đi: Google chỉ thấy các file tên vô nghĩa, nội dung vô nghĩa. Lộ tài khoản Google cũng không lộ kiến thức. Script **chỉ chịu gửi qua kết nối mã hoá** — cấu hình nhầm sang kết nối thường thì nó từ chối.
+
+**Cần chuẩn bị:** tài khoản Google; một máy tính có trình duyệt (để đăng nhập Google một lần); 15 phút. Gói Drive miễn phí 15 GB là thừa — mỗi bản chỉ vài MB, giữ 90 ngày.
+
+**6.1. Cài rclone trên VPS**
+```bash
+sudo apt install -y rclone
+rclone version
+```
+
+**6.2. Cài rclone trên máy tính của anh** (chỉ để đăng nhập Google một lần — VPS không có trình duyệt)
+
+Windows: tải tại https://rclone.org/downloads/ → bản *Windows Intel/AMD 64 Bit* → giải nén ra `C:\rclone`. Mac: mở Terminal, chạy `brew install rclone` (hoặc tải ở trang trên).
+
+**6.3. Tạo kết nối Google Drive trên VPS** — tên `gdrive`
+```bash
+rclone config
+```
+Trả lời lần lượt (gõ chữ in đậm rồi Enter; câu nào không nêu thì cứ Enter):
+
+| rclone hỏi | Trả lời |
+|---|---|
+| `e/n/d/r/c/s/q>` | **n** (tạo mới) |
+| `name>` | **gdrive** |
+| `Storage>` | **drive** (Google Drive) |
+| `client_id>` · `client_secret>` | Enter · Enter |
+| `scope>` | **drive.file** (hoặc gõ số đứng trước dòng *drive.file*) — rclone **chỉ thấy file do chính nó tạo**, không đụng được tài liệu khác trong Drive của anh |
+| `service_account_file>` | Enter |
+| `Edit advanced config?` | **n** |
+| `Use web browser to automatically authenticate…?` | **n** (VPS không có trình duyệt) |
+
+rclone in ra một dòng lệnh dạng `rclone authorize "drive" "eyJ…"`. **Copy nguyên dòng đó**, mở cửa sổ lệnh **trên máy tính của anh** (Windows: vào `C:\rclone`, gõ `cmd` trên thanh địa chỉ thư mục), dán, Enter → trình duyệt mở ra → đăng nhập Google → **Cho phép**. Cửa sổ lệnh trên máy tính in ra một đoạn mã dài (giữa hai dòng `--->` và `<---End paste`) → copy đoạn đó, dán vào VPS ở câu `config_token>`.
+
+| rclone hỏi tiếp | Trả lời |
+|---|---|
+| `Configure this as a Shared Drive…?` | **n** |
+| `y/e/d>` | **y** (lưu) |
+
+**6.4. Tạo kết nối MÃ HOÁ chồng lên trên** — tên `brain-mahoa`
+
+Vẫn trong `rclone config` (hoặc chạy lại `rclone config`):
+
+| rclone hỏi | Trả lời |
+|---|---|
+| `e/n/d/r/c/s/q>` | **n** |
+| `name>` | **brain-mahoa** (đúng tên này — script dùng tên này) |
+| `Storage>` | **crypt** (Encrypt/Decrypt a remote) |
+| `remote>` | **gdrive:SecondBrain** |
+| `filename_encryption>` | **standard** (hoặc Enter) — mã hoá cả tên file |
+| `directory_name_encryption>` | **true** (hoặc Enter) |
+| `y/g>` (password) | **g** → chọn **256** bit → rclone tạo mật khẩu ngẫu nhiên → **y** để dùng |
+| `y/g/n>` (password2 — salt) | **g** → **256** → **y** |
+| `Edit advanced config?` | **n** |
+| `y/e/d>` | **y** |
+| `e/n/d/r/c/s/q>` | **q** (thoát) |
+
+> ⚠ **GHI LẠI 2 MẬT KHẨU** rclone vừa tạo (dòng `password` và `password2` hiện trên màn hình) — vào trình quản lý mật khẩu **và** ra giấy cất kỹ. Mất 2 mật khẩu này thì **không ai giải mã được** bản trên Drive, kể cả khi còn tài khoản Google. Không gửi mật khẩu qua chat, kể cả cho Mây.
+
+**6.5. Thử, rồi bật lịch tự động**
+```bash
+BRAIN_SH=~/.openclaw/workspace/skills/second-brain/scripts
+bash $BRAIN_SH/sao-luu-drive.sh kiem
+bash $BRAIN_SH/sao-luu-drive.sh chay
+bash $BRAIN_SH/sao-luu-drive.sh ds
+bash $BRAIN_SH/sao-luu-drive.sh lich
+```
+*Đạt khi:* `kiem` báo **kết nối Drive: được**; `chay` báo **ĐÃ SAO LƯU notes-<ngày>.sqlite … (mã hoá)**; `ds` liệt kê đúng bản đó; `lich` báo **đã đặt lịch: mỗi đêm 2h47**. Mở Google Drive trên điện thoại: thấy thư mục **SecondBrain** chứa các tên vô nghĩa — đúng, đó là dữ liệu đã mã hoá.
+
+**6.6. Thử khôi phục** (nên làm ngay một lần cho yên tâm — bản sao lưu chưa từng thử khôi phục thì chưa chắc dùng được)
+```bash
+bash ~/.openclaw/workspace/skills/second-brain/scripts/sao-luu-drive.sh khoi-phuc
+```
+*Đạt khi:* báo **ĐÃ TẢI VỀ + GIẢI MÃ … (N ghi chú, nguyên vẹn)**. File tải về nằm riêng (`khoi-phuc-<ngày>.sqlite`), kho đang dùng không bị đụng; xem xong có thể xoá file đó.
+
+| Hiện tượng | Cách xử lý |
+|---|---|
+| `chưa có remote 'brain-mahoa'` | Làm lại 6.4, đặt đúng tên `brain-mahoa` |
+| `không kết nối được Drive` | Token Google hết hạn: `rclone config reconnect gdrive:` rồi làm lại phần dán mã ở 6.3 |
+| `không giải mã được` | Kết nối `brain-mahoa` đang dùng mật khẩu khác lúc sao lưu — tạo lại bằng **đúng 2 mật khẩu đã ghi** (ở 6.4 chọn **y** “type in my own password” thay vì **g**) |
+| `Từ chối gửi dữ liệu chưa mã hoá` | Đang trỏ nhầm vào `gdrive`. Không đặt biến `SB_DRIVE_REMOTE`, hoặc đặt `SB_DRIVE_REMOTE=brain-mahoa` |
+| `doctor` / `kiemtra.sh` báo bản trên Drive cũ quá 2 ngày | Chạy `sao-luu-drive.sh kiem` để xem nguyên nhân; nhật ký ở `~/.openclaw/workspace/second-brain/backups/drive.log` |
 
 ---
 
@@ -242,7 +329,7 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 92 trường hợp: phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 100 trường hợp: sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
@@ -393,18 +480,19 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 | Mục | Gói này làm gì / không làm gì |
 |---|---|
 | **Không cần** | `sudo` khi chép skill, khoá API, tài khoản, mở cổng firewall |
-| **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Chỉ `fetch_images.py` (tuỳ chọn, cần khoá Pexels) gọi Internet; trang web tải font chữ từ Google Fonts |
+| **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Ra Internet chỉ có: bản sao lưu Google Drive (Bước 6, tuỳ chọn) — **đã mã hoá trên VPS trước khi gửi**, Google không đọc được; `fetch_images.py` (tuỳ chọn, cần khoá Pexels); font chữ của trang web (Google Fonts) |
 | **Kho ghi chú** | `notes.sqlite`, `backups/`, `deleted/` chỉ chủ sở hữu đọc được (600/700) — user khác trên VPS không đọc được |
 | **Trang web** | Chỉ nghe `127.0.0.1` và **cần mã truy cập** (chương trình khác trên VPS cũng không đọc được kho); từ chối yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn; kết nối treo tự ngắt sau 30 giây |
-| **Sao lưu** | Hằng ngày `.json.gz` (giữ 60 bản) + một bản `.sqlite` đầy đủ để kéo về máy; `doctor` báo khi lịch sao lưu ngừng |
+| **Sao lưu** | VPS: hằng đêm `.json.gz` (giữ 60 bản) + bản `.sqlite` đầy đủ. Google Drive (Bước 6): mã hoá rclone crypt, giữ 90 ngày, chỉ chịu gửi qua kết nối mã hoá, quyền Google chỉ thấy file do nó tạo. `doctor` báo khi lịch sao lưu ngừng |
 | **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan cho `openclaw agent` trên chính VPS, và dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
 | **Video** | Từ chối khi file kết quả trùng file gốc — không bao giờ ghi đè video gốc |
 | **Slide** | Ảnh tải từ link chỉ nhận https, máy chủ công khai, ≤ 15 MB; kiểm lại cả khi bị chuyển hướng (không lọt vào mạng nội bộ/metadata VPS) |
 
-Ba điều anh cần tự giữ:
+Những điều anh cần tự giữ:
 1. **Không** đặt `BRAIN_HOST=0.0.0.0`. Xem trang web qua đường hầm SSH. Đường link có mã là chìa khoá kho — đừng dán vào nhóm chat.
 2. **Không** ghi mật khẩu, token, số thẻ vào ghi chú — file SQLite không mã hoá.
-3. Khoá Pexels (nếu dùng) để trong `~/.openclaw/secrets/pexels.env` với quyền 600: `chmod 600 ~/.openclaw/secrets/pexels.env`.
+3. Giữ kỹ **2 mật khẩu mã hoá** của sao lưu Drive (Bước 6) — mất là không giải mã được bản trên Drive.
+4. Khoá Pexels (nếu dùng) để trong `~/.openclaw/secrets/pexels.env` với quyền 600: `chmod 600 ~/.openclaw/secrets/pexels.env`.
 
 ---
 

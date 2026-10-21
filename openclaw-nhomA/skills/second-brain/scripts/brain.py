@@ -998,6 +998,20 @@ def cmd_doctor(a, db):
             nhac.append(f"Bản sao lưu mới nhất đã {tuoi:.0f} ngày — lịch sao lưu hằng ngày có thể đã ngừng (crontab -l)")
     if not (BACKUP_DIR / "notes-latest.sqlite").is_file():
         nhac.append("Chưa có backups/notes-latest.sqlite để kéo về máy cá nhân. Chạy: snapshot")
+    # bản sao NGOÀI VPS (Google Drive, mã hoá) — sao-luu-drive.sh ghi trạng thái vào drive-last.json
+    goi_y = []
+    tt = BACKUP_DIR / "drive-last.json"
+    if tt.is_file():
+        try:
+            luc = datetime.fromisoformat(json.loads(tt.read_text())["luc"])
+            tuoi_drive = (datetime.now(luc.tzinfo) - luc).total_seconds() / 86400
+            if tuoi_drive > 2:
+                nhac.append(f"Bản sao lưu trên Google Drive đã {tuoi_drive:.0f} ngày — lịch Drive có thể đã ngừng hoặc "
+                            "token Google hết hạn. Kiểm: bash scripts/sao-luu-drive.sh kiem")
+        except (ValueError, KeyError, OSError):
+            nhac.append("Không đọc được trạng thái sao lưu Drive (backups/drive-last.json)")
+    else:
+        goi_y.append("Chưa có bản sao lưu ngoài VPS. Nên bật sao lưu mã hoá lên Google Drive: Bước 6 trong CAI-DAT.md")
     try:
         du = os.statvfs(DB_PATH.parent)
         trong_mb = du.f_bavail * du.f_frsize / 1024 / 1024
@@ -1005,7 +1019,7 @@ def cmd_doctor(a, db):
             nhac.append(f"Ổ đĩa chỉ còn {trong_mb:.0f} MB — hết đĩa là không ghi được ghi chú")
     except OSError:
         pass
-    out({"ok": not loi, "loi": loi, "nhac": nhac, "da_sua": da_sua,
+    out({"ok": not loi, "loi": loi, "nhac": nhac, "da_sua": da_sua, **({"goi_y": goi_y} if goi_y else {}),
          "ghi_chu": db.execute(f"SELECT count(*) FROM notes WHERE {CON}").fetchone()[0],
          "ket_luan": "Kho khoẻ" if not loi and not nhac else ("Có lỗi cần xử lý" if loi else "Kho ổn, có vài việc nên làm")},
         0 if not loi else 1)

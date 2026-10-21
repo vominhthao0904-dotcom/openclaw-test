@@ -1118,21 +1118,31 @@ def cmd_kinds(a, db):
 
 
 # ---------------- công việc ----------------
+def danh_dau_viec(db, ids, xong=True):
+    n = 0
+    for i in [x.strip() for x in ids.split(",") if x.strip()]:
+        n += db.execute("UPDATE notes SET done_at=?, updated_at=? WHERE id=? AND kind='viec'",
+                        (now() if xong else None, now(), i)).rowcount
+    db.commit()
+    return n
+
+
 def cmd_viec(a, db):
     """Việc cần làm: một loại ghi chú có hạn và trạng thái xong."""
-    for cot, gia_tri, ids in (("done_at", now(), a.xong), ("done_at", None, a.mo_lai)):
+    for ids, xong in ((a.xong, True), (a.mo_lai, False)):
         if ids:
-            n = 0
-            for i in [x.strip() for x in ids.split(",") if x.strip()]:
-                n += db.execute(f"UPDATE notes SET {cot}=?, updated_at=? WHERE id=? AND kind='viec'",
-                                (gia_tri, now(), i)).rowcount
-            db.commit()
+            n = danh_dau_viec(db, ids, xong)
             out({"ok": bool(n), "da_cap_nhat": n, **({} if n else {"error": "Không thấy việc nào với id đó"})},
                 0 if n else 2)
+    out({"ok": True, **ds_viec(db, a.category, a.tat_ca),
+         "note": "Thêm việc: add --kind viec --due 2026-11-05. Xong: viec --xong <id>."})
+
+
+def ds_viec(db, category=None, tat_ca=False):
     where, params = [CON, "kind='viec'"], []
-    if not a.tat_ca:
+    if not tat_ca:
         where.append("done_at IS NULL")
-    loc_nhom(where, params, a.category)
+    loc_nhom(where, params, category)
     rows = db.execute("SELECT * FROM notes WHERE " + " AND ".join(where) +
                       " ORDER BY done_at IS NOT NULL, due IS NULL, due, created_at", params).fetchall()
     hom_nay = datetime.now().strftime("%Y-%m-%d")
@@ -1153,9 +1163,8 @@ def cmd_viec(a, db):
             nhom["7_ngay_toi"].append(d)
         else:
             nhom["sau_nay"].append(d)
-    out({"ok": True, "dang_mo": sum(len(v) for k, v in nhom.items() if k != "da_xong"),
-         **{k: v for k, v in nhom.items() if v or k != "da_xong"},
-         "note": "Thêm việc: add --kind viec --due 2026-11-05. Xong: viec --xong <id>."})
+    return {"dang_mo": sum(len(v) for k, v in nhom.items() if k != "da_xong"),
+            **{k: v for k, v in nhom.items() if v or k != "da_xong"}}
 
 
 # ---------------- nạp kiến thức từ nhiều nguồn ----------------
@@ -1339,6 +1348,16 @@ def cmd_nap(a, db):
             muc += ds
         except (ValueError, OSError) as e:
             loi.append({"file": str(f), "loi": str(e)})
+    kq = nap_vao(db, muc, a.category, a.tags, kind_mac_dinh, a.url, a.cite, a.source, a.dry_run)
+    kq["so_file"] = len(nguon)
+    kq["loi"] = loi + kq["loi"]
+    kq["ok"] = not kq["loi"] or bool(kq.get("da_them") or kq.get("se_them"))
+    out(kq)
+
+
+def nap_vao(db, muc, category="", tags="", kind_mac_dinh=None, url="", cite="", source="other", dry_run=False):
+    """Lõi của việc nạp (dùng chung cho dòng lệnh và trang web): chuẩn hoá, chống trùng trong lô và
+    với kho, rồi ghi tất cả trong MỘT giao dịch — hỏng giữa chừng thì không có gì được ghi."""
     da_thay, them, trung, rong, ket_qua, nhom_moi = set(), [], 0, 0, [], set()
     for d in muc:
         title = gon(str(d.get("title") or ""))[:200]
@@ -1356,29 +1375,33 @@ def cmd_nap(a, db):
             due = chuan_han(d.get("due"))
         except ValueError:
             due = None
-        them.append((title, content, d.get("category") or a.category or "",
-                     ",".join(x for x in (norm_tags(str(d.get("tags") or "")), norm_tags(a.tags)) if x),
-                     k or kind_mac_dinh or "kien-thuc", d.get("url") or a.url or "", d.get("cite") or a.cite or "",
-                     due, d["_file"]))
-    if not a.dry_run and them:
+        them.append((title, content, d.get("category") or category or "",
+                     ",".join(x for x in (norm_tags(str(d.get("tags") or "")), norm_tags(tags)) if x),
+                     k or kind_mac_dinh or "kien-thuc", d.get("url") or url or "", d.get("cite") or cite or "",
+                     due, d.get("_file", "")))
+    if not dry_run and them:
         b = backup(db, "before-nap") if db.execute("SELECT count(*) FROM notes").fetchone()[0] else None
         for title, content, cat, tags, kind, url, cite, due, ten_f in them:
             nhom, moi, _, _ = chuan_nhom(db, cat)
             nhom_moi.update(moi)
             nid = uuid.uuid4().hex[:12]
-            them_note(db, nid, title, content, nhom, norm_tags(tags), a.source, url, kind=kind, cite=cite, due=due)
+            try:
+                them_note(db, nid, title, content, nhom, norm_tags(tags), source, url, kind=kind, cite=cite, due=due)
+            except Exception:
+                db.rollback()
+                raise
             ket_qua.append({"id": nid, "title": title, "category": nhom, "kind": kind, "tu": ten_f})
         db.commit()
     else:
         b = None
         ket_qua = [{"title": t[0], "category": t[2], "kind": t[4], "tu": t[8], "do_dai": len(t[1])} for t in them]
-    out({"ok": not loi or bool(them), "xem_truoc": a.dry_run, "so_file": len(nguon),
-         ("se_them" if a.dry_run else "da_them"): len(them), "bo_qua_trung": trung, "bo_qua_rong": rong,
-         "loi": loi, "nhom_moi": sorted(nhom_moi), "ghi_chu": ket_qua[:40],
-         **({"con_nua": len(ket_qua) - 40} if len(ket_qua) > 40 else {}),
-         "backup": str(b) if b else None,
-         "note": ("Chỉ xem trước — chạy lại không có --dry-run để nạp thật." if a.dry_run else
-                  "Nạp xong. Ghi chú thiếu nhóm/thẻ nằm ở inbox; nên xếp chỗ ngay.")})
+    return {"ok": True, "xem_truoc": dry_run,
+            ("se_them" if dry_run else "da_them"): len(them), "bo_qua_trung": trung, "bo_qua_rong": rong,
+            "loi": [], "nhom_moi": sorted(nhom_moi), "ghi_chu": ket_qua[:40],
+            **({"con_nua": len(ket_qua) - 40} if len(ket_qua) > 40 else {}),
+            "backup": str(b) if b else None,
+            "note": ("Chỉ xem trước — chạy lại không có --dry-run để nạp thật." if dry_run else
+                     "Nạp xong. Ghi chú thiếu nhóm/thẻ nằm ở inbox; nên xếp chỗ ngay.")}
 
 
 def cmd_stats(a, db):

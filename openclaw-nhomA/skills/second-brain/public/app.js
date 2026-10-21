@@ -1,5 +1,6 @@
-/* Second Brain — đồ thị ghi chú quanh lõi BRAIN + các ô Thêm / Tìm / Hỏi.
-   Mỗi vòng quỹ đạo là một nhóm (category). Ghi chú mới nằm gần lõi hơn. */
+/* Second Brain — ba cách nhìn vào cùng một kho:
+   Toàn cảnh (đồ thị quanh lõi BRAIN, mỗi vòng một VÙNG), Thư viện (duyệt theo cây nhóm + loại),
+   Việc (việc cần làm theo hạn). Cột trái: Thêm / Nạp / Tìm / Hỏi / Ôn. */
 'use strict';
 
 const $ = (s) => document.querySelector(s);
@@ -24,7 +25,29 @@ const api = async (path, body) => {
 /* màu nhóm — lấy từ bảng sơn mài: vàng kim, vỏ trứng, xà cừ, son cam, bạc, hồng đất */
 const MAU = ['#C9A227', '#EFE4D4', '#7FA8A0', '#D97A3C', '#A9B6C9', '#C98FA0'];
 
-let DATA = { notes: [], categories: {}, links: [] };
+/* Loại kiến thức — trục phân loại thứ hai (nhóm = chủ đề, loại = dạng kiến thức). */
+const LOAI = {
+  'kien-thuc': { ten: 'Kiến thức', mau: '#C9A227' },
+  'quy-trinh': { ten: 'Quy trình', mau: '#7FA8A0' },
+  'khai-niem': { ten: 'Khái niệm', mau: '#A9B6C9' },
+  'tai-lieu': { ten: 'Tài liệu', mau: '#D9C9A8' },
+  'y-tuong': { ten: 'Ý tưởng', mau: '#C98FA0' },
+  'viec': { ten: 'Việc', mau: '#D97A3C' },
+  'nguoi': { ten: 'Người', mau: '#EFE4D4' },
+  'nhat-ky': { ten: 'Nhật ký', mau: '#9C8B7A' },
+};
+const tenLoai = (k) => LOAI[k]?.ten || 'Kiến thức';
+const vungCua = (c) => (c || '').split('/')[0] || 'Chưa xếp chỗ';
+const duongDep = (c) => (c || 'Chưa xếp chỗ').split('/').join(' › ');
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+};
+
+let DATA = { notes: [], categories: {}, links: [], cay: [], loai: [] };
+let vungSo = {};          // số ghi chú THẬT của từng vùng (gồm mọi nhóm con)
 let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
@@ -46,21 +69,48 @@ async function nap() {
   DATA = { categories: {}, links: [], ...kq };
   // tong_ghi_chu là số THẬT trong kho; DATA.notes có thể đã bị máy chủ cắt bớt cho nhẹ
   const n = DATA.tong_ghi_chu ?? DATA.notes.length;
-  $('#count').textContent = n ? `${n} ghi chú · ${Object.keys(DATA.categories).length} nhóm` : 'Kho đang trống';
+  const soVung = (DATA.cay || []).filter((c) => c.duong_dan).length;
+  $('#count').textContent = n ? `${n} ghi chú · ${soVung} vùng · ${Object.keys(DATA.categories).filter((k) => k !== 'Chưa phân loại').length} nhóm` : 'Kho đang trống';
   $('#trong').hidden = n > 0;
   const cho = DATA.cho_phan_loai || 0;
   const nut = $('#choPhanLoai');
   nut.textContent = cho ? `${cho} ghi chú chưa xếp chỗ →` : '';
   nut.hidden = !cho;
+  vungSo = {};
+  (DATA.cay || []).forEach((v) => { vungSo[v.ten] = v.so; });
+  // gợi ý nhóm = mọi đường dẫn đã có, để chọn lại đúng nhóm cũ thay vì gõ ra nhóm mới gần giống
   const dl = $('#dsNhom');
   dl.innerHTML = '';
-  Object.keys(DATA.categories).sort().forEach((c) => {
-    if (c === 'Chưa phân loại') return;
-    const o = document.createElement('option');
-    o.value = c;
-    dl.appendChild(o);
+  const duyet = (ds) => ds.forEach((c) => {
+    if (c.duong_dan) { const o = document.createElement('option'); o.value = c.duong_dan; o.label = `${duongDep(c.duong_dan)} (${c.so})`; dl.appendChild(o); }
+    duyet(c.con || []);
   });
+  duyet(DATA.cay || []);
+  const v = DATA.viec_dang_mo || 0;
+  $('#viecMo').textContent = v ? `${v} việc đang mở →` : '';
+  $('#viecMo').hidden = !v;
+  dienChon();
   dungQuyDao();
+  if (xem === 'thu-vien') veCay();
+  if (xem === 'viec') napViec();
+}
+
+/* Các ô chọn loại / vùng: đổ một lần, giữ lựa chọn đang có. */
+function dienChon() {
+  const dem = Object.fromEntries((DATA.loai || []).map((x) => [x.kind, x.so]));
+  [['#chonLoai', false], ['#suaLoai', false], ['#napLoai', 'Theo file (mặc định: Kiến thức)'], ['#timLoai', 'Mọi loại']]
+    .forEach(([sel, dauTien]) => {
+      const o = $(sel), cu = o.value;
+      o.innerHTML = '';
+      if (dauTien) o.appendChild(new Option(dauTien, ''));
+      Object.entries(LOAI).forEach(([k, v]) => o.appendChild(new Option(dauTien && sel === '#timLoai' ? `${v.ten} (${dem[k] || 0})` : v.ten, k)));
+      if (cu) o.value = cu;
+    });
+  const tn = $('#timNhom'), cu = tn.value;
+  tn.innerHTML = '';
+  tn.appendChild(new Option('Mọi vùng', ''));
+  (DATA.cay || []).forEach((c) => { if (c.duong_dan) tn.appendChild(new Option(`${c.ten} (${c.so})`, c.duong_dan)); });
+  tn.value = cu;
 }
 
 /* ---------------- bố trí quỹ đạo ---------------- */
@@ -74,11 +124,11 @@ let daBot = 0;               // số ghi chú không vẽ ra
 function dungQuyDao() {
   const nhom = {};
   DATA.notes.forEach((x) => {
-    const k = x.category || 'Chưa phân loại';
+    const k = vungCua(x.category);          // mỗi vòng một VÙNG (tầng đầu của cây nhóm)
     (nhom[k] = nhom[k] || []).push(x);
   });
-  // sắp theo số THẬT của nhóm, không phải số đang có trong tay
-  const soThat = (k) => DATA.categories?.[k] ?? nhom[k].length;
+  // sắp theo số THẬT của vùng, không phải số đang có trong tay
+  const soThat = (k) => vungSo[k] ?? nhom[k].length;
   const tenDay = Object.keys(nhom).sort((a, b) => soThat(b) - soThat(a));
   const tongThat = DATA.notes.length;
 
@@ -123,8 +173,8 @@ function veConLai() {
   const d = $('#conLai');
   if (!daBot) { d.hidden = true; return; }
   d.textContent = noiBat
-    ? `Đang xem nhóm "${noiBat}". Đồ thị vẽ tối đa ${TRAN_MOT_NHOM} ghi chú mới sửa gần nhất của nhóm — ${daBot} ghi chú khác không vẽ ra. Tìm bằng ô Tìm.`
-    : `Đồ thị vẽ ${nodes.length}/${DATA.tong_ghi_chu ?? DATA.notes.length} ghi chú mới sửa gần nhất — đây là cái nhìn tổng quan, không phải mục lục. Bấm tên nhóm để xem sâu một nhóm, hoặc dùng ô Tìm.`;
+    ? `Đang xem vùng "${noiBat}". Đồ thị vẽ tối đa ${TRAN_MOT_NHOM} ghi chú mới sửa gần nhất của vùng — ${daBot} ghi chú khác xem đầy đủ trong Thư viện.`
+    : `Đồ thị vẽ ${nodes.length}/${DATA.tong_ghi_chu ?? DATA.notes.length} ghi chú mới sửa gần nhất — đây là toàn cảnh, không phải mục lục. Duyệt đủ theo nhóm và loại ở Thư viện.`;
   d.hidden = false;
 }
 
@@ -143,7 +193,7 @@ function veChuGiai(ten, nhom) {
     const t = document.createElement('span');
     t.textContent = k;
     const s = document.createElement('u');
-    s.textContent = DATA.categories[k] ?? nhom[k].length;   // số thật, không phải số đang vẽ
+    s.textContent = vungSo[k] ?? nhom[k].length;   // số thật, không phải số đang vẽ
     b.append(d, t, s);
     b.addEventListener('click', () => {
       noiBat = noiBat === k ? null : k;
@@ -335,26 +385,96 @@ $('#dung').addEventListener('click', (e) => {
 });
 
 /* ---------------- thẻ chi tiết ---------------- */
+function ngayDep(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 async function moChiTiet(id) {
   const r = await api('/api/note?id=' + encodeURIComponent(id));
   if (!r.ok) return;
   const n = r.note;
   chon = nodes.find((x) => x.note.id === id) || null;
-  $('#ctMeta').textContent = [n.category || 'Chưa phân loại', ...(n.tags || []).map((t) => '#' + t)].join('  ');
+
+  // đường dẫn nhóm — bấm từng tầng để mở đúng nhóm đó trong Thư viện
+  const vun = $('#ctDuong');
+  vun.innerHTML = '';
+  const tang = (n.category || '').split('/').filter(Boolean);
+  if (!tang.length) vun.appendChild(el('span', 'chua', 'Chưa xếp chỗ'));
+  tang.forEach((t, i) => {
+    if (i) vun.appendChild(el('i', null, '›'));
+    const b = el('button', null, t);
+    b.type = 'button';
+    b.addEventListener('click', () => moThuVien({ category: tang.slice(0, i + 1).join('/') }));
+    vun.appendChild(b);
+  });
+
+  const nl = $('#ctLoai');
+  nl.textContent = tenLoai(n.kind);
+  nl.style.setProperty('--m', LOAI[n.kind]?.mau || '#C9A227');
+  const the = $('#ctThe');
+  the.innerHTML = '';
+  (n.tags || []).forEach((t) => {
+    const b = el('button', 'the', '#' + t);
+    b.type = 'button';
+    b.addEventListener('click', () => moThuVien({ tag: t }));
+    the.appendChild(b);
+  });
   $('#ctTitle').textContent = n.title;
+  $('#ctNgay').textContent = `Ghi ${ngayDep(n.created_at)}` +
+    (n.updated_at && n.updated_at.slice(0, 10) !== (n.created_at || '').slice(0, 10) ? ` · sửa ${ngayDep(n.updated_at)}` : '') +
+    (n.reviewed_at ? ` · ôn ${ngayTu(n.reviewed_at)}` : '') + ` · mã ${n.id}`;
   $('#ctBody').textContent = n.content;
+
+  // khối nguồn: link, trích dẫn học thuật, hạn — để truy lại gốc của kiến thức
   const ngn = $('#ctNguon');
   ngn.innerHTML = '';
   if (/^https?:\/\//i.test(n.url || '')) {        // chỉ mở link http(s), bỏ qua javascript: và dữ liệu lạ
     const a = document.createElement('a');
     a.href = n.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = n.url;
-    ngn.append(document.createTextNode('Nguồn: '), a);
+    ngn.append(el('b', null, 'Nguồn'), a);
     ngn.hidden = false;
   } else ngn.hidden = true;
+  const tr = $('#ctTrich');
+  tr.innerHTML = '';
+  if (n.cite) { tr.append(el('b', null, 'Trích dẫn'), el('span', null, n.cite)); tr.hidden = false; } else tr.hidden = true;
+  const han = $('#ctHan');
+  han.innerHTML = '';
+  if (n.kind === 'viec') {
+    const quaHan = !n.done_at && n.due && n.due < new Date().toISOString().slice(0, 10);
+    const o = el('span', null, n.due ? ngayDep(n.due) : 'không đặt hạn');
+    o.appendChild(el('em', n.done_at ? 'xong' : quaHan ? 'tre' : 'mo',
+      n.done_at ? ` · đã xong ${ngayTu(n.done_at)}` : quaHan ? ' · quá hạn' : ' · đang mở'));
+    han.append(el('b', null, 'Hạn'), o);
+    han.hidden = false;
+  } else han.hidden = true;
+  $('#ctNguonKhoi').hidden = ngn.hidden && tr.hidden && han.hidden;
+
+  const lien = $('#ctLien');
+  lien.innerHTML = '';
+  if (n.linked?.length) {
+    lien.appendChild(el('h3', null, `Ghi chú liên kết (${n.linked.length})`));
+    n.linked.forEach((x) => {
+      const b = el('button', 'hit');
+      b.type = 'button';
+      b.append(el('b', null, x.title), el('span', null, `${tenLoai(x.kind)} · ${duongDep(x.category)}`));
+      b.addEventListener('click', () => moChiTiet(x.id));
+      lien.appendChild(b);
+    });
+    lien.hidden = false;
+  } else lien.hidden = true;
+
   const nho = $('#ctNho');
   nho.dataset.id = n.id;
   nho.disabled = false;
   nho.textContent = 'Nhớ rồi';
+  nho.hidden = n.kind === 'viec';
+  const xong = $('#ctXong');
+  xong.dataset.id = n.id;
+  xong.hidden = n.kind !== 'viec';
+  xong.dataset.xong = n.done_at ? '0' : '1';
+  xong.textContent = n.done_at ? 'Mở lại việc' : 'Đánh dấu xong';
   const daCat = n.status === 'archived';
   $('#ctCat').dataset.id = n.id;
   $('#ctCat').hidden = daCat;
@@ -375,9 +495,13 @@ function dongSua(n) {
   $('#ctBody').hidden = false;
   $('#ctSuaMo').textContent = 'Sửa';
   $('#saySua').textContent = '';
+  f.title.value = n.title || '';
+  f.kind.value = n.kind || 'kien-thuc';
   f.category.value = n.category || '';
   f.tags.value = (n.tags || []).join(', ');
   f.url.value = n.url || '';
+  f.cite.value = n.cite || '';
+  f.due.value = n.due || '';
   f.content.value = n.content || '';
 }
 
@@ -387,7 +511,7 @@ $('#ctSuaMo').addEventListener('click', () => {
   f.hidden = !mo;
   $('#ctBody').hidden = mo;
   $('#ctSuaMo').textContent = mo ? 'Thôi sửa' : 'Sửa';
-  if (mo) f.category.focus();
+  if (mo) f.title.focus();
 });
 $('#ctHuy').addEventListener('click', () => dangSua && dongSua(dangSua));
 
@@ -397,13 +521,18 @@ $('#ctSua').addEventListener('submit', async (e) => {
   const f = e.target, say = $('#saySua');
   say.textContent = 'Đang lưu…'; say.className = 'say';
   const r = await api('/api/update', {
-    id: dangSua.id, category: f.category.value.trim(), tags: f.tags.value.trim(),
-    url: f.url.value.trim(), content: f.content.value.trim() || dangSua.content,
+    id: dangSua.id, title: f.title.value.trim() || dangSua.title, kind: f.kind.value,
+    category: f.category.value.trim(), tags: f.tags.value.trim(), url: f.url.value.trim(),
+    cite: f.cite.value.trim(), due: f.due.value, content: f.content.value.trim() || dangSua.content,
   });
   if (!r.ok) { say.textContent = r.error || 'Không lưu được'; say.className = 'say er'; return; }
-  say.textContent = 'Đã lưu.'; say.className = 'say ok';
+  const id = dangSua.id;
   await nap();
-  await moChiTiet(dangSua.id);
+  await moChiTiet(id);
+  const say2 = $('#saySua');
+  say2.textContent = r.goi_y?.length ? 'Đã lưu. ' + r.goi_y.join(' ') : 'Đã lưu.';
+  say2.className = 'say ok';
+  if (xem === 'thu-vien') napThuVien();
   if (!$('[data-pane="on"]').hidden) napHangOn();
 });
 function dongChiTiet() { $('#chiTiet').hidden = true; chon = null; datLech(); }
@@ -420,6 +549,14 @@ $('#ctNho').addEventListener('click', async (e) => {
 });
 
 /* Trên trang web chỉ có cất kho, không có xoá hẳn — xoá thật phải chạy lệnh trên máy chủ. */
+$('#ctXong').addEventListener('click', async (e) => {
+  const b = e.target, id = b.dataset.id;
+  const r = await api('/api/task', { id, xong: b.dataset.xong === '1' });
+  if (!r.ok) return alert(r.error || 'Không cập nhật được');
+  await nap();
+  await moChiTiet(id);
+});
+
 $('#ctCat').addEventListener('click', async (e) => {
   const r = await api('/api/archive', { id: e.target.dataset.id });
   if (!r.ok) return alert(r.error || 'Không cất được');
@@ -514,7 +651,7 @@ async function veKhoLuu() {
     b.type = 'button';
     const t = document.createElement('b'); t.textContent = x.title;
     const s = document.createElement('span');
-    s.textContent = `${x.category || 'Chưa phân loại'} · cất ${ngayTu(x.updated_at) || ''}`;
+    s.textContent = `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`;
     b.append(t, s);
     b.addEventListener('click', () => moChiTiet(x.id));
     box.appendChild(b);
@@ -541,8 +678,8 @@ async function napHangOn() {
     const khi = document.createElement('span');
     khi.className = 'khi';
     khi.textContent = n.reviewed_at
-      ? `${n.category || 'Chưa phân loại'} · ôn lần cuối ${ngayTu(n.reviewed_at)}`
-      : `${n.category || 'Chưa phân loại'} · ghi ${ngayTu(n.created_at)}, chưa ôn lần nào`;
+      ? `${duongDep(n.category)} · ôn lần cuối ${ngayTu(n.reviewed_at)}`
+      : `${duongDep(n.category)} · ghi ${ngayTu(n.created_at)}, chưa ôn lần nào`;
     const nut = document.createElement('div'); nut.className = 'nut';
     const ok = document.createElement('button');
     ok.type = 'button'; ok.className = 'chinh'; ok.textContent = 'Nhớ rồi';
@@ -570,22 +707,36 @@ $('#formThem').addEventListener('submit', async (e) => {
   $('#trungLap').hidden = true;
   const r = await api('/api/add', d);
   nut.disabled = false;
-  if (!r.ok) { say.textContent = r.error || 'Không lưu được'; say.className = 'say er'; return; }
-  say.textContent = 'Đã lưu.'; say.className = 'say ok';
+  if (!r.ok) {
+    say.textContent = r.error || 'Không lưu được'; say.className = 'say er';
+    if (r.trung_id) baoTrung([{ id: r.trung_id, title: 'Mở ghi chú đã có' }], 'Ghi chú y hệt đang nằm ở đây:');
+    return;
+  }
+  say.textContent = `Đã lưu vào ${duongDep(r.category)}.` + (r.nhom_moi?.length ? ` Nhóm mới: ${r.nhom_moi.map(duongDep).join(', ')}.` : '');
+  say.className = 'say ok';
   f.reset();
+  hienTheoLoai();
   await nap();
-  if (r.similar?.length) baoTrung(r.similar);
+  if (r.similar?.length || r.goi_y?.length) baoTrung(r.similar || [], null, r.goi_y || []);
 });
 
+/* Hạn chỉ hiện khi là Việc; Trích dẫn khi là Tài liệu/Khái niệm — form gọn, không bắt điền thừa. */
+function hienTheoLoai() {
+  const k = $('#chonLoai').value || 'kien-thuc';
+  document.querySelectorAll('#formThem .theo-loai').forEach((l) => { l.hidden = !l.dataset.loai.split(' ').includes(k); });
+}
+$('#chonLoai').addEventListener('change', hienTheoLoai);
+
 /* Trùng không chặn lưu — chỉ nhắc, để anh tự gộp nếu muốn. */
-function baoTrung(ds) {
+function baoTrung(ds, loiDan, goiY = []) {
   const box = $('#trungLap');
   box.innerHTML = '';
-  const p = document.createElement('p');
-  p.textContent = ds.length === 1
-    ? 'Kho đã có một ghi chú gần giống:'
-    : `Kho đã có ${ds.length} ghi chú gần giống:`;
-  box.appendChild(p);
+  goiY.forEach((g) => box.appendChild(el('p', 'goi-y', g)));
+  if (ds.length) {
+    box.appendChild(el('p', null, loiDan || (ds.length === 1
+      ? 'Kho đã có một ghi chú gần giống — mở ra xem để gộp hoặc nối lại:'
+      : `Kho đã có ${ds.length} ghi chú gần giống — mở ra xem để gộp hoặc nối lại:`)));
+  }
   ds.forEach((s) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -597,13 +748,13 @@ function baoTrung(ds) {
 }
 
 let hen;
-$('#oTim').addEventListener('input', (e) => {
+function timNgay() {
   clearTimeout(hen);
-  const q = e.target.value.trim();
+  const q = $('#oTim').value.trim();
   hen = setTimeout(async () => {
     const box = $('#ketQua');
     if (!q) { box.innerHTML = ''; return; }
-    const r = await api('/api/search?q=' + encodeURIComponent(q));
+    const r = await api('/api/search?' + new URLSearchParams({ q, kind: $('#timLoai').value, category: $('#timNhom').value }));
     if (!r.ok || !Array.isArray(r.notes)) {
       box.innerHTML = '';
       const p = document.createElement('p'); p.className = 'none';
@@ -618,17 +769,22 @@ $('#oTim').addEventListener('input', (e) => {
       b.className = 'hit';
       b.type = 'button';
       const t = document.createElement('b'); t.textContent = n.title;
+      const m = el('small', 'nho-meta', `${tenLoai(n.kind)} · ${duongDep(n.category)}`);
       const s = document.createElement('span');
       (n.snippet || '').split(/[«»]/).forEach((part, i) => {
         if (i % 2) { const em = document.createElement('em'); em.textContent = part; s.appendChild(em); }
         else s.appendChild(document.createTextNode(part));
       });
-      b.append(t, s);
+      b.append(t, m, s);
       b.addEventListener('click', () => moChiTiet(n.id));
       box.appendChild(b);
     });
+    if (r.che_do === 'mo_rong') box.prepend(el('p', 'none', 'Không ghi chú nào có đủ mọi từ — đây là các ghi chú khớp nhiều từ nhất.'));
   }, 220);
-});
+}
+$('#oTim').addEventListener('input', timNgay);
+$('#timLoai').addEventListener('change', timNgay);
+$('#timNhom').addEventListener('change', timNgay);
 
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
@@ -656,8 +812,224 @@ $('#nutHoi').addEventListener('click', async () => {
   }
 });
 
+/* ---------------- chế độ xem: Toàn cảnh / Thư viện / Việc ---------------- */
+let xem = 'do';
+function doiXem(ten) {
+  xem = ten;
+  document.querySelectorAll('.che-do button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.xem === ten)));
+  document.querySelectorAll('.xem').forEach((s) => { s.hidden = s.dataset.xem !== ten; });
+  if (ten === 'do') coLai();
+  if (ten === 'thu-vien') { veCay(); napThuVien(); }
+  if (ten === 'viec') napViec();
+}
+document.querySelectorAll('.che-do button').forEach((b) => b.addEventListener('click', () => doiXem(b.dataset.xem)));
+$('#viecMo').addEventListener('click', () => doiXem('viec'));
+
+/* ---------------- Thư viện: duyệt có hệ thống theo cây nhóm × loại × thẻ ---------------- */
+const LOC = { category: '', kind: '', tag: '', sort: 'moi-sua', offset: 0 };
+const moRong = new Set();       // các nút cây đang mở
+
+function moThuVien(loc) {
+  Object.assign(LOC, { category: '', kind: '', tag: '', offset: 0 }, loc);
+  (LOC.category || '').split('/').forEach((_, i, a) => moRong.add(a.slice(0, i + 1).join('/')));
+  if (window.innerWidth < 900) dongChiTiet();
+  doiXem('thu-vien');
+}
+
+function veCay() {
+  const box = $('#cayNhom');
+  box.innerHTML = '';
+  const tatCa = el('button', 'nut-cay' + (!LOC.category ? ' on' : ''));
+  tatCa.type = 'button';
+  tatCa.append(el('span', null, 'Toàn bộ kho'), el('u', null, String(DATA.tong_ghi_chu ?? '')));
+  tatCa.addEventListener('click', () => { LOC.category = ''; LOC.offset = 0; veCay(); napThuVien(); });
+  box.appendChild(tatCa);
+  const ve = (ds, sau, cha) => ds.forEach((c) => {
+    const duong = c.duong_dan || '__chua__';
+    const dong = el('div', 'dong-cay');
+    dong.style.paddingLeft = `${sau * 14}px`;
+    const coCon = c.con?.length > 0;
+    const mo = moRong.has(duong);
+    const mui = el('button', 'mui' + (coCon ? '' : ' an'), coCon ? (mo ? '▾' : '▸') : '');
+    mui.type = 'button';
+    mui.setAttribute('aria-label', mo ? 'Thu gọn' : 'Mở rộng');
+    mui.addEventListener('click', () => { if (mo) moRong.delete(duong); else moRong.add(duong); veCay(); });
+    const b = el('button', 'nut-cay' + (LOC.category === duong ? ' on' : '') + (c.ten === 'Chưa xếp chỗ' ? ' chua' : ''));
+    b.type = 'button';
+    b.append(el('span', null, c.ten), el('u', null, String(c.so)));
+    b.addEventListener('click', () => {
+      LOC.category = duong; LOC.offset = 0;
+      if (coCon) moRong.add(duong);
+      veCay(); napThuVien();
+    });
+    dong.append(mui, b);
+    box.appendChild(dong);
+    if (coCon && mo) ve(c.con, sau + 1, duong);
+  });
+  ve(DATA.cay || [], 0, '');
+}
+
+let dangNapTV = 0;
+async function napThuVien(themNua = false) {
+  if (!themNua) LOC.offset = 0;
+  const lan = ++dangNapTV;
+  const r = await api('/api/library?' + new URLSearchParams({
+    category: LOC.category, kind: LOC.kind, tag: LOC.tag, sort: LOC.sort, offset: LOC.offset, limit: 40,
+  }));
+  if (lan !== dangNapTV) return;        // người dùng đã bấm lọc khác trong lúc chờ
+  const ds = $('#kDs');
+  if (!themNua) ds.innerHTML = '';
+  if (!r.ok) { ds.appendChild(el('p', 'none', r.error || 'Không nạp được')); return; }
+
+  const c = LOC.category;
+  $('#kDuong').textContent = c === '__chua__' ? 'Cần xếp chỗ' : c ? 'Toàn bộ kho › ' + duongDep(c) : 'Toàn bộ kho';
+  $('#kTieuDe').textContent = (c === '__chua__' ? 'Chưa xếp chỗ' : c ? c.split('/').pop() : 'Tất cả ghi chú') + ` · ${r.tong}`;
+  const tt = $('#kThe');
+  tt.hidden = !LOC.tag;
+  if (LOC.tag) {
+    tt.innerHTML = '';
+    const x = el('button', null, '× bỏ lọc');
+    x.type = 'button';
+    x.addEventListener('click', () => { LOC.tag = ''; napThuVien(); });
+    tt.append(document.createTextNode(`Thẻ #${LOC.tag} `), x);
+  }
+
+  // chip loại: số đếm toàn kho, bấm để lọc
+  const chip = $('#kLoai');
+  const LOAI_DANG = LOC.kind;
+  chip.innerHTML = '';
+  const tao = (k, ten, so, mau) => {
+    const b = el('button', 'chip' + (LOC.kind === k ? ' on' : ''));
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(LOC.kind === k));
+    if (mau) { const i = el('i'); i.style.background = mau; b.appendChild(i); }
+    b.append(el('span', null, ten), el('u', null, String(so)));
+    b.addEventListener('click', () => { LOC.kind = LOC.kind === k ? '' : k; napThuVien(); });
+    chip.appendChild(b);
+  };
+  const dem = r.dem_loai || {};
+  tao('', 'Mọi loại', r.tong_khong_loc_loai ?? '', null);
+  Object.keys(LOAI).filter((k) => dem[k] || LOAI_DANG === k).forEach((k) => tao(k, tenLoai(k), dem[k] || 0, LOAI[k].mau));
+
+  if (!r.notes.length && !themNua) {
+    ds.appendChild(el('p', 'none', 'Không có ghi chú nào ở đây.'));
+  }
+  r.notes.forEach((n) => ds.appendChild(theGhiChu(n)));
+  LOC.offset = r.offset + r.notes.length;
+  const them = $('#kThem');
+  them.hidden = LOC.offset >= r.tong;
+  them.textContent = `Xem thêm (${r.tong - LOC.offset} ghi chú)`;
+}
+
+function theGhiChu(n) {
+  const b = el('button', 'the-gc');
+  b.type = 'button';
+  b.style.setProperty('--m', LOAI[n.kind]?.mau || '#C9A227');
+  const dau = el('div', 'dau');
+  dau.append(el('span', 'nhan', tenLoai(n.kind)), el('span', 'duong-nho', duongDep(n.category)));
+  const meta = [];
+  if (n.kind === 'viec') meta.push(n.done_at ? 'đã xong' : n.due ? `hạn ${ngayDep(n.due)}` : 'chưa đặt hạn');
+  meta.push(`sửa ${ngayTu(n.updated_at) || ''}`);
+  if (n.url) meta.push('có nguồn');
+  if (n.cite) meta.push('có trích dẫn');
+  b.append(dau, el('h3', null, n.title), el('p', null, n.preview || ''),
+    el('div', 'chan', meta.join(' · ') + ((n.tags || []).length ? '  ' + n.tags.map((t) => '#' + t).join(' ') : '')));
+  b.addEventListener('click', () => moChiTiet(n.id));
+  return b;
+}
+
+$('#kSap').addEventListener('change', (e) => { LOC.sort = e.target.value; napThuVien(); });
+$('#kThem').addEventListener('click', () => napThuVien(true));
+
+/* ---------------- Việc ---------------- */
+const NHOM_VIEC = [['qua_han', 'Quá hạn'], ['hom_nay', 'Hôm nay'], ['7_ngay_toi', '7 ngày tới'],
+  ['sau_nay', 'Sau này'], ['khong_han', 'Không đặt hạn'], ['da_xong', 'Đã xong']];
+async function napViec() {
+  const r = await api('/api/tasks' + ($('#vXong').checked ? '?tat_ca=1' : ''));
+  const box = $('#vDs');
+  box.innerHTML = '';
+  if (!r.ok) { box.appendChild(el('p', 'none', r.error || 'Không nạp được')); return; }
+  let co = false;
+  NHOM_VIEC.forEach(([k, ten]) => {
+    const ds = r[k] || [];
+    if (!ds.length) return;
+    co = true;
+    const khoi = el('section', 'khoi-viec ' + k);
+    khoi.appendChild(el('h3', null, `${ten} · ${ds.length}`));
+    ds.forEach((v) => {
+      const dong = el('div', 'dong-viec');
+      const o = el('input');
+      o.type = 'checkbox';
+      o.checked = k === 'da_xong';
+      o.setAttribute('aria-label', 'Đánh dấu xong: ' + v.title);
+      o.addEventListener('change', async () => {
+        o.disabled = true;
+        await api('/api/task', { id: v.id, xong: o.checked });
+        await nap();
+      });
+      const t = el('button', 'ten-viec');
+      t.type = 'button';
+      t.append(el('b', null, v.title), el('span', null, [v.due ? 'hạn ' + ngayDep(v.due) : '', duongDep(v.category), v.tom_tat].filter(Boolean).join(' · ')));
+      t.addEventListener('click', () => moChiTiet(v.id));
+      dong.append(o, t);
+      khoi.appendChild(dong);
+    });
+    box.appendChild(khoi);
+  });
+  if (!co) box.appendChild(el('p', 'none', 'Không có việc nào đang mở.'));
+}
+$('#vXong').addEventListener('change', napViec);
+
+/* ---------------- Nạp: dán văn bản / chọn file .md .txt ---------------- */
+let tepChon = [];
+async function docTep(files) {
+  const ok = [...files].filter((f) => /\.(md|markdown|txt)$/i.test(f.name) && f.size < 2 * 1024 * 1024);
+  tepChon = await Promise.all(ok.map(async (f) => ({ name: f.name, text: await f.text() })));
+  const bo = files.length - ok.length;
+  $('#dsTep').textContent = tepChon.length
+    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không phải .md/.txt hoặc quá 2 MB` : '')
+    : (bo ? `Bỏ ${bo} file — chỉ nhận .md / .txt dưới 2 MB` : '');
+}
+$('#chonTep').addEventListener('change', (e) => docTep(e.target.files));
+const vung = $('#vungTha');
+['dragenter', 'dragover'].forEach((ev) => vung.addEventListener(ev, (e) => { e.preventDefault(); vung.classList.add('keo'); }));
+['dragleave', 'drop'].forEach((ev) => vung.addEventListener(ev, () => vung.classList.remove('keo')));
+vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer.files); });
+
+async function napVao(thu) {
+  const out = $('#napKq');
+  const chu = $('#napChu').value.trim();
+  if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
+  out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
+  const r = await api('/api/ingest', {
+    files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value,
+    tags: $('#napThe').value.trim(), tach: $('#napTach').value, dry_run: thu,
+  });
+  out.innerHTML = '';
+  if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
+  const so = thu ? r.se_them : r.da_them;
+  out.appendChild(el('p', 'say ok', (thu ? `Sẽ thêm ${so} ghi chú` : `Đã thêm ${so} ghi chú`) +
+    (r.bo_qua_trung ? ` · bỏ ${r.bo_qua_trung} bản trùng` : '') + (r.bo_qua_rong ? ` · bỏ ${r.bo_qua_rong} mục rỗng` : '')));
+  if (r.nhom_moi?.length) out.appendChild(el('p', 'hint', 'Nhóm mới: ' + r.nhom_moi.map(duongDep).join(', ')));
+  const ds = el('div', 'list');
+  (r.ghi_chu || []).forEach((g) => {
+    const b = el('button', 'hit');
+    b.type = 'button';
+    b.append(el('b', null, g.title), el('span', null, `${tenLoai(g.kind)} · ${duongDep(g.category)}`));
+    if (g.id) b.addEventListener('click', () => moChiTiet(g.id)); else b.disabled = true;
+    ds.appendChild(b);
+  });
+  out.appendChild(ds);
+  if (!thu && so) {
+    tepChon = []; $('#chonTep').value = ''; $('#dsTep').textContent = ''; $('#napChu').value = '';
+    await nap();
+  }
+}
+$('#napThu').addEventListener('click', () => napVao(true));
+$('#napThat').addEventListener('click', () => napVao(false));
+
 /* ---------------- chạy ---------------- */
 window.addEventListener('resize', coLai);
 coLai();
-nap();
+nap().then(hienTheoLoai);
 requestAnimationFrame(vong);

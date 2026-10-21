@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE))
 import brain  # dùng chung schema, đường dẫn DB và hàm tiện ích
 
 PUBLIC = (HERE.parent / "public").resolve()
-BODY_LIMIT = 1 << 20
+BODY_LIMIT = 4 << 20          # 4 MB: đủ cho nạp vài file Markdown một lần
 ASK_TIMEOUT = brain.so_env("BRAIN_ASK_TIMEOUT", 180, 10)
 TRAN_DO_THI = brain.so_env("BRAIN_MAX_NOTES", 1500, 50)   # số ghi chú tối đa gửi cho trang
 MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
@@ -86,7 +86,7 @@ def api_notes(conn, _q, _body):
     # có trần: kho 10.000 ghi chú mà trả hết thì gói JSON vài MB mỗi lần mở trang,
     # trong khi đồ thị chỉ vẽ khoảng 80 cái. Phần còn lại tra bằng ô Tìm.
     rows = conn.execute("SELECT id,title,category,tags,source,url,created_at,updated_at,reviewed_at,"
-                        "substr(replace(content,char(10),' '),1,180) AS preview "
+                        "kind,cite,due,done_at,substr(replace(content,char(10),' '),1,180) AS preview "
                         f"FROM notes WHERE {brain.CON} ORDER BY updated_at DESC, rowid DESC LIMIT ?",
                         (TRAN_DO_THI,)).fetchall()
     notes = [note_row(r) for r in rows]
@@ -98,9 +98,93 @@ def api_notes(conn, _q, _body):
     cho = conn.execute(f"SELECT count(*) c FROM notes WHERE {brain.CON} AND "
                        "(trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='')").fetchone()["c"]
     kho = conn.execute("SELECT count(*) c FROM notes WHERE status='archived'").fetchone()["c"]
+    cay, _ = brain.cay_nhom(conn)
+    dem_loai = {r[0]: r[1] for r in conn.execute(
+        f"SELECT kind, count(*) FROM notes WHERE {brain.CON} GROUP BY kind")}
     return {"ok": True, "notes": notes, "categories": cats, "links": links,
             "tong_ghi_chu": tong, "da_cat_bot": max(0, tong - len(notes)),
-            "cho_phan_loai": cho, "trong_kho_luu": kho}
+            "cho_phan_loai": cho, "trong_kho_luu": kho, "cay": cay,
+            "loai": [{"kind": k, "mo_ta": v, "so": dem_loai.get(k, 0)} for k, v in brain.KINDS.items()],
+            "viec_dang_mo": conn.execute(f"SELECT count(*) FROM notes WHERE {brain.CON} AND kind='viec' "
+                                         "AND done_at IS NULL").fetchone()[0]}
+
+
+def _so(q, ten, mac_dinh, lo, hi):
+    try:
+        return max(lo, min(hi, int(q.get(ten, [str(mac_dinh)])[0])))
+    except ValueError:
+        return mac_dinh
+
+
+def api_library(conn, q, _body):
+    """Thư viện: duyệt TOÀN kho theo nhóm (gồm nhóm con), loại, thẻ — có phân trang.
+    Đồ thị chỉ là toàn cảnh; muốn truy xuất có hệ thống thì đi đường này."""
+    g = lambda k: (q.get(k, [""])[0] or "").strip()
+    where, params = [brain.CON] if g("kho") != "luu" else ["status='archived'"], []
+    if g("category") == "__chua__":
+        where.append("trim(coalesce(category,''))=''")
+    else:
+        brain.loc_nhom(where, params, g("category"))
+    if g("kind") in brain.KINDS:
+        where.append("kind=?")
+        params.append(g("kind"))
+    if g("tag"):
+        where.append("(',' || tags || ',') LIKE ?")
+        params.append(f"%,{brain.norm_tags(g('tag'))},%")
+    sap = {"moi-sua": "updated_at DESC", "moi-tao": "created_at DESC", "cu-nhat": "created_at ASC",
+           "ten": "title COLLATE NOCASE ASC", "han": "due IS NULL, due ASC"}.get(g("sort"), "updated_at DESC")
+    lim, off = _so(q, "limit", 40, 1, 100), _so(q, "offset", 0, 0, 10 ** 6)
+    w = " AND ".join(where)
+    tong = conn.execute(f"SELECT count(*) FROM notes WHERE {w}", params).fetchone()[0]
+    rows = conn.execute("SELECT id,title,category,tags,source,url,cite,kind,due,done_at,created_at,updated_at,"
+                        "reviewed_at,status,substr(replace(content,char(10),' '),1,220) AS preview "
+                        f"FROM notes WHERE {w} ORDER BY {sap}, rowid DESC LIMIT ? OFFSET ?",
+                        params + [lim, off]).fetchall()
+    # số theo loại TRONG nhóm/thẻ đang xem (bỏ riêng điều kiện loại) — chip đếm đúng chỗ người dùng đang đứng
+    w2 = " AND ".join(x for x in where if x != "kind=?")
+    p2 = [x for x in params if x != g("kind")] if g("kind") in brain.KINDS else params
+    dem = {r[0]: r[1] for r in conn.execute(f"SELECT kind, count(*) FROM notes WHERE {w2} GROUP BY kind", p2)}
+    return {"ok": True, "tong": tong, "offset": off, "notes": [note_row(r) for r in rows],
+            "dem_loai": dem, "tong_khong_loc_loai": sum(dem.values())}
+
+
+def api_tasks(conn, q, _body):
+    return {"ok": True, **brain.ds_viec(conn, (q.get("category", [""])[0] or None), q.get("tat_ca") == ["1"])}
+
+
+def api_task_done(conn, _q, body):
+    with _lock:
+        n = brain.danh_dau_viec(conn, str(body.get("id") or ""), bool(body.get("xong", True)))
+    return {"ok": bool(n)} if n else {"ok": False, "error": "Không thấy việc này"}
+
+
+def api_ingest(conn, _q, body):
+    """Nạp từ trang web: dán văn bản hoặc chọn file .md/.txt (trình duyệt đọc rồi gửi chữ lên).
+    PDF/CSV/thư mục thì nạp bằng dòng lệnh (brain.py nap) hoặc nhờ Mây."""
+    tep = body.get("files") if isinstance(body.get("files"), list) else []
+    if body.get("text"):
+        tep = tep + [{"name": "", "text": body.get("text")}]
+    if not tep:
+        return {"ok": False, "error": "Chưa có nội dung để nạp"}
+    tach = body.get("tach") if body.get("tach") in ("tu-dong", "heading", "khong") else "tu-dong"
+    muc = []
+    for t in tep[:200]:
+        text = str(t.get("text") or "")
+        ten = str(t.get("name") or "")
+        meta, than = brain._frontmatter(text)
+        mac_dinh = meta.get("title") or (brain._tieu_de_tu_ten(ten) if ten else "") or \
+            (str(body.get("title") or "").strip()) or "Ghi chú dán vào"
+        chung = {"category": meta.get("category") or meta.get("nhom") or "", "tags": meta.get("tags") or "",
+                 "kind": meta.get("kind") or meta.get("loai"), "url": meta.get("url") or "",
+                 "cite": meta.get("cite") or ""}
+        for tieu_de, noi_dung in brain._tach_markdown(than, tach, mac_dinh,
+                                                       dung_dong_dau=not meta.get("title") and not body.get("title")):
+            muc.append({"title": tieu_de, "content": noi_dung, "_file": ten or "(dán vào)", **chung})
+    k = brain.chuan_kind(body.get("kind")) if body.get("kind") else None
+    with _lock:
+        return brain.nap_vao(conn, muc, str(body.get("category") or ""), str(body.get("tags") or ""), k,
+                             str(body.get("url") or ""), str(body.get("cite") or ""), "other",
+                             bool(body.get("dry_run")))
 
 
 def api_archived(conn, _q, _body):
@@ -152,7 +236,11 @@ def api_note(conn, q, _body):
     nid = d["id"]
     linked = [x["b"] for x in conn.execute("SELECT b FROM links WHERE a=?", (nid,))] + \
              [x["a"] for x in conn.execute("SELECT a FROM links WHERE b=?", (nid,))]
-    d["linked"] = sorted(set(linked))
+    ids = sorted(set(linked))
+    d["linked"] = [dict(x) for x in conn.execute(
+        f"SELECT id,title,kind,category FROM notes WHERE id IN ({','.join('?' * len(ids))})", ids)] if ids else []
+    d["loai"] = brain.KINDS.get(d.get("kind") or "", "")
+    d.pop("content_hash", None)
     return {"ok": True, "note": d}
 
 
@@ -162,24 +250,40 @@ def api_search(conn, q, _body):
         return {"ok": True, "notes": [], "query": ""}
     # dùng chung bộ tìm với brain.py: gõ nhầm cú pháp FTS thì tìm theo cụm,
     # không ghi chú nào có đủ mọi từ thì lấy ghi chú khớp nhiều từ nhất
-    rows, che_do = brain._tim(conn, text, 60)
+    kind = (q.get("kind", [""])[0] or "").strip()
+    rows, che_do = brain._tim(conn, text, 60, category=(q.get("category", [""])[0] or "").strip() or None,
+                              kind=kind if kind in brain.KINDS else None)
     return {"ok": True, "query": text, "che_do": che_do, "notes": [note_row(r, r["snip"]) for r in rows]}
 
 
 def api_add(conn, _q, body):
-    title = (body.get("title") or "").strip()
-    content = (body.get("content") or "").strip()
+    title = brain.gon(str(body.get("title") or ""))
+    content = str(body.get("content") or "").strip()
     if not title or not content:
         return {"ok": False, "error": "Cần cả chủ đề và nội dung"}
-    giong = brain.tim_tuong_tu(conn, title, content)
-    nid = uuid.uuid4().hex[:12]
+    kind = brain.chuan_kind(body.get("kind") or "kien-thuc")
+    if not kind:
+        return {"ok": False, "error": "Loại không hợp lệ"}
+    try:
+        due = brain.chuan_han(str(body.get("due") or ""))
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     nguon = body.get("source") if body.get("source") in brain.SOURCES else "web"
     with _lock:
-        brain.them_note(conn, nid, title, content, (body.get("category") or "").strip(),
-                        brain.norm_tags(body.get("tags") or ""), nguon,
-                        (body.get("url") or "").strip())
+        trung = brain.trung_hoan_toan(conn, title, content)
+        if trung:
+            return {"ok": False, "trung_id": trung["id"],
+                    "error": f"Kho đã có ghi chú y hệt: “{trung['title']}” — không lưu bản trùng."}
+        nhom, moi, goi_y, canh_bao = brain.chuan_nhom(conn, str(body.get("category") or ""))
+        tags = brain.norm_tags(str(body.get("tags") or ""))
+        goi_y += brain.goi_y_the(conn, tags)
+        giong = brain.tim_tuong_tu(conn, title, content)
+        nid = uuid.uuid4().hex[:12]
+        brain.them_note(conn, nid, title, content, nhom, tags, nguon, str(body.get("url") or "").strip(),
+                        kind=kind, cite=brain.gon(str(body.get("cite") or "")), due=due)
         conn.commit()
-    return {"ok": True, "id": nid, "similar": giong}
+    return {"ok": True, "id": nid, "category": nhom, "similar": giong, "nhom_moi": moi,
+            "goi_y": goi_y + canh_bao}
 
 
 def api_update(conn, _q, body):
@@ -187,15 +291,11 @@ def api_update(conn, _q, body):
     r = conn.execute("SELECT * FROM notes WHERE id=?", (nid,)).fetchone()
     if not r:
         return {"ok": False, "error": "Không thấy ghi chú này"}
+    g = lambda k: None if body.get(k) is None else str(body.get(k))
     with _lock:
-        conn.execute("UPDATE notes SET title=?,content=?,category=?,tags=?,url=?,updated_at=? WHERE id=?",
-                     (body.get("title") or r["title"], body.get("content") or r["content"],
-                      body.get("category") if body.get("category") is not None else r["category"],
-                      brain.norm_tags(body.get("tags") or "") if body.get("tags") is not None else r["tags"],
-                      body.get("url") if body.get("url") is not None else (r["url"] or ""),
-                      brain.now(), nid))
-        conn.commit()
-    return {"ok": True, "id": nid}
+        ok, info = brain.sua_note(conn, r, g("title"), g("content"), g("category"), g("tags"), g("url"),
+                                  g("kind"), g("cite"), g("due"))
+    return {"ok": ok, "id": nid, **info}
 
 
 def api_khong_xoa(_conn, _q, _body):
@@ -296,6 +396,10 @@ ROUTES = {
     ("GET", "/api/search"): api_search,
     ("GET", "/api/review"): api_review,
     ("GET", "/api/archived"): api_archived,
+    ("GET", "/api/library"): api_library,
+    ("GET", "/api/tasks"): api_tasks,
+    ("POST", "/api/task"): api_task_done,
+    ("POST", "/api/ingest"): api_ingest,
     ("POST", "/api/reviewed"): api_reviewed,
     ("POST", "/api/archive"): api_archive,
     ("POST", "/api/add"): api_add,

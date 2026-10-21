@@ -210,6 +210,56 @@ check "restore hai lần không đẻ bản trùng" \
   'BR restore --file '"$RID"' >/dev/null; BR search "khôi phục" | jq_ "d[\"count\"]"' "1"
 
 echo
+echo "16. PHÂN LOẠI: NHÓM PHÂN CẤP, LOẠI KIẾN THỨC"
+check "nhóm 3 tầng giữ đúng" \
+  'BR add --title "Gốc A1" --content "nội dung gốc một" --category "Kinh doanh/Lọc nước/Khách lẻ" | jq_ "d[\"category\"]"' "Kinh doanh/Lọc nước/Khách lẻ"
+check "khác hoa/thường + khoảng trắng -> dùng chung nhóm cũ" \
+  'BR add --title "Gốc A2" --content "nội dung gốc hai" --category " kinh DOANH /  lọc nước " | jq_ "d[\"category\"]"' "Kinh doanh/Lọc nước"
+check "gõ thiếu dấu -> gợi ý, không tự đổi" \
+  'BR add --title "Gốc A3" --content "nội dung gốc ba" --category "Kinh doanh/Loc nuoc" | jq_ "(d[\"category\"], len(d.get(\"goi_y\",[]))>=1)"' "('Kinh doanh/Loc nuoc', True)"
+check "quá 3 tầng bị cắt, có cảnh báo" \
+  'BR add --title "Gốc A4" --content "nội dung gốc bốn" --category "A/B/C/D" | jq_ "(d[\"category\"], len(d.get(\"canh_bao\",[])))"' "('A/B/C', 1)"
+check "lọc nhóm cha lấy cả nhóm con" 'BR list --category "Kinh doanh" | jq_ "d[\"count\"]"' "3"
+check "categories ra cây đúng" 'BR categories | jq_ "[c[\"ten\"] for c in d[\"cay\"] if c[\"ten\"]==\"Kinh doanh\"][0]"' "Kinh doanh"
+check "loại lạ bị từ chối" 'BR add --title x --content y --kind "linh tinh" | jq_ "d[\"ok\"]"' "False"
+check "bí danh loại: task -> viec" \
+  'BR add --title "Gọi khách" --content "gọi lại khách hàng" --kind task --due 1/1/2020 | jq_ "d[\"kind\"]"' "viec"
+check "việc quá hạn vào đúng nhóm" 'BR viec | jq_ "len(d.get(\"qua_han\",[]))"' "1"
+VID=$(BR list --kind viec | jq_ 'd["notes"][0]["id"]')
+check "đánh dấu xong thì hết việc mở" 'BR viec --xong '"$VID"' >/dev/null; BR viec | jq_ "d[\"dang_mo\"]"' "0"
+check "hạn sai định dạng bị từ chối" 'BR add --title y --content z --kind viec --due "mai" | jq_ "d[\"ok\"]"' "False"
+check "tìm theo loại" 'BR search "gốc" --kind kien-thuc | jq_ "d[\"count\"] >= 1"' "True"
+
+echo
+echo "17. CHỐNG TRÙNG Y HỆT"
+check "thêm lại y hệt (khác hoa/thường, khoảng trắng) không tạo bản mới" \
+  'BR add --title "gốc  a1" --content "Nội dung  gốc một" | jq_ "(d.get(\"da_them\"), bool(d.get(\"trung_hoan_toan\")))"' "(False, True)"
+check "--force vẫn thêm được" 'BR add --title "gốc a1" --content "nội dung gốc một" --force | jq_ "bool(d.get(\"id\"))"' "True"
+A1=$(BR search "Gốc A2" | jq_ 'd["notes"][0]["id"]')
+check "sửa thành y hệt ghi chú khác bị chặn" \
+  'BR edit --id '"$A1"' --title "Gốc A3" --content "nội dung gốc ba" | jq_ "d[\"ok\"]"' "False"
+
+echo
+echo "18. NẠP NHIỀU NGUỒN"
+mkdir -p "$TMP/nap/.an"
+printf -- '---\ncategory: Học tập/Khoá học\ntags: [khoa-hoc]\n---\n## Bài một tiêu đề\nNội dung bài một.\n\n## Bài hai tiêu đề\nNội dung bài hai.\n' > "$TMP/nap/k.md"
+printf 'Quy trình lắp đặt mẫu\n\nBước một\nBước hai\n' > "$TMP/nap/q.txt"
+printf 'tieu_de,noi_dung,nhom,loai\nCSV một,Nội dung csv một,Kỹ thuật/CSV,khai-niem\n' > "$TMP/nap/c.csv"
+printf '<html><title>Trang web mẫu</title><script>bimat()</script><p>Đoạn văn trang web.</p></html>' > "$TMP/nap/w.html"
+echo "an" > "$TMP/nap/.an/x.md"
+check "xem trước không ghi gì" \
+  'T0=$(BR stats | jq_ "d[\"total_notes\"]"); BR nap "$TMP/nap" --dry-run >/dev/null; [ "$(BR stats | jq_ "d[\"total_notes\"]")" = "$T0" ] && echo ok' "ok"
+check "nạp thư mục: md tách 2 mục + txt + csv + html" 'BR nap "$TMP/nap" | jq_ "d[\"da_them\"]"' "5"
+check "frontmatter đặt nhóm + thẻ" 'BR list --category "Học tập/Khoá học" | jq_ "(d[\"count\"], d[\"notes\"][0][\"tags\"])"' "(2, ['khoa-hoc'])"
+check "txt lấy dòng đầu làm tên (giữ dấu)" 'BR search "lắp đặt mẫu" | jq_ "d[\"notes\"][0][\"title\"]"' "Quy trình lắp đặt mẫu"
+check "csv giữ loại" 'BR list --category "Kỹ thuật/CSV" | jq_ "d[\"notes\"][0][\"kind\"]"' "khai-niem"
+check "html bỏ script" 'BR search "bimat" | jq_ "d[\"count\"]"' "0"
+check "nạp lại: bỏ hết bản trùng" 'BR nap "$TMP/nap" | jq_ "(d[\"da_them\"], d[\"bo_qua_trung\"])"' "(0, 5)"
+check "bỏ qua file trong thư mục ẩn" 'BR search "an" --kind kien-thuc | jq_ "[n for n in d[\"notes\"] if n[\"title\"]==\"X\"]"' "[]"
+check "nạp từ stdin" 'echo "Dán nhanh vào kho từ chat" | BR nap - --title "Ghi chú dán" | jq_ "d[\"da_them\"]"' "1"
+check "đường dẫn không có báo lỗi rõ" 'BR nap "$TMP/khong-co" | jq_ "d[\"ok\"]"' "False"
+
+echo
 echo "======================================================================"
 printf " ĐẠT: %-5s HỎNG: %s\n" "$OK" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo " Tất cả test đều qua." || echo " CÓ TEST HỎNG — xem các dòng HỎNG ở trên."

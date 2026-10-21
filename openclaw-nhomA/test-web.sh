@@ -134,9 +134,39 @@ check "thân là mảng chứ không phải object" \
   'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -d "[1,2,3]"' "400"
 check "thiếu nội dung trả 400" 'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -d "{\"title\":\"x\"}"' "400"
 check "id không tồn tại" 'curl -sS "$U/api/note?id=zzzzzzzzzzzz" | jq_ "d[\"ok\"]"' "False"
-check "thân quá lớn bị chặn" \
-  'python3 -c "print(\"{\\\"title\\\":\\\"\" + \"x\"*1100000 + \"\\\"}\")" > "$TMP/to.json"; curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" --data-binary @"$TMP/to.json"' "413"
+check "thân quá 4 MB bị chặn" \
+  'python3 -c "print(\"{\\\"title\\\":\\\"\" + \"x\"*4300000 + \"\\\"}\")" > "$TMP/to.json"; curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" --data-binary @"$TMP/to.json"' "413"
 check "đường dẫn API không có trả 404" 'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/khongco" -H "Content-Type: application/json" -H "Origin: $U" -d "{}"' "404"
+
+echo
+echo "7b. PHÂN LOẠI, THƯ VIỆN, VIỆC, NẠP"
+check "thêm có loại + nhóm 2 tầng" \
+  'post /api/add "{\"title\":\"Quy trình A\",\"content\":\"Bước một bước hai\",\"kind\":\"quy-trinh\",\"category\":\"kỹ thuật / lắp đặt\"}" | jq_ "d[\"category\"]"' "Kỹ thuật/Lắp đặt"
+check "thêm y hệt bị chặn, trả id bản cũ" \
+  'post /api/add "{\"title\":\"quy trình a\",\"content\":\"Bước một  bước hai\"}" | jq_ "(d[\"ok\"], bool(d.get(\"trung_id\")))"' "(False, True)"
+check "thư viện lọc nhóm cha" 'curl -sS "$U/api/library?category=K%E1%BB%B9%20thu%E1%BA%ADt" | jq_ "d[\"tong\"]"' "1"
+check "thư viện lọc loại" 'curl -sS "$U/api/library?kind=quy-trinh" | jq_ "d[\"tong\"]"' "1"
+check "thư viện đếm loại trong nhóm" 'curl -sS "$U/api/library?category=K%E1%BB%B9%20thu%E1%BA%ADt" | jq_ "d[\"dem_loai\"]"' "{'quy-trinh': 1}"
+check "thư viện: ô chưa xếp chỗ" 'curl -sS "$U/api/library?category=__chua__" | jq_ "d[\"tong\"] >= 1"' "True"
+check "thư viện: phân trang" 'curl -sS "$U/api/library?limit=1&offset=1" | jq_ "(len(d[\"notes\"]), d[\"offset\"])"' "(1, 1)"
+check "sắp xếp lạ không làm lỗi SQL" 'curl -sS "$U/api/library?sort=1;DROP" | jq_ "d[\"ok\"]"' "True"
+check "thêm việc có hạn" \
+  'post /api/add "{\"title\":\"Việc A\",\"content\":\"Gọi khách A\",\"kind\":\"viec\",\"due\":\"2020-01-01\"}" | jq_ "d[\"ok\"]"' "True"
+VID=$(curl -sS "$U/api/tasks" | jq_ 'd["qua_han"][0]["id"]')
+check "việc quá hạn hiện đúng" 'curl -sS "$U/api/tasks" | jq_ "d[\"dang_mo\"]"' "1"
+check "đánh dấu xong qua web" 'post /api/task "{\"id\":\"'"$VID"'\",\"xong\":true}" >/dev/null; curl -sS "$U/api/tasks" | jq_ "d[\"dang_mo\"]"' "0"
+check "sửa loại + nhóm qua web" \
+  'post /api/update "{\"id\":\"'"$VID"'\",\"kind\":\"nhat-ky\",\"category\":\"Kinh doanh/Họp\"}" >/dev/null; curl -sS "$U/api/note?id='"$VID"'" | jq_ "(d[\"note\"][\"kind\"], d[\"note\"][\"category\"])"' "('nhat-ky', 'Kinh doanh/Họp')"
+check "nạp: xem trước không ghi" \
+  'post /api/ingest "{\"text\":\"# Mục một\\nNội dung một\\n# Mục hai\\nNội dung hai\",\"dry_run\":true}" | jq_ "d[\"se_them\"]"' "2"
+check "nạp: tách 2 mục, gán nhóm" \
+  'post /api/ingest "{\"text\":\"# Mục một\\nNội dung một\\n# Mục hai\\nNội dung hai\",\"category\":\"Học tập\"}" | jq_ "d[\"da_them\"]"' "2"
+check "nạp lại: bỏ trùng" \
+  'post /api/ingest "{\"text\":\"# Mục một\\nNội dung một\\n# Mục hai\\nNội dung hai\"}" | jq_ "(d[\"da_them\"], d[\"bo_qua_trung\"])"' "(0, 2)"
+check "nạp file .md gửi từ trình duyệt" \
+  'post /api/ingest "{\"files\":[{\"name\":\"bai-hoc.md\",\"text\":\"Nội dung bài học từ file\"}]}" | jq_ "d[\"ghi_chu\"][0][\"title\"]"' "Bai hoc"
+check "thông tin chi tiết có ghi chú liên kết kèm tên" \
+  'curl -sS "$U/api/note?id='"$VID"'" | jq_ "type(d[\"note\"][\"linked\"]).__name__"' "list"
 
 echo
 echo "8. SERVER VẪN SỐNG SAU TẤT CẢ"

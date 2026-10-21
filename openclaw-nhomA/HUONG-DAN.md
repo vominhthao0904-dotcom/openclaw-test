@@ -87,7 +87,7 @@ Lõi đồ thị là Thái Cực đồ với Bát Quái **Tiên Thiên (Phục H
 - Hai quẻ đối nhau có hào **ngược hoàn toàn**; số Tiên Thiên mỗi cặp cộng lại bằng **9**.
 - Thái Cực: **Dương** (vàng kim) sinh ở Chấn, lên bên trái, cực thịnh ở Càn, nên đầu Dương ở trên. **Âm** (xanh dương) sinh ở Tốn, xuống bên phải, cực thịnh ở Khôn, nên đầu Âm ở dưới. Chấm xanh trong đầu Dương là "trong Dương có Âm"; chấm vàng trong đầu Âm là "trong Âm có Dương".
 - Lõi **đứng yên**, không xoay theo các vòng ghi chú: Càn luôn ở trên mới đúng phương vị.
-- Rê chuột vào lõi để xem tên 8 quẻ và phương vị. Biểu tượng này cũng là icon trên tab trình duyệt.
+- Lõi **nhỏ gọn** (cỡ chữ BRAIN cũ) để đồ thị thoáng. **Rê chuột vào lõi** thì nó phóng to mượt, hiện tên 8 quẻ và phương vị; bỏ chuột ra là thu nhỏ lại. Biểu tượng này cũng là icon trên tab trình duyệt.
 
 ### Cột trái
 

@@ -302,7 +302,10 @@ function ve() {
   });
 
   // lõi: Thái Cực – Tiên Thiên Bát Quái (đứng yên — Càn luôn ở trên mới đúng phương vị)
-  const RK = banKinhLoi();
+  const dich = hoverLoi ? banKinhLoiTo() : banKinhLoi();
+  rkHienTai = itMotion ? dich : rkHienTai + (dich - rkHienTai) * 0.2;
+  if (Math.abs(dich - rkHienTai) < 0.3) rkHienTai = dich;
+  const RK = rkHienTai;
   const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, RK * 1.75);
   quang.addColorStop(0, 'rgba(240,127,45,.32)');
   quang.addColorStop(1, 'rgba(240,127,45,0)');
@@ -351,9 +354,13 @@ function ve() {
     cx.fillText(t, x0, p.y);
   });
 
-  const hinh = hinhThaiCuc(RK);
-  cx.drawImage(hinh, CX - hinh.width / DV / 2, CY - hinh.height / DV / 2, hinh.width / DV, hinh.height / DV);
-  if (hoverLoi) veTenQue(RK);
+  // đứng yên: dùng hình vẽ đúng cỡ (nét sắc); đang co/giãn: thu phóng hình cỡ lớn cho mượt
+  const dungYen = RK === banKinhLoi() || RK === banKinhLoiTo();
+  const hinh = hinhThaiCuc(dungYen ? RK : banKinhLoiTo());
+  const s = (RK * 2 + 4) / ((dungYen ? RK : banKinhLoiTo()) * 2 + 4);
+  const w = hinh.width / DV * s;
+  cx.drawImage(hinh, CX - w / 2, CY - w / 2, w, w);
+  if (hoverLoi && RK > banKinhLoiTo() - 1) veTenQue(RK);
 }
 
 /* ---------------- Thái Cực – Tiên Thiên Bát Quái (Phục Hy) ----------------
@@ -379,7 +386,10 @@ const BAT_QUAI = [
 const MAU_DUONG = '#E6C46A', MAU_AM = '#2563C4', NAVY_LOI = '#0C2147', NAVY_VANH = '#0F2B5B';
 let hoverLoi = false;
 
-const banKinhLoi = () => Math.max(40, Math.min(80, banKinh() * 0.2));
+/* Lõi nhỏ gọn cỡ chữ BRAIN cũ khi nhìn tổng thể; rê chuột vào thì phóng to mượt để xem rõ quẻ. */
+const banKinhLoi = () => 30;                                          // lúc nghỉ: Ø 60px
+const banKinhLoiTo = () => Math.max(56, Math.min(92, banKinh() * 0.22)); // lúc rê chuột
+let rkHienTai = 30;                                                   // bán kính đang vẽ (đang co/giãn)
 
 function veHinhThaiCuc(g, R) {
   const u = R / 100;                 // mọi kích thước tính theo bán kính, nét giữ tỉ lệ ở mọi cỡ
@@ -390,13 +400,15 @@ function veHinhThaiCuc(g, R) {
   // nền và các vành
   g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fillStyle = NAVY_LOI; g.fill();
   vong(R - 1.1 * u, MAU_DUONG, 2.2 * u);
-  vong(92 * u, MAU_DUONG, 0.7 * u, [0.9 * u, 2.6 * u]);
+  const nho = R < 45;              // cỡ nhỏ: bỏ vành chấm li ti, hào dày hơn để vẫn đọc được quẻ
+  if (!nho) vong(92 * u, MAU_DUONG, 0.7 * u, [0.9 * u, 2.6 * u]);
   g.beginPath(); g.arc(0, 0, 64 * u, 0, Math.PI * 2); g.fillStyle = NAVY_VANH; g.fill();
   vong(64 * u, MAU_DUONG, 0.9 * u);
   vong(57.5 * u, '#3E8EDE', 0.5 * u);
 
   // tám quẻ — mỗi hào là một thanh vuông góc với bán kính; hào đứt = hai nửa có khe giữa
-  const dai = 25 * u, day = 4.4 * u, khe = 5.2 * u, banKinhHao = [70 * u, 76.8 * u, 83.6 * u];
+  const dai = (nho ? 27 : 25) * u, day = (nho ? 5.6 : 4.4) * u, khe = (nho ? 6.2 : 5.2) * u;
+  const banKinhHao = nho ? [69 * u, 77 * u, 85 * u] : [70 * u, 76.8 * u, 83.6 * u];
   const thanh = (x, y, w, h) => {
     g.beginPath();
     if (g.roundRect) g.roundRect(x, y, w, h, h * 0.22); else g.rect(x, y, w, h);
@@ -430,16 +442,17 @@ function veHinhThaiCuc(g, R) {
 }
 
 /* Vẽ một lần vào canvas đệm, mỗi khung hình chỉ dán lại — 60 khung/giây không tốn CPU. */
-let dem = null;
+const dem = new Map();
 function hinhThaiCuc(R) {
   const k = `${R.toFixed(1)}|${DV}`;
-  if (dem && dem.k === k) return dem.c;
+  if (dem.has(k)) return dem.get(k);
+  if (dem.size > 6) dem.clear();
   const c = document.createElement('canvas');
   c.width = c.height = Math.ceil((R * 2 + 4) * DV);
   const g = c.getContext('2d');
   g.setTransform(DV, 0, 0, DV, c.width / 2, c.height / 2);
   veHinhThaiCuc(g, R);
-  dem = { k, c };
+  dem.set(k, c);
   return c;
 }
 
@@ -486,7 +499,7 @@ function timGan(mx, my) {
 cv.addEventListener('mousemove', (e) => {
   const b = cv.getBoundingClientRect();
   const mx = e.clientX - b.left, my = e.clientY - b.top;
-  hoverLoi = Math.hypot(mx - CX, my - CY) < banKinhLoi();
+  hoverLoi = Math.hypot(mx - CX, my - CY) < (hoverLoi ? rkHienTai + 6 : banKinhLoi() + 4);
   hover = hoverLoi ? null : timGan(mx, my);
   cv.style.cursor = hover ? 'pointer' : hoverLoi ? 'help' : 'default';
 });

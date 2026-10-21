@@ -134,7 +134,7 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 ### Lõi Thái Cực – Tiên Thiên Bát Quái
 - Thay chữ "BRAIN" ở tâm đồ thị bằng Thái Cực đồ + Bát Quái **Tiên Thiên (Phục Hy)**, theo mẫu anh chốt (navy, vàng kim, xanh dương). Đã đối chiếu mẫu: đúng thứ tự Tiên Thiên, đúng chiều Thái Cực.
 - **Vẽ bằng hình học** chứ không dán ảnh: Thái Cực ghép từ các nửa đường tròn chuẩn, 8 quẻ đặt vuông góc với bán kính, hào sơ ở trong; nét sắc ở mọi kích thước và mọi độ phân giải màn hình. Vẽ một lần vào bộ đệm, mỗi khung hình chỉ dán lại.
-- Lõi đứng yên (Càn luôn ở trên); rê chuột hiện tên quẻ + phương vị. Có favicon SVG cùng hình học.
+- Lõi đứng yên (Càn luôn ở trên), lúc nghỉ nhỏ gọn Ø 60px như chữ BRAIN cũ (hào vẽ dày hơn ở cỡ nhỏ để vẫn đọc được quẻ); rê chuột thì phóng to mượt, hiện tên quẻ + phương vị. Có favicon SVG cùng hình học.
 - **Test tự động khoá chuẩn Kinh Dịch**: đúng hào 8 quẻ, đúng số Tiên Thiên, quẻ đối có hào ngược nhau, tổng mỗi cặp bằng 9, Càn trên – Khôn dưới – Ly trái. Đã thử đổi chỗ Đoài/Tốn: test báo hỏng ngay.
 
 ## Chưa làm (cố ý)

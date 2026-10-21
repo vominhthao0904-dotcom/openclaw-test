@@ -35,9 +35,13 @@ python3 "$SB/scripts/brain.py" add --title "Hero mobile contain" \
   --category "Landing page" --tags "landing,mobile" --url "https://example.com/bai" >/dev/null
 python3 "$SB/scripts/brain.py" add --title "Ghi chú chưa xếp chỗ" --content "Bắt vội, chưa phân loại." >/dev/null
 
+export BRAIN_TOKEN_FILE="$TMP/.web-token"
 BRAIN_PORT=$PORT python3 "$SB/scripts/server.py" >"$TMP/log" 2>&1 &
 PID=$!
-for i in $(seq 25); do curl -sS -o /dev/null "$U/" 2>/dev/null && break; sleep 0.2; done
+for i in $(seq 25); do [ -s "$BRAIN_TOKEN_FILE" ] && command curl -sS -o /dev/null "$U/app.js" 2>/dev/null && break; sleep 0.2; done
+TOK="$(cat "$BRAIN_TOKEN_FILE")"
+# mọi lệnh curl bên dưới gửi kèm mã như trình duyệt đã đăng nhập; test xác thực dùng `command curl` (không mã)
+curl() { command curl -H "Authorization: Bearer $TOK" "$@"; }
 
 echo "======================================================================"
 echo " TEST server.py — cổng $PORT, kho tạm $TMP"
@@ -50,6 +54,24 @@ check "app.js trả 200" 'curl -sS -o /dev/null -w "%{http_code}" "$U/app.js"' "
 check "styles.css đúng kiểu nội dung" \
   'curl -sS -o /dev/null -w "%{content_type}" "$U/styles.css"' "text/css; charset=utf-8"
 check "tệp không có trả 404" 'curl -sS -o /dev/null -w "%{http_code}" "$U/khongco.js"' "404"
+
+echo
+echo "1b. MÃ TRUY CẬP — chương trình khác trên VPS không đọc được kho"
+check "file mã chỉ chủ sở hữu đọc (600)" 'stat -c %a "$BRAIN_TOKEN_FILE"' "600"
+check "API không mã bị chặn (401)" 'command curl -sS -o /dev/null -w "%{http_code}" "$U/api/notes"' "401"
+check "tìm kiếm không mã bị chặn" 'command curl -sS -o /dev/null -w "%{http_code}" "$U/api/search?q=hero"' "401"
+check "POST không mã bị chặn" \
+  'command curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -d "{\"title\":\"x\",\"content\":\"y\"}"' "401"
+check "trang chính không mã: hiện hướng dẫn" 'command curl -sS "$U/" | grep -c "web.sh link"' "1"
+check "mã sai bị từ chối" 'command curl -sS -o /dev/null -w "%{http_code}" "$U/?t=sai-ma"' "403"
+check "mã sai trong cookie bị từ chối" \
+  'command curl -sS -o /dev/null -w "%{http_code}" -H "Cookie: sb_auth=sai" "$U/api/notes"' "401"
+check "link đúng mã cấp cookie HttpOnly" \
+  'command curl -sS -D - -o /dev/null "$U/?t=$TOK" | grep -ci "^set-cookie:.*HttpOnly.*SameSite=Strict"' "1"
+check "cookie đúng thì đọc được" \
+  'command curl -sS -o /dev/null -w "%{http_code}" -H "Cookie: sb_auth=$TOK" "$U/api/notes"' "200"
+check "Content-Length âm trả lỗi ngay, không treo" \
+  'curl -sS -m 5 -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -H "Content-Length: -1"' "400"
 
 echo
 echo "2. KHÔNG RA ĐƯỢC NGOÀI THƯ MỤC public/"

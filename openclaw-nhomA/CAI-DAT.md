@@ -105,7 +105,7 @@ sudo apt install --reinstall -y python3
 
 # PHẦN 2 — Cài đặt
 
-Bốn bước. Làm đúng thứ tự.
+Năm bước. Làm đúng thứ tự.
 
 ### Bước 1 — Cài công cụ cho 3 skill kia
 
@@ -182,6 +182,19 @@ Cài skill trước rồi mới cài công cụ cũng không sao: **không phả
 
 `install.sh` chạy **một lần**. `openclaw gateway restart` chạy **mỗi khi có gì thay đổi**.
 
+### Bước 5 — Bật sao lưu kho ghi chú hằng ngày
+
+Làm một lần rồi quên. Dán nguyên khối này (chạy lại bao nhiêu lần cũng không tạo dòng trùng):
+```bash
+( crontab -l 2>/dev/null | grep -v 'second-brain/scripts/brain.py snapshot'
+  echo '17 2 * * * python3 $HOME/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1'
+) | crontab -
+crontab -l | grep snapshot
+```
+Báo `crontab: command not found` thì cài trước: `sudo apt install -y cron`.
+
+Mỗi đêm 2h17 nó chụp toàn kho vào `backups/` (giữ 60 bản) và làm mới `backups/notes-latest.sqlite` — file để anh kéo về máy cá nhân mỗi tuần (xem `HUONG-DAN.md`, mục Sao lưu).
+
 ---
 
 # PHẦN 3 — Kiểm tra cài đã ok chưa
@@ -215,10 +228,11 @@ Script kiểm tra 5 phần:
 - `css-video-production`: dựng một file phụ đề `.ass`
 - `pptx-deck-builder`: dựng một file `.pptx` thật
 
-**Phần 5 — An toàn.** Ba việc:
+**Phần 5 — An toàn.** Bốn việc:
 - Không có file nào trong 4 skill mà user khác ghi được (nếu có, ai đó có thể sửa code mà Mây sẽ chạy).
 - Kho ghi chú chỉ chủ sở hữu đọc được (quyền 600).
 - Trang web Second Brain không mở cổng ra mọi địa chỉ (`0.0.0.0`).
+- Lịch sao lưu hằng ngày đã bật (Bước 5).
 
 Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệu của anh**.
 
@@ -227,10 +241,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 58 trường hợp: kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 65 trường hợp: kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
-                       # trùng lặp tiếng Việt, quyền file của kho…
-bash test-web.sh       # 35 trường hợp: leo thư mục, chặn trang lạ gửi lệnh,
+                       # trùng lặp tiếng Việt, quyền file của kho,
+                       # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
+bash test-web.sh       # 45 trường hợp: mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
@@ -244,16 +259,16 @@ Cả hai chạy trên kho tạm rồi tự xoá, **không đụng dữ liệu th
 ### Kết quả phải ra
 
 ```
- ĐẠT: 25     CHƯA ĐẠT: 0
+ ĐẠT: 26     CHƯA ĐẠT: 0
 
  Xong. Cả 4 skill đã sẵn sàng.
 ```
 
-**25 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
+**26 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
 
-Con số có thể khác 25 trong hai trường hợp bình thường, không phải lỗi:
+Con số có thể khác 26 trong hai trường hợp bình thường, không phải lỗi:
 
-- **Ra 21 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
+- **Ra 22 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
 - **Chỉ cài mỗi Second Brain** — các dòng của 3 skill kia sẽ báo CHƯA ĐẠT. Đúng như vậy. Chỉ cần 4 dòng `second-brain*` đều ĐẠT là ổn.
 
 ### Kiểm tra thêm bằng mắt
@@ -274,8 +289,9 @@ Phải thấy đủ 4 dòng.
 | Phần 4 không dựng được `.pptx` | Chưa có `python-pptx` | `python3 -m pip install --user python-pptx pillow` |
 | Không tìm thấy lệnh `openclaw` | Đang đăng nhập sai user | SSH lại bằng user đang chạy OpenClaw |
 | Phần 5: file ai cũng ghi được | Chép tay bằng `cp` thay vì `install.sh`, hoặc umask lỏng | `chmod -R go-w ~/.openclaw/workspace/skills` |
+| Phần 5: chưa có lịch sao lưu | Chưa làm Bước 5 | Dán khối lệnh ở Bước 5 |
 | Phần 5: kho user khác đọc được | Kho tạo từ bản cũ | `python3 .../brain.py stats` (tự siết về 600) |
-| Phần 5: cổng mở ra ngoài | Đã chạy trang web với `BRAIN_HOST=0.0.0.0` | `pkill -f second-brain/scripts/server.py` rồi chạy lại không đặt `BRAIN_HOST` |
+| Phần 5: cổng mở ra ngoài | Đã chạy trang web với `BRAIN_HOST=0.0.0.0` | `bash .../second-brain/scripts/web.sh stop` (hoặc `pkill -f second-brain/scripts/server.py`) rồi `web.sh start`, không đặt `BRAIN_HOST` |
 
 > OpenClaw **ẩn** skill nào thiếu công cụ bắt buộc. Nên nếu `openclaw skills list` không thấy một skill, hãy nghĩ tới thiếu công cụ trước khi nghĩ tới cài sai.
 
@@ -311,14 +327,13 @@ Sau đó: *"Tìm giúp anh ghi chú về phụ đề"*
 
 **Test 3 — trang web.** Trên VPS:
 ```bash
-nohup python3 ~/.openclaw/workspace/skills/second-brain/scripts/server.py \
-  >/tmp/brain-web.log 2>&1 &
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh start
 ```
-Trên máy cá nhân, mở đường hầm SSH (Termius có mục Port Forwarding):
+Nó in ra đường link có mã. Trên máy cá nhân, mở đường hầm SSH (Termius có mục Port Forwarding):
 ```bash
 ssh -N -L 8787:127.0.0.1:8787 root@IP_VPS
 ```
-Giữ cửa sổ đó mở, vào trình duyệt: **http://127.0.0.1:8787**
+Giữ cửa sổ đó mở, dán **đường link có mã** vào trình duyệt. Thử mở **http://127.0.0.1:8787** trong một cửa sổ ẩn danh (không có mã): phải thấy trang báo "cần mở bằng đường link có mã" — đó là đúng.
 
 *Đạt khi:* thấy lõi BRAIN đỏ ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ.
 
@@ -361,13 +376,14 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 | **Không cần** | `sudo` khi chép skill, khoá API, tài khoản, mở cổng firewall |
 | **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Chỉ `fetch_images.py` (tuỳ chọn, cần khoá Pexels) gọi Internet; trang web tải font chữ từ Google Fonts |
 | **Kho ghi chú** | `notes.sqlite`, `backups/`, `deleted/` chỉ chủ sở hữu đọc được (600/700) — user khác trên VPS không đọc được |
-| **Trang web** | Chỉ nghe `127.0.0.1`; từ chối mọi yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn |
+| **Trang web** | Chỉ nghe `127.0.0.1` và **cần mã truy cập** (chương trình khác trên VPS cũng không đọc được kho); từ chối yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn; kết nối treo tự ngắt sau 30 giây |
+| **Sao lưu** | Hằng ngày `.json.gz` (giữ 60 bản) + một bản `.sqlite` đầy đủ để kéo về máy; `doctor` báo khi lịch sao lưu ngừng |
 | **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan cho `openclaw agent` trên chính VPS, và dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
 | **Video** | Từ chối khi file kết quả trùng file gốc — không bao giờ ghi đè video gốc |
 | **Slide** | Ảnh tải từ link chỉ nhận https, máy chủ công khai, ≤ 15 MB; kiểm lại cả khi bị chuyển hướng (không lọt vào mạng nội bộ/metadata VPS) |
 
 Ba điều anh cần tự giữ:
-1. **Không** đặt `BRAIN_HOST=0.0.0.0`. Xem trang web qua đường hầm SSH.
+1. **Không** đặt `BRAIN_HOST=0.0.0.0`. Xem trang web qua đường hầm SSH. Đường link có mã là chìa khoá kho — đừng dán vào nhóm chat.
 2. **Không** ghi mật khẩu, token, số thẻ vào ghi chú — file SQLite không mã hoá.
 3. Khoá Pexels (nếu dùng) để trong `~/.openclaw/secrets/pexels.env` với quyền 600: `chmod 600 ~/.openclaw/secrets/pexels.env`.
 
@@ -443,7 +459,7 @@ Trang web khi không ai thao tác: **0% CPU**. Nó nằm chờ kết nối, khô
 
 ```bash
 # RAM trang web đang dùng
-ps -eo pid,rss,args | grep "[s]erver.py" | awk '{printf "RSS %.0f MB\n",$2/1024}'
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh status
 
 # dung lượng toàn bộ kho
 du -sh ~/.openclaw/workspace/second-brain/
@@ -457,7 +473,8 @@ top -bn1 | head -5
 
 Kho vượt khoảng **10.000 ghi chú** thì xem lại: lúc đó sao lưu chiếm ~150 MB và tìm kiếm bắt đầu chậm thấy được. Với nhịp ghi vài ghi chú mỗi ngày, mốc đó cách đây nhiều năm.
 
-Trang web nếu quên tắt sẽ chạy mãi với 28 MB RAM. Muốn tắt:
+Trang web nếu quên tắt sẽ chạy mãi với ~28 MB RAM (không sao, nhưng không cần). Xem và tắt:
 ```bash
-pkill -f "second-brain/scripts/server.py"
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh status
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh stop
 ```

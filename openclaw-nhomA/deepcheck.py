@@ -4,11 +4,14 @@
 Khác validate.py (chỉ kiểm cú pháp + frontmatter + rò rỉ khoá), file này tìm các lỗi
 "cài được nhưng dùng mới biết hỏng" — đúng loại lỗi các gói gốc hay mắc.
 """
-import json, os, re, subprocess, sys
+import json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent / "skills"
 PY = sys.executable
+# HOME giả riêng cho mỗi lần chạy (tên ngẫu nhiên, quyền 700) — thư mục cố định trong /tmp
+# có thể bị user khác tạo trước hoặc gài symlink
+FAKE_HOME = tempfile.mkdtemp(prefix="deepcheck-home-")
 problems = []       # (mức độ, skill, mô tả)
 
 
@@ -58,7 +61,7 @@ def check_runs(skill_dir, name):
         if "argparse" not in src:
             continue
         r = subprocess.run([PY, str(f), "--help"], capture_output=True, text=True, timeout=60,
-                           env={**os.environ, "HOME": "/tmp/deepcheck-home"})
+                           env={**os.environ, "HOME": FAKE_HOME})
         if r.returncode != 0:
             add("LỖI", name, f"{f.relative_to(skill_dir)} --help thoát mã {r.returncode}: {(r.stderr or r.stdout).strip()[-120:]}")
 
@@ -100,7 +103,6 @@ def check_structure(skill_dir, name, fm, body):
 
 
 def main():
-    Path("/tmp/deepcheck-home").mkdir(exist_ok=True)
     dirs = sorted(p for p in ROOT.iterdir() if p.is_dir())
     for d in dirs:
         md = d / "SKILL.md"
@@ -135,4 +137,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    finally:
+        import shutil
+        shutil.rmtree(FAKE_HOME, ignore_errors=True)

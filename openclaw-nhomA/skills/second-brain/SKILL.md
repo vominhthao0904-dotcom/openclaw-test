@@ -88,6 +88,7 @@ $BR digest --days 7                          # đã ghi gì trong 7 ngày, gom t
 $BR tags                                     # toàn bộ thẻ + thẻ chỉ dùng 1 lần
 $BR retag --from landing-page --to landing --yes
 $BR stats                                    # kèm khối suc_khoe_kho
+$BR doctor                                   # khám kho: hỏng file, chỉ mục lệch, sao lưu ngừng; --fix để sửa
 $BR import --file dump.json                  # nhập từ bản cũ; bỏ qua trùng và ghi chú rỗng
 ```
 `--source`: `book`, `course`, `experiment`, `chat`, `web`, `meeting`, `other`.
@@ -119,8 +120,16 @@ Làm khi người dùng mở lời, hoặc khi `stats` cho thấy kho đang lệ
 
 ## Giao diện web (đồ thị BRAIN)
 ```bash
-python3 {baseDir}/scripts/server.py          # mở http://127.0.0.1:8787
+bash {baseDir}/scripts/web.sh start      # bật chạy nền (chỉ nghe 127.0.0.1), in đường link có mã
+bash {baseDir}/scripts/web.sh link       # in lại đường link có mã
+bash {baseDir}/scripts/web.sh status     # đang chạy không, tốn bao nhiêu RAM
+bash {baseDir}/scripts/web.sh stop       # tắt
 ```
+Trang **có mã truy cập** (lưu ở `second-brain/.web-token`, quyền 600): mở bằng link `http://127.0.0.1:8787/?t=<mã>`
+một lần, trình duyệt nhớ bằng cookie. Không có mã thì mọi API trả 401 — kể cả chương trình khác trên chính VPS.
+Người dùng hỏi cách mở trang: chạy `web.sh start` (hoặc `link` nếu đang chạy) rồi gửi họ **lệnh đường hầm SSH +
+đường link**. Đường link có mã = chìa khoá kho: chỉ gửi trong cuộc trò chuyện riêng với chủ kho, không dán vào nhóm.
+Đổi mã (khi lỡ lộ): xoá file `.web-token`, chạy `web.sh restart`.
 Lõi **BRAIN** ở giữa, mỗi nhóm (category) là một vòng quỹ đạo có màu riêng, mỗi ghi chú là một chấm.
 Bấm chấm hoặc một kết quả tìm để mở thẻ chi tiết; trong thẻ có **Sửa** (nhóm, thẻ, nguồn, nội dung),
 **Nhớ rồi** (đánh dấu đã ôn) và **Cất vào kho lưu**. Dải chú giải dưới cùng lọc theo nhóm.
@@ -137,14 +146,16 @@ Biến môi trường: `BRAIN_PORT` (mặc định 8787), `BRAIN_HOST` (mặc đ
 `BRAIN_AGENT` (tên agent để hỏi, ví dụ `may`), `BRAIN_ASK_TIMEOUT` (giây, mặc định 180),
 `SECOND_BRAIN_DB` (đường dẫn kho), `SECOND_BRAIN_KEEP_BACKUPS` (số ảnh chụp toàn kho giữ lại, mặc định 60).
 
-**Xem từ máy khác:** server này **không có đăng nhập**, nên đừng đổi `BRAIN_HOST` sang `0.0.0.0`.
+**Xem từ máy khác:** mã truy cập không thay được HTTPS, nên đừng đổi `BRAIN_HOST` sang `0.0.0.0` (`web.sh` từ chối luôn).
 Server chỉ trả lời yêu cầu gửi tới `127.0.0.1`/`localhost` (chặn DNS rebinding); đặt sau proxy có HTTPS + đăng nhập
 thì khai báo tên miền bằng `BRAIN_ALLOWED_HOSTS`.
 Chạy trên VPS thì mở đường hầm SSH từ máy cá nhân:
 ```bash
 ssh -N -L 8787:127.0.0.1:8787 user@IP_VPS      # rồi mở http://127.0.0.1:8787 trên máy mình
 ```
-Chạy nền trên VPS: `nohup python3 {baseDir}/scripts/server.py >/tmp/brain-web.log 2>&1 &`
+`web.sh` chỉ là vỏ quản lý của `scripts/server.py` (chạy tay để gỡ lỗi: `python3 {baseDir}/scripts/server.py`, Ctrl+C để dừng).
+Trang web chỉ là cửa sổ nhìn vào kho; tắt đi kho vẫn dùng bình thường qua chat. Không cần để chạy 24/7.
+Log/pid nằm cạnh kho (`web.log`, `web.pid`, quyền 600), log tự xoay vòng ở 5 MB.
 
 > Bộ này cố ý **không kèm** giao diện Netlify của bản cũ (nhúng khoá và gửi toàn bộ ghi chú ra máy chủ
 > ngoài). Bản web ở đây đọc thẳng file SQLite trên máy; thứ duy nhất trình duyệt tải từ Internet là font chữ
@@ -155,6 +166,7 @@ Ba thư mục cạnh file kho (`~/.openclaw/workspace/second-brain/`):
 - `notes.sqlite` — kho thật, gồm cả ghi chú đã cất kho
 - `deleted/` — mỗi ghi chú xoá hẳn một file JSON, **không bao giờ tự dọn**
 - `backups/` — ảnh chụp toàn kho (`.json.gz`) trước mỗi lần xoá/gộp/nhập, và mỗi lần `snapshot`; giữ 60 bản gần nhất (`SECOND_BRAIN_KEEP_BACKUPS`). `import --file` đọc được cả bản nén lẫn chưa nén.
+- `backups/notes-latest.sqlite` — bản sao **nhất quán** của cả kho, ghi đè mỗi lần `snapshot`. Đây là file để kéo về máy cá nhân.
 
 Đặt lịch sao lưu hằng ngày trên VPS:
 ```bash
@@ -162,7 +174,15 @@ crontab -e
 # 2h sáng mỗi ngày
 0 2 * * * python3 ~/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1
 ```
-Kho nằm trong một file nên chép về máy là xong: `scp user@IP:~/.openclaw/workspace/second-brain/notes.sqlite .`
+Kéo bản sao về máy cá nhân (mỗi tuần): `scp user@IP:~/.openclaw/workspace/second-brain/backups/notes-latest.sqlite .`
+**Không** chép thẳng `notes.sqlite`: kho chạy chế độ WAL, ghi chú mới có thể còn nằm trong file `-wal` — bản chép thiếu, có khi rỗng.
+
+Khám sức khoẻ kho (mỗi tháng, hoặc khi tìm thấy thiếu/lạ, hoặc người dùng hỏi "kho có ổn không"):
+```bash
+$BR doctor          # file hỏng? chỉ mục tìm kiếm lệch? sao lưu còn chạy đều? quyền file? đĩa còn trống?
+$BR doctor --fix    # dựng lại chỉ mục, bỏ liên kết mồ côi — không đụng nội dung ghi chú
+```
+`doctor` báo "Bản sao lưu mới nhất đã N ngày" → lịch cron đã ngừng; nhắc người dùng kiểm `crontab -l`.
 
 ## An toàn dữ liệu
 Xem `references/DATA-SAFETY.md`. Tóm tắt:

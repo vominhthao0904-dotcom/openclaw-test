@@ -10,9 +10,9 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **58** |
-| Test `test-web.sh` | 30 | **35** |
-| Mục `kiemtra.sh` | 22 | **25** (thêm phần An toàn) |
+| Test `test-brain.sh` | 50 | **65** |
+| Test `test-web.sh` | 30 | **45** |
+| Mục `kiemtra.sh` | 22 | **26** (thêm phần An toàn) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
 | Tìm bằng câu hỏi dài ("anh từng ghi gì về lỗi phụ đề") | 0 kết quả | **Ra kết quả** |
@@ -77,7 +77,23 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 - Dọn file tạm sau mỗi lần dựng (bản cũ để lại rác trong `/tmp`); thu nhỏ ảnh quá lớn để file `.pptx` nhẹ.
 - Cảnh báo trả trong JSON (`canh_bao`) để agent đọc được, không chỉ in ra stderr.
 
+## Rà soát lần 2 — Second Brain cho chạy lâu dài
+
+| Mức | Vấn đề | Đã sửa |
+|---|---|---|
+| **Cao** | Tài liệu hướng dẫn sao lưu bằng `scp notes.sqlite`. Kho chạy chế độ WAL nên ghi chú mới nằm ở file `-wal` bên cạnh — **đã thử: bản chép ra rỗng hoàn toàn** ("no such table"). Người dùng tưởng có bản sao mà thực ra không có. | `snapshot` tạo thêm `backups/notes-latest.sqlite` bằng API backup của SQLite (đầy đủ, một file, thay nguyên khối). Tài liệu chỉ cách kéo file này. Thêm 3 test. |
+| **Cao** | Trang web chỉ dựa vào việc nghe `127.0.0.1` — nhưng **mọi chương trình trên VPS** (n8n, app bị hack, công cụ duyệt web của agent) đều gọi được địa chỉ đó để đọc/sửa toàn bộ kho. | **Mã truy cập**: 256 bit ngẫu nhiên, file 600, đổi thành cookie HttpOnly + SameSite=Strict, so sánh hằng thời gian. Không mã → 401. Thêm 10 test. |
+| Vừa | `Content-Length: -1` làm một luồng server **treo vĩnh viễn** (đã thử). Kết nối bỏ dở cũng giữ luồng mãi. | Độ dài âm → 400 ngay; mỗi kết nối tối đa 30 giây. |
+| Vừa | Chạy nền bằng `nohup … >/tmp/brain-web.log` — log nằm trong `/tmp` (user khác đọc được), không có cách tắt/xem trạng thái gọn, log phình mãi. | `web.sh start/stop/status/link/restart`: log + pid cạnh kho (600), xoay vòng log 5 MB, **từ chối** chạy khi `BRAIN_HOST` mở ra ngoài. Mã chỉ in ra màn hình thật, không vào log. |
+| Vừa | Không có cách biết kho hỏng hay chỉ mục tìm kiếm lệch (tìm thiếu kết quả mà không ai hay), hay lịch sao lưu đã ngừng từ lâu. | Lệnh `doctor` (+ `--fix`): kiểm toàn vẹn file, chỉ mục FTS so với dữ liệu thật, liên kết mồ côi, tuổi bản sao lưu, quyền file, dung lượng đĩa. |
+| Vừa | Lịch sao lưu chỉ được nhắc trong tài liệu dùng, dễ bị bỏ qua. | Thành **Bước 5 của cài đặt** (một khối lệnh, dán lại không tạo dòng trùng); `kiemtra.sh` kiểm có lịch chưa. |
+| Thấp | `restore` chạy hai lần đẻ ra hai bản giống hệt. | Đã có thì không thêm. |
+| Thấp | `deepcheck.py` dùng thư mục cố định `/tmp/deepcheck-home` (user khác có thể tạo trước/gài symlink). | Thư mục tạm ngẫu nhiên, tự xoá. |
+
+**Nên chạy Second Brain ở đâu:** trên VPS cùng OpenClaw (như gói này). Lý do và so sánh với chạy trên máy tính / web công khai / Notion: xem đầu `HUONG-DAN.md`.
+
 ## Chưa làm (cố ý)
-- Trang web chưa có đăng nhập — vẫn dựa vào việc chỉ nghe `127.0.0.1` + đường hầm SSH. Đủ an toàn cho VPS một người dùng; nhiều người cùng đăng nhập VPS thì đừng bật trang web.
+- Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.
+- Ô **Hỏi** truyền câu hỏi + ghi chú liên quan cho `openclaw agent` qua tham số dòng lệnh; trên VPS nhiều người dùng, user khác có thể thấy trong `ps` lúc lệnh đang chạy. VPS một người dùng thì không ảnh hưởng. (Chưa đổi vì chưa xác minh được `openclaw agent` có nhận nội dung qua stdin hay không.)
 - Font Google trên trang web giữ nguyên cho đẹp; muốn hoàn toàn offline thì xoá 3 dòng `<link … fonts.googleapis …>` trong `public/index.html` (trang tự dùng font hệ thống).
 - Trường `install` trong metadata (`kind: apt`/`shell`) giữ nguyên như bản gốc; công cụ vẫn cài tay theo `CAI-DAT.md`.

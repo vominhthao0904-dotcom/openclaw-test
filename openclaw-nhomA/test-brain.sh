@@ -191,6 +191,25 @@ check "không đổi quyền thư mục dùng chung" \
   'SECOND_BRAIN_DB="$TMP/chung/k.sqlite" BR stats >/dev/null; stat -c %a "$TMP/chung"' "755"
 
 echo
+echo "15. SAO LƯU DÀI HẠN VÀ KHÁM KHO"
+check "bản .sqlite đủ ghi chú (cả phần trong WAL)" \
+  'BR snapshot >/dev/null; python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(\"select count(*) from notes\").fetchone()[0])" "$TMP/backups/notes-latest.sqlite"' \
+  "$(python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute('select count(*) from notes').fetchone()[0])" "$SECOND_BRAIN_DB")"
+check "bản .sqlite là file độc lập" \
+  'python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(\"pragma journal_mode\").fetchone()[0])" "$TMP/backups/notes-latest.sqlite"' "delete"
+check "xoay vòng sao lưu không xoá bản .sqlite" \
+  'SECOND_BRAIN_KEEP_BACKUPS=1 BR snapshot >/dev/null; [ -f "$TMP/backups/notes-latest.sqlite" ] && echo con' "con"
+check "doctor: kho khoẻ" 'BR doctor | jq_ "d[\"ok\"]"' "True"
+python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"INSERT INTO notes_fts(rowid,title,content,tags,category) VALUES(99999,'ma','ma','','')\");c.commit()" "$SECOND_BRAIN_DB"
+check "doctor phát hiện chỉ mục tìm kiếm lệch" 'BR doctor | jq_ "d[\"ok\"]"' "False"
+check "doctor --fix dựng lại chỉ mục" 'BR doctor --fix >/dev/null; BR doctor | jq_ "d[\"ok\"]"' "True"
+RID=$(BR add --title "Xoá rồi lấy lại" --content "Nội dung khôi phục" | jq_ 'd["id"]')
+BR delete --id "$RID" --yes >/dev/null
+BR restore --file "$RID" >/dev/null
+check "restore hai lần không đẻ bản trùng" \
+  'BR restore --file '"$RID"' >/dev/null; BR search "khôi phục" | jq_ "d[\"count\"]"' "1"
+
+echo
 echo "======================================================================"
 printf " ĐẠT: %-5s HỎNG: %s\n" "$OK" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo " Tất cả test đều qua." || echo " CÓ TEST HỎNG — xem các dòng HỎNG ở trên."

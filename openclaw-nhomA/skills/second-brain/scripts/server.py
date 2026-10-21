@@ -6,7 +6,7 @@ mở SSH tunnel (xem SKILL.md), đừng đổi sang 0.0.0.0 khi chưa có HTTPS 
 
 Brain Query gọi `openclaw agent` ngay trên máy — ghi chú KHÔNG rời khỏi máy này.
 """
-import json, os, subprocess, sys, shutil, threading, urllib.parse, uuid
+import hmac, json, os, secrets, subprocess, sys, shutil, threading, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -27,6 +27,46 @@ HOST_OK = {"127.0.0.1", "localhost", "::1", "[::1]"}
 EXTRA_HOSTS = {h.strip().lower() for h in os.environ.get("BRAIN_ALLOWED_HOSTS", "").split(",") if h.strip()}
 
 _lock = threading.Lock()
+COOKIE = "sb_auth"
+TOKEN_FILE = Path(os.environ.get("BRAIN_TOKEN_FILE", brain.DB_PATH.parent / ".web-token"))
+
+
+def doc_ma():
+    """Mã truy cập trang web: 43 ký tự ngẫu nhiên, lưu file quyền 600 cạnh kho.
+
+    Chỉ nghe 127.0.0.1 là chưa đủ: MỌI chương trình trên VPS (n8n, một app bị chiếm quyền,
+    công cụ duyệt web của chính agent) đều gọi được 127.0.0.1:8787. Có mã thì phải biết mã mới
+    đọc/sửa được kho. Mã giữ nguyên giữa các lần chạy để đường link đã lưu vẫn dùng được;
+    muốn đổi mã thì xoá file rồi chạy lại.
+    """
+    try:
+        ma = TOKEN_FILE.read_text().strip()
+        if len(ma) >= 32:
+            return ma
+    except OSError:
+        pass
+    ma = secrets.token_urlsafe(32)
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(ma + "\n")
+    return ma
+
+
+MA = None   # nạp trong main()
+
+
+def duong_link(host, port):
+    return f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}/?t={MA}"
+
+
+TRANG_KHOA = """<!doctype html><meta charset="utf-8"><title>Second Brain</title>
+<link rel="stylesheet" href="styles.css"><body class="trang-khoa">
+<h1>Second Brain</h1>
+<p>Trang này cần mở bằng <b>đường link có mã</b>. Trên VPS chạy:</p>
+<pre>bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh link</pre>
+<p>rồi dán đường link đó vào trình duyệt (vẫn giữ đường hầm SSH). Mở một lần là trình duyệt nhớ.</p>
+</body>""".encode()
 
 
 def db():
@@ -271,6 +311,20 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    timeout = 30          # kết nối ì ạch / bỏ dở không được giữ một luồng mãi mãi
+
+    def _da_xac_thuc(self):
+        if not MA:
+            return False
+        auth = self.headers.get("Authorization") or ""
+        if auth.startswith("Bearer ") and hmac.compare_digest(auth[7:].strip(), MA):
+            return True
+        for phan in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = phan.strip().partition("=")
+            if k == COOKIE and hmac.compare_digest(v, MA):
+                return True
+        return False
+
     def _send(self, code, payload, ctype="application/json; charset=utf-8"):
         data = payload if isinstance(payload, bytes) else json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(code)
@@ -334,7 +388,25 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return self._send(403, {"ok": False, "error": "Host lạ — chỉ nhận yêu cầu gửi tới localhost"})
         u = urllib.parse.urlparse(self.path)
+        # Mở bằng link ?t=<mã>: đổi mã thành cookie HttpOnly rồi chuyển về trang sạch (mã không nằm lại trên thanh địa chỉ)
+        ma_link = urllib.parse.parse_qs(u.query).get("t", [""])[0]
+        if method == "GET" and ma_link:
+            if MA and hmac.compare_digest(ma_link, MA):
+                self.send_response(303)
+                self.send_header("Set-Cookie", f"{COOKIE}={MA}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000")
+                self.send_header("Location", "/")
+                self.send_header("Content-Length", "0")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.end_headers()
+                return
+            return self._send(403, TRANG_KHOA, "text/html; charset=utf-8")
         fn = ROUTES.get((method, u.path))
+        if not self._da_xac_thuc():
+            if fn or method != "GET":
+                return self._send(401, {"ok": False, "error": "Cần mở trang bằng đường link có mã (web.sh link)"})
+            if u.path in ("/", "/index.html"):
+                return self._send(401, TRANG_KHOA, "text/html; charset=utf-8")
         if not fn:
             return self._static(u.path) if method == "GET" else self._send(404, {"ok": False, "error": "not found"})
         body = {}
@@ -346,6 +418,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 n = int(self.headers.get("Content-Length", "0"))
             except ValueError:
+                n = -1
+            if n < 0:                 # độ dài âm: read(-1) sẽ chờ tới khi đóng kết nối, treo luồng
+                self.close_connection = True
                 return self._send(400, {"ok": False, "error": "bad length"})
             if n > BODY_LIMIT:
                 self.close_connection = True
@@ -380,7 +455,9 @@ class Handler(BaseHTTPRequestHandler):
 
 HELP = """Giao diện web cho Second Brain (chạy cục bộ).
 
-    python3 server.py          mở http://127.0.0.1:8787, Ctrl+C để dừng
+    python3 server.py          chạy ở http://127.0.0.1:8787, Ctrl+C để dừng
+    python3 server.py --link   in đường link có mã để mở trang
+    (chạy nền / dừng / xem trạng thái: bash web.sh start|stop|status|link)
 
 Biến môi trường:
     BRAIN_PORT          cổng, mặc định 8787
@@ -396,11 +473,17 @@ Xem từ máy khác qua đường hầm SSH, đừng mở ra 0.0.0.0:
 
 
 def main():
+    global MA
     if {"-h", "--help"} & set(sys.argv[1:]):
         print(HELP)
         return
+    os.umask(0o077)
     host = os.environ.get("BRAIN_HOST", "127.0.0.1")
     port = brain.so_env("BRAIN_PORT", 8787, 1)
+    MA = doc_ma()
+    if "--link" in sys.argv[1:]:
+        print(duong_link(host, port))
+        return
     if host not in HOST_OK:
         print(f"[CẢNH BÁO] Đang nghe trên {host}. Giao diện này KHÔNG có đăng nhập — "
               "chỉ làm vậy khi đã có HTTPS và lớp xác thực phía trước.", file=sys.stderr)
@@ -420,7 +503,9 @@ def main():
               file=sys.stderr)
         sys.exit(2)
     print(f"Second Brain: http://{host}:{port}   ({total} ghi chú, kho: {brain.DB_PATH})")
-    print("Dừng: Ctrl+C")
+    # mã chỉ in ra màn hình thật; chạy nền thì log có thể nằm chỗ người khác đọc được
+    print("Mở trang: " + (duong_link(host, port) if sys.stdout.isatty() else "chạy  web.sh link  để lấy đường link"))
+    print("Dừng: Ctrl+C", flush=True)
     try:
         srv.serve_forever()
     finally:

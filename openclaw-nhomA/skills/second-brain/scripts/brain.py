@@ -463,6 +463,9 @@ def cmd_restore(a, db):
                  "thu_muc": str(DELETED_DIR)}, 2)
         f = ds[-1]
     d = doc_json(f)
+    trung = db.execute("SELECT id FROM notes WHERE title=? AND content=?", (d.get("title"), d.get("content"))).fetchone()
+    if trung:                    # chạy restore hai lần không được đẻ ra hai bản giống hệt
+        out({"ok": True, "lay_lai": trung["id"], "note": "Ghi chú này đã có trong kho, không thêm bản trùng"})
     nid = d.get("id") or uuid.uuid4().hex[:12]
     if db.execute("SELECT 1 FROM notes WHERE id=?", (nid,)).fetchone():
         nid = uuid.uuid4().hex[:12]
@@ -690,12 +693,91 @@ def cmd_merge(a, db):
          "note": "Ghi chú nguồn nằm ở kho lưu, không mất. Lấy lại: unarchive --id " + a.from_id})
 
 
+def ban_sao_sqlite(db):
+    """Bản sao .sqlite NHẤT QUÁN của cả kho, dùng API backup của SQLite.
+
+    Không được chép thẳng notes.sqlite: kho chạy chế độ WAL, ghi chú mới có thể còn nằm trong
+    notes.sqlite-wal — chép mỗi file chính là được một kho thiếu, thậm chí rỗng.
+    Chỉ giữ MỘT file (ghi đè mỗi lần) để không tốn đĩa; lịch sử nhiều bản đã có ở *.json.gz.
+    """
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    dest = BACKUP_DIR / "notes-latest.sqlite"
+    tmp = dest.with_name(dest.name + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
+    dst = sqlite3.connect(tmp)
+    try:
+        db.backup(dst)
+        dst.execute("PRAGMA journal_mode=DELETE")   # một file duy nhất, mở ở đâu cũng đủ dữ liệu
+    finally:
+        dst.close()
+    os.replace(tmp, dest)                           # thay một lần: đang chép dở thì bản cũ vẫn còn nguyên
+    return dest
+
+
 def cmd_snapshot(a, db):
     """Sao lưu chủ động — để đặt lịch chạy hằng ngày trên VPS."""
     b = backup(db, a.reason)
+    s = ban_sao_sqlite(db)
     tong = db.execute("SELECT count(*) c FROM notes").fetchone()["c"]
-    out({"ok": True, "file": str(b), "ghi_chu_trong_ban": tong,
-         "giu_lai": KEEP_BACKUPS, "thu_muc": str(BACKUP_DIR)})
+    out({"ok": True, "file": str(b), "ban_sao_sqlite": str(s), "ghi_chu_trong_ban": tong,
+         "giu_lai": KEEP_BACKUPS, "thu_muc": str(BACKUP_DIR),
+         "note": "Kéo về máy cá nhân file ban_sao_sqlite (KHÔNG chép thẳng notes.sqlite)."})
+
+
+def cmd_doctor(a, db):
+    """Khám sức khoẻ kho: file có hỏng không, chỉ mục tìm kiếm có khớp không, sao lưu có đều không."""
+    loi, nhac, da_sua = [], [], []
+    kq = db.execute("PRAGMA integrity_check").fetchone()[0]
+    if kq != "ok":
+        loi.append(f"File kho hỏng ({kq}). Dừng ghi; khôi phục: import --file <bản .json.gz mới nhất trong backups/> "
+                   "vào kho mới, hoặc dùng backups/notes-latest.sqlite")
+    try:
+        # rank=1: so chỉ mục với bảng notes thật (không có nó, FTS5 chỉ tự kiểm nội bộ và bỏ sót chỗ lệch)
+        db.execute("INSERT INTO notes_fts(notes_fts, rank) VALUES('integrity-check', 1)")
+    except sqlite3.DatabaseError:
+        # dựng lại chỉ mục chỉ đọc từ bảng notes, không đụng ghi chú — sai thì cũng vô hại
+        if a.fix:
+            db.execute("INSERT INTO notes_fts(notes_fts) VALUES('rebuild')")
+            db.commit()
+            da_sua.append("Đã dựng lại chỉ mục tìm kiếm")
+        else:
+            loi.append("Chỉ mục tìm kiếm lệch với ghi chú (tìm sẽ thiếu kết quả). Sửa: doctor --fix")
+    mo_coi = db.execute("SELECT count(*) FROM links l WHERE NOT EXISTS(SELECT 1 FROM notes WHERE id=l.a) "
+                        "OR NOT EXISTS(SELECT 1 FROM notes WHERE id=l.b)").fetchone()[0]
+    if mo_coi:
+        if a.fix:
+            db.execute("DELETE FROM links WHERE a NOT IN (SELECT id FROM notes) OR b NOT IN (SELECT id FROM notes)")
+            db.commit()
+            da_sua.append(f"Đã bỏ {mo_coi} liên kết trỏ tới ghi chú không còn")
+        else:
+            nhac.append(f"{mo_coi} liên kết trỏ tới ghi chú không còn. Sửa: doctor --fix")
+    for f in (DB_PATH, BACKUP_DIR, DELETED_DIR):
+        try:
+            if f.exists() and f.stat().st_mode & 0o077:
+                nhac.append(f"{f} user khác đọc được — chmod {'700' if f.is_dir() else '600'} {f}")
+        except OSError:
+            pass
+    ds = ds_backup()
+    if not ds:
+        nhac.append("Chưa có bản sao lưu nào. Chạy: snapshot, và đặt lịch hằng ngày (xem SKILL.md)")
+    else:
+        tuoi = (datetime.now().timestamp() - max(f.stat().st_mtime for f in ds)) / 86400
+        if tuoi > 2:
+            nhac.append(f"Bản sao lưu mới nhất đã {tuoi:.0f} ngày — lịch sao lưu hằng ngày có thể đã ngừng (crontab -l)")
+    if not (BACKUP_DIR / "notes-latest.sqlite").is_file():
+        nhac.append("Chưa có backups/notes-latest.sqlite để kéo về máy cá nhân. Chạy: snapshot")
+    try:
+        du = os.statvfs(DB_PATH.parent)
+        trong_mb = du.f_bavail * du.f_frsize / 1024 / 1024
+        if trong_mb < 200:
+            nhac.append(f"Ổ đĩa chỉ còn {trong_mb:.0f} MB — hết đĩa là không ghi được ghi chú")
+    except OSError:
+        pass
+    out({"ok": not loi, "loi": loi, "nhac": nhac, "da_sua": da_sua,
+         "ghi_chu": db.execute(f"SELECT count(*) FROM notes WHERE {CON}").fetchone()[0],
+         "ket_luan": "Kho khoẻ" if not loi and not nhac else ("Có lỗi cần xử lý" if loi else "Kho ổn, có vài việc nên làm")},
+        0 if not loi else 1)
 
 
 def cmd_export(a, db):
@@ -851,6 +933,8 @@ def main():
     s.add_argument("--since", type=int, help="chỉ lấy ghi chú trong N ngày gần đây"); s.set_defaults(fn=cmd_export)
     s = sub.add_parser("import"); s.add_argument("--file", required=True); s.set_defaults(fn=cmd_import)
     s = sub.add_parser("stats"); s.set_defaults(fn=cmd_stats)
+    s = sub.add_parser("doctor", help="khám sức khoẻ kho"); s.add_argument("--fix", action="store_true")
+    s.set_defaults(fn=cmd_doctor)
     a = ap.parse_args()
     try:
         db = connect()

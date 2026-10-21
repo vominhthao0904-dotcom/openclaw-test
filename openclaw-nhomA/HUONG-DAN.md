@@ -20,23 +20,51 @@ Không cần gõ lệnh. Mây tự nhận ra việc nào cần skill nào.
 
 ---
 
+## Second Brain nên chạy ở đâu?
+
+**Kết luận: kho đặt trên VPS, cùng chỗ với OpenClaw (đúng như gói này đang cài). Trang web chỉ bật khi cần, xem qua đường hầm SSH. Mỗi tuần kéo một bản sao về máy cá nhân.**
+
+| Phương án | Mây ghi/tìm được lúc nào | An toàn | Bền lâu | Đánh giá |
+|---|---|---|---|---|
+| **Kho trên VPS + web qua đường hầm SSH** (gói này) | **24/7**, kể cả khi máy tính anh tắt | Không mở cổng nào ra Internet; trang web có mã truy cập; kho chỉ chủ sở hữu đọc được | Sao lưu tự động hằng ngày trên VPS + bản kéo về máy | **Tốt nhất** |
+| Kho trên máy tính cá nhân | Chỉ khi máy bật **và** nối được với VPS | Tốt | Mất khi hỏng ổ, nếu không tự sao lưu | Mây không với tới kho khi anh ra ngoài — mất lý do tồn tại của "bộ não thứ hai" |
+| Trang web công khai (Netlify, hosting, mở `0.0.0.0`) | 24/7 | **Kém**: kho nằm trên mạng, ai dò được là thử được; bản cũ đã từng lộ khoá theo đường này | Phụ thuộc dịch vụ ngoài | **Không dùng** |
+| Notion / Google Docs | 24/7 | Dữ liệu ở bên thứ ba, cần khoá API | Tốt | Mây tìm chậm, tốn lượt gọi API, không tìm toàn văn tiếng Việt được như SQLite |
+
+Vì sao cách này bền lâu:
+- **Một file SQLite** — định dạng được hỗ trợ ít nhất tới năm 2050, mở được bằng mọi ngôn ngữ, không phụ thuộc dịch vụ nào.
+- **Ba lớp giữ dữ liệu**: cất kho thay vì xoá → xoá hẳn vẫn còn bản riêng trong `deleted/` → sao lưu hằng ngày `backups/` + bản `.sqlite` kéo về máy anh.
+- **`doctor`** khám định kỳ: báo ngay khi file hỏng, chỉ mục lệch, hay lịch sao lưu ngừng chạy.
+- Xuất được ra **Markdown** đọc bằng mắt (`export --all`) — kể cả khi không còn phần mềm nào.
+
+Muốn xem trang web mà không cần SSH (ví dụ trên điện thoại): cách an toàn là cài **Tailscale** trên VPS và điện thoại (mạng riêng, miễn phí cho cá nhân) rồi dùng đường hầm qua đó. **Đừng** mở cổng ra Internet.
+
+---
+
 ## Mở giao diện web của Second Brain
 
-Giao diện này giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên máy anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
+Giao diện này giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
 
-**Trên VPS**, chạy nền:
+**Bước 1 — trên VPS**, bật trang (chạy nền):
 ```bash
-nohup python3 ~/.openclaw/workspace/skills/second-brain/scripts/server.py \
-  >/tmp/brain-web.log 2>&1 &
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh start
 ```
+Nó in ra lệnh đường hầm và **đường link có mã**, dạng `http://127.0.0.1:8787/?t=Abc…`. Quên link thì chạy `web.sh link`.
 
-Server chỉ nghe `127.0.0.1` — **cố ý**, vì trang này không có đăng nhập. Để xem từ máy cá nhân, mở một đường hầm SSH (Termius cũng làm được qua mục Port Forwarding):
-
+**Bước 2 — trên máy cá nhân**, mở đường hầm SSH (Termius: mục Port Forwarding, Local, 8787 → 127.0.0.1:8787):
 ```bash
 ssh -N -L 8787:127.0.0.1:8787 root@IP_VPS
 ```
 
-Giữ cửa sổ đó mở, rồi vào trình duyệt: **http://127.0.0.1:8787**
+**Bước 3** — giữ cửa sổ đó mở, dán **đường link có mã** vào trình duyệt. Chỉ cần lần đầu: trình duyệt nhớ (cookie), lần sau vào thẳng **http://127.0.0.1:8787**.
+
+Vì sao có mã: server chỉ nghe `127.0.0.1`, nhưng mọi chương trình **trên chính VPS** (n8n, một app bị hack…) vẫn gọi được địa chỉ đó. Có mã thì phải biết mã mới đọc được kho. Đường link có mã = chìa khoá kho: đừng dán vào nhóm chat. Lỡ lộ thì đổi mã:
+```bash
+rm ~/.openclaw/workspace/second-brain/.web-token
+bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh restart
+```
+
+Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `web.sh stop`. Xem đang chạy không và tốn bao nhiêu RAM: `web.sh status`.
 
 Trong trang có bốn ô ở cột trái:
 
@@ -49,9 +77,9 @@ Trên đồ thị: bấm một chấm để mở ghi chú; bấm tên nhóm ở 
 
 Trong thẻ chi tiết có **Sửa** (đổi nhóm, thẻ, nguồn, nội dung ngay tại chỗ), **Nhớ rồi** (đánh dấu đã ôn) và **Cất vào kho lưu**.
 
-Đổi cổng khi 8787 đã bận: `BRAIN_PORT=9090 python3 .../server.py` (nhớ đổi cả hai số trong lệnh `ssh -L`).
+Đổi cổng khi 8787 đã bận: `BRAIN_PORT=9090 bash .../web.sh start` (nhớ đổi cả hai số trong lệnh `ssh -L`).
 
-> **Đừng** đặt `BRAIN_HOST=0.0.0.0` để vào thẳng bằng IP VPS. Làm vậy là mở toàn bộ kho ghi chú cho bất kỳ ai quét được cổng đó. Đường hầm SSH ở trên an toàn hơn và cũng nhanh như nhau. (Nếu lỡ làm, `bash kiemtra.sh` sẽ báo CHƯA ĐẠT ở phần An toàn.)
+> **Đừng** đặt `BRAIN_HOST=0.0.0.0` để vào thẳng bằng IP VPS: mã truy cập đi qua mạng không mã hoá, ai nghe lén được là có chìa khoá kho. `web.sh` từ chối chạy kiểu đó; chạy tay thì `bash kiemtra.sh` báo CHƯA ĐẠT ở phần An toàn. Đường hầm SSH mã hoá toàn bộ và cũng nhanh như nhau.
 
 ---
 
@@ -161,10 +189,17 @@ crontab -e
 0 2 * * * python3 ~/.openclaw/workspace/skills/second-brain/scripts/brain.py snapshot >/dev/null 2>&1
 ```
 
-Mỗi tháng kéo về máy một bản cho chắc:
+Mỗi tuần kéo về máy cá nhân một bản (Termius/WinSCP: kéo file này qua SFTP cũng được):
 ```bash
-scp root@IP_VPS:~/.openclaw/workspace/second-brain/notes.sqlite ~/backup-brain.sqlite
+scp root@IP_VPS:~/.openclaw/workspace/second-brain/backups/notes-latest.sqlite ~/backup-brain-$(date +%F).sqlite
 ```
+> **Đừng** chép thẳng `notes.sqlite`. Kho chạy chế độ WAL: ghi chú mới có thể còn nằm trong file `notes.sqlite-wal` bên cạnh, chép mỗi file chính là được bản thiếu — đã thử, có lúc **rỗng hoàn toàn**. `notes-latest.sqlite` do lệnh `snapshot` tạo ra là bản đầy đủ, một file duy nhất.
+
+Mỗi tháng khám sức khoẻ kho một lần (hoặc nhờ Mây: *"kiểm tra kho ghi chú giúp anh"*):
+```bash
+$BR doctor
+```
+Ra `"Kho khoẻ"` là xong. Có dòng `loi` thì chạy `$BR doctor --fix` (chỉ dựng lại chỉ mục tìm kiếm, không đụng nội dung ghi chú). Báo *"Bản sao lưu mới nhất đã N ngày"* nghĩa là lịch cron đã ngừng — kiểm bằng `crontab -l`.
 Hoặc xuất ra Markdown đọc được bằng mắt, không cần phần mềm gì:
 ```bash
 $BR export --out brain-full.md --all
@@ -176,7 +211,9 @@ Ba thư mục cạnh kho, nên biết để khỏi nhầm:
 |---|---|---|
 | `notes.sqlite` | Kho thật, gồm cả ghi chú đã cất kho | Không |
 | `deleted/` | Mỗi ghi chú xoá hẳn một file riêng | **Không bao giờ** |
-| `backups/` | Ảnh chụp toàn kho | Có — giữ 60 bản gần nhất |
+| `backups/*.json.gz` | Ảnh chụp toàn kho | Có — giữ 60 bản gần nhất |
+| `backups/notes-latest.sqlite` | Bản sao đầy đủ mới nhất — **file để kéo về máy** | Ghi đè mỗi lần `snapshot` |
+| `.web-token` | Mã truy cập trang web | Không |
 
 `backups/` là để cứu hộ cả kho khi hỏng file, **không phải** nơi giữ ghi chú đã xoá — cái đó nằm ở `deleted/`.
 

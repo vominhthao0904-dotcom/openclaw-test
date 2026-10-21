@@ -33,7 +33,7 @@ ok()   { echo "ĐẠT"; DAT=$((DAT+1)); }
 hong() { echo "CHƯA ĐẠT — $1"; HONG=$((HONG+1)); }
 
 echo "======================================================================"
-echo " KIỂM TRA 4 SKILL NHÓM A (25 mục)"
+echo " KIỂM TRA 4 SKILL NHÓM A (26 mục)"
 echo " Thư mục skills: $SKILLS_DIR"
 echo "======================================================================"
 
@@ -198,6 +198,11 @@ PY
 if [ "$MO" = "mo" ]; then
   hong "cổng ${BRAIN_PORT:-8787} đang mở cho mọi địa chỉ — ai biết IP là đọc được kho. Tắt (pkill -f second-brain/scripts/server.py) rồi chạy lại KHÔNG đặt BRAIN_HOST"
 else ok; fi
+
+pad "  sao lưu hằng ngày đã bật" 32
+if crontab -l 2>/dev/null | grep -v '^[[:space:]]*#' | grep -q 'second-brain/scripts/brain.py snapshot'; then ok
+elif ! command -v crontab >/dev/null 2>&1; then hong "máy chưa có cron — cài: sudo apt install -y cron, rồi làm Bước 5 trong CAI-DAT.md"
+else hong "chưa có lịch sao lưu — làm Bước 5 trong CAI-DAT.md (dán một khối lệnh)"; fi
 
 # ---------- KẾT LUẬN ----------
 echo

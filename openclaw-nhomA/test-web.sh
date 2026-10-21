@@ -68,6 +68,16 @@ check "POST từ Origin lạ bị chặn" \
   'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: https://ke-xau.example" -d "{}"' "403"
 check "POST Host lạ bị chặn (DNS rebinding)" \
   'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Host: ke-xau.example" -d "{}"' "403"
+check "GET Host lạ không đọc được kho (DNS rebinding)" \
+  'curl -sS -o /dev/null -w "%{http_code}" -H "Host: ke-xau.example" "$U/api/notes"' "403"
+check "GET Host lạ không tìm được trong kho" \
+  'curl -sS -o /dev/null -w "%{http_code}" -H "Host: ke-xau.example:$PORT" "$U/api/search?q=hero"' "403"
+check "Host localhost:cổng vẫn dùng được" \
+  'curl -sS -o /dev/null -w "%{http_code}" -H "Host: localhost:$PORT" "$U/api/notes"' "200"
+check "cấm nhúng vào iframe (X-Frame-Options)" \
+  'curl -sS -D - -o /dev/null "$U/" | tr -d "\r" | grep -i "^x-frame-options:" | cut -d" " -f2' "DENY"
+check "có Content-Security-Policy" \
+  'curl -sS -D - -o /dev/null "$U/" | grep -ci "^content-security-policy:"' "1"
 check "POST đúng chuẩn thì qua" \
   'post /api/add "{\"title\":\"Thử\",\"content\":\"Nội dung thử\"}" | jq_ "d[\"ok\"]"' "True"
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Validate every skill folder: frontmatter, name==folder, single-line JSON metadata, syntax, leftovers."""
-import json, re, subprocess, sys
+import json, re, shutil, subprocess, sys
 from pathlib import Path
+
+NODE = shutil.which("node")
 
 root = Path(__file__).resolve().parent / "skills"
 bad = 0
@@ -37,6 +39,10 @@ for d in dirs:
                     errs.append(f"metadata không phải JSON một dòng hợp lệ: {e}")
     skip_dirs = {"node_modules", ".next", "__pycache__"}
     for f in d.rglob("*"):
+        # symlink có thể trỏ ra ngoài gói (ví dụ ~/.ssh) rồi bị chép theo vào workspace
+        if f.is_symlink():
+            errs.append(f"symlink không được phép: {f.relative_to(d)}")
+            continue
         if not f.is_file() or f.suffix in (".png", ".jpg", ".jpeg", ".webp", ".mp3", ".mp4", ".pyc", ".ico", ".woff", ".woff2"):
             continue
         if any(part in skip_dirs for part in f.parts):
@@ -45,8 +51,10 @@ for d in dirs:
             r = subprocess.run([sys.executable, "-m", "py_compile", str(f)], capture_output=True, text=True)
             if r.returncode: errs.append(f"py_compile {f.name}: {r.stderr.strip()[-120:]}")
         elif f.suffix in (".mjs", ".js"):
-            r = subprocess.run(["node", "--check", str(f)], capture_output=True, text=True)
-            if r.returncode: errs.append(f"node --check {f.name}: {r.stderr.strip()[-120:]}")
+            # node không bắt buộc: thiếu node thì bỏ qua bước này, đừng làm hỏng cả việc cài
+            if NODE:
+                r = subprocess.run([NODE, "--check", str(f)], capture_output=True, text=True)
+                if r.returncode: errs.append(f"node --check {f.name}: {r.stderr.strip()[-120:]}")
         elif f.suffix == ".sh":
             r = subprocess.run(["bash", "-n", str(f)], capture_output=True, text=True)
             if r.returncode: errs.append(f"bash -n {f.name}: {r.stderr.strip()[-120:]}")

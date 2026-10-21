@@ -51,7 +51,30 @@ def out(obj, code=0):
     sys.exit(code)
 
 
+def bao_ve_quyen():
+    """Kho là dữ liệu riêng: chỉ chủ sở hữu đọc được.
+
+    Tạo mới thì umask 077 lo. Kho tạo bằng bản cũ (thường 644 — user nào trên VPS cũng đọc được)
+    thì siết lại, nhưng CHỈ đụng vào file của chính kho, không bao giờ chmod thư mục cha
+    (SECOND_BRAIN_DB có thể trỏ vào /tmp hay một thư mục dùng chung).
+    """
+    for f in (DB_PATH, Path(str(DB_PATH) + "-wal"), Path(str(DB_PATH) + "-shm")):
+        try:
+            if f.is_file() and f.stat().st_mode & 0o077:
+                f.chmod(0o600)
+        except OSError:
+            pass
+    if DB_PATH.parent == WORKSPACE / "second-brain":        # thư mục kho mặc định là của skill này
+        for d in (DB_PATH.parent, BACKUP_DIR, DELETED_DIR):
+            try:
+                if d.is_dir() and d.stat().st_mode & 0o077:
+                    d.chmod(0o700)
+            except OSError:
+                pass
+
+
 def connect():
+    os.umask(0o077)
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     # timeout: trang web và lệnh dòng lệnh có thể ghi cùng lúc — chờ nhau thay vì báo "database is locked"
     db = sqlite3.connect(DB_PATH, timeout=20)
@@ -75,6 +98,7 @@ def connect():
         INSERT INTO notes_fts(rowid,title,content,tags,category) VALUES (new.rowid,new.title,new.content,new.tags,new.category); END;
     """)
     nang_cap(db)
+    bao_ve_quyen()
     return db
 
 
@@ -196,36 +220,85 @@ def rut_gon(s, n=160):
 
 
 STOP = set("và của là các có cho một những được với thì để khi này đó trong nhưng cũng như về từ nếu bạn tôi anh em mình "
-           "the and for with that this from you your are was".split())
+           "không phải người nhiều trên dưới theo bằng hoặc nhau luôn chỉ thôi rằng việc điều cách hơn lại mới chưa "
+           "thấy biết muốn giúp nhất thành đang đều vẫn rồi nên sẽ còn ra vào lên xuống qua tại bị do vì nào gì ai "
+           "làm hết sang "
+           "đây kia vậy thế rất quá lắm hãy đừng cần nữa mà hay ở đã the and for with that this from you your are was "
+           "have has not but can will all any into than then them they what when which".split())
+
+
+def _tu(text):
+    return re.findall(r"\w+", (text or "").lower())[:20000]
 
 
 def tu_khoa(text, n=8):
+    """Từ khoá đặc trưng của một đoạn văn.
+
+    Tiếng Việt là tiếng đơn âm: "phụ đề", "dấu phẩy", "bất động sản" mới là đơn vị nghĩa, còn từng
+    âm tiết ("phụ", "đề") thì ngắn và mơ hồ. Bản cũ chỉ lấy từ ≥4 ký tự nên gần như bỏ sót hết từ
+    tiếng Việt. Ở đây lấy cả cụm 2 âm tiết liền nhau (không chứa từ vô nghĩa) lẫn từ đơn dài.
+    """
     # Counter chứ không phải words.count() trong vòng lặp: ghi chú dài vài nghìn từ
     # mà đếm kiểu cũ là O(n²), đủ để treo máy.
-    words = [w for w in re.findall(r"\w{4,}", (text or "").lower())[:20000] if w not in STOP]
-    return [w for w, _ in Counter(words).most_common(n)]
+    ws = _tu(text)
+    dem = Counter(w for w in ws if len(w) >= 4 and w not in STOP and not w.isdigit())
+    for x, y in zip(ws, ws[1:]):
+        if x in STOP or y in STOP or len(x) < 2 or len(y) < 2 or (x.isdigit() and y.isdigit()):
+            continue
+        dem[x + " " + y] += 1.5          # cụm từ mang nghĩa rõ hơn từ đơn
+    return [w for w, _ in dem.most_common(n)]
 
 
-def tim_tuong_tu(db, title, content, bo_qua=None, limit=3):
-    """Tìm ghi chú đã có gần giống — để cảnh báo trùng, không chặn."""
-    top = tu_khoa(title + " " + content)
-    if not top:
+def dac_trung(text, n=24):
+    """Dấu vân tay của một ghi chú để so trùng: từ đơn dài + cặp âm tiết liền nhau.
+
+    Âm tiết tiếng Việt đứng riêng ("ngân", "phụ") quá mơ hồ — so bằng chúng thì hai ghi chú chẳng
+    liên quan cũng bị coi là giống. Cặp liền nhau ("dấu chấm", "mili giây") mới giữ được nghĩa,
+    nên ghi chú viết lại bằng câu khác vẫn khớp mà ghi chú khác chủ đề thì không.
+    """
+    ws, dem = _tu(text), Counter()
+    for w in ws:
+        if len(w) >= 4 and w not in STOP and not w.isdigit():
+            dem[w] += 1
+    for x, y in zip(ws, ws[1:]):
+        if x not in STOP and y not in STOP and len(x) >= 2 and len(y) >= 2:
+            dem[x + " " + y] += 1
+    return [w for w, _ in dem.most_common(n)]
+
+
+def _van_ban(*phan):
+    """Chuỗi để so từ khoá: chữ thường, mọi khoảng trắng/xuống dòng/dấu câu gộp thành một dấu cách."""
+    return " " + " ".join(_tu(" ".join(p or "" for p in phan))) + " "
+
+
+def _co(w, vb):
+    return f" {w} " in vb
+
+
+def tim_tuong_tu(db, title, content, bo_qua=None, limit=3, nguong=0.5):
+    """Tìm ghi chú đã có gần giống — để cảnh báo trùng, không chặn.
+
+    Cùng thước đo với lệnh duplicates: tỉ lệ từ đặc trưng trùng nhau trên ghi chú ngắn hơn.
+    """
+    mine = dac_trung(title + " " + content)
+    if len(mine) < 3:
         return []
-    q = " OR ".join(f'"{w}"' for w in top)
+    q = " OR ".join(f'"{w}"' for w in mine)
     try:
-        rows = db.execute("SELECT n.id,n.title,n.content,n.tags FROM notes_fts f JOIN notes n ON n.rowid=f.rowid "
+        rows = db.execute("SELECT n.id,n.title,n.content FROM notes_fts f JOIN notes n ON n.rowid=f.rowid "
                           f"WHERE notes_fts MATCH ? AND n.{CON} ORDER BY bm25(notes_fts) LIMIT 30", (q,)).fetchall()
     except sqlite3.OperationalError:
         return []
-    ra = []
+    A, ra = set(mine), []
     for x in rows:
         if bo_qua and x["id"] == bo_qua:
             continue
-        text = (x["title"] + " " + x["content"] + " " + (x["tags"] or "")).lower()
-        chung = [w for w in top if w in text]
-        if len(chung) >= max(3, len(top) // 2):          # trùng quá nửa từ khoá mới coi là giống
-            ra.append({"id": x["id"], "title": x["title"], "shared_keywords": chung})
-    ra.sort(key=lambda d: -len(d["shared_keywords"]))
+        B = set(dac_trung(x["title"] + " " + x["content"]))
+        chung = A & B
+        if B and len(chung) >= 3 and len(chung) / min(len(A), len(B)) >= nguong:
+            ra.append({"id": x["id"], "title": x["title"], "giong": round(len(chung) / min(len(A), len(B)), 2),
+                       "shared_keywords": sorted(chung)[:8]})
+    ra.sort(key=lambda d: -d["giong"])
     return ra[:limit]
 
 
@@ -244,8 +317,9 @@ def cmd_add(a, db):
     kq = {"ok": True, "id": nid, "title": a.title.strip(), "db": str(DB_PATH)}
     if giong:
         kq["similar_existing"] = giong
-        kq["hint"] = ("Kho đã có ghi chú gần giống. Hỏi người dùng: bổ sung vào ghi chú cũ "
-                      "(edit --append) và xoá ghi chú vừa tạo, hay giữ cả hai rồi link lại?")
+        kq["hint"] = ("Kho đã có ghi chú gần giống. Hỏi người dùng: gộp vào ghi chú cũ "
+                      f"(merge --from {nid} --into <id cũ> --yes — ghi chú vừa tạo được cất kho, không mất), "
+                      "hay giữ cả hai rồi link lại?")
     out(kq)
 
 
@@ -271,13 +345,26 @@ def cmd_list(a, db):
 
 
 def _tim(db, q, limit, ca_kho=False):
+    """Tìm toàn văn. Trả về (các dòng, chế độ).
+
+    chế độ "chinh_xac": mọi từ đều phải có (FTS mặc định AND).
+    chế độ "mo_rong":   không ghi chú nào có đủ mọi từ, nên lấy ghi chú có NHIỀU từ nhất (OR, xếp theo bm25).
+    Nhờ vậy câu hỏi dài kiểu "anh từng ghi gì về lỗi phụ đề không hiện" vẫn ra kết quả,
+    thay vì agent phải đoán lại từ khoá nhiều lần.
+    """
     sql = ("SELECT n.*, snippet(notes_fts, 1, '«', '»', '…', 14) AS snip FROM notes_fts f "
            "JOIN notes n ON n.rowid = f.rowid WHERE notes_fts MATCH ?" +
            ("" if ca_kho else f" AND n.{CON}") + " ORDER BY bm25(notes_fts) LIMIT ?")
     try:
-        return db.execute(sql, (q, limit)).fetchall()
+        rows = db.execute(sql, (q, limit)).fetchall()
     except sqlite3.OperationalError:   # user typed FTS operators wrongly -> fall back to a plain phrase
-        return db.execute(sql, ('"' + q.replace('"', " ") + '"', limit)).fetchall()
+        rows = db.execute(sql, ('"' + q.replace('"', " ") + '"', limit)).fetchall()
+    if rows:
+        return rows, "chinh_xac"
+    tu = [w for w in dict.fromkeys(_tu(q)) if w not in STOP]
+    if len(tu) < 2:
+        return rows, "chinh_xac"
+    return db.execute(sql, (" OR ".join(f'"{w}"' for w in tu[:16]), limit)).fetchall(), "mo_rong"
 
 
 def cmd_search(a, db):
@@ -285,12 +372,17 @@ def cmd_search(a, db):
     if not q:
         out({"ok": False, "error": "Thiếu từ khoá"}, 2)
     notes = []
-    for r in _tim(db, q, a.limit, a.all):
+    rows, che_do = _tim(db, q, a.limit, a.all)
+    for r in rows:
         d = row_dict(r, snippet=r["snip"])
         d.pop("snip", None)
         d["content"] = d["content"] if a.full else rut_gon(d["content"], 200)
         notes.append(d)
-    out({"ok": True, "query": q, "count": len(notes), "notes": notes})
+    kq = {"ok": True, "query": q, "count": len(notes), "che_do": che_do, "notes": notes}
+    if che_do == "mo_rong" and notes:
+        kq["note"] = ("Không ghi chú nào chứa đủ mọi từ; đây là các ghi chú khớp NHIỀU từ nhất. "
+                      "Đọc kỹ trước khi dẫn — có thể chỉ liên quan một phần.")
+    out(kq)
 
 
 def cmd_show(a, db):
@@ -412,8 +504,8 @@ def cmd_suggest_links(a, db):
     for x in rows:  # require real overlap, not a single common word
         if x["id"] in da_noi:
             continue
-        text = (x["title"] + " " + x["content"] + " " + (x["tags"] or "")).lower()
-        shared = [w for w in top if w in text]
+        vb = _van_ban(x["title"], x["content"], (x["tags"] or "").replace("-", " "))
+        shared = [w for w in top if _co(w, vb)]
         if len(shared) >= 2:
             scored.append({"id": x["id"], "title": x["title"], "shared_keywords": shared})
     scored.sort(key=lambda d: -len(d["shared_keywords"]))
@@ -529,7 +621,7 @@ def cmd_duplicates(a, db):
     Thay vào đó mỗi ghi chú chỉ hỏi FTS lấy vài ứng viên gần nhất rồi mới so kỹ.
     """
     rows = db.execute(f"SELECT id,title,content,tags FROM notes WHERE {CON}").fetchall()
-    bo = {r["id"]: set(tu_khoa(r["title"] + " " + r["content"], 14)) for r in rows}
+    bo = {r["id"]: set(dac_trung(r["title"] + " " + r["content"])) for r in rows}
     ten = {r["id"]: r["title"] for r in rows}
 
     # chỉ mục ngược: từ -> các ghi chú chứa nó
@@ -746,7 +838,7 @@ def main():
     s.add_argument("--to", dest="to_tag", required=True); s.add_argument("--yes", action="store_true")
     s.set_defaults(fn=cmd_retag)
     s = sub.add_parser("duplicates"); s.add_argument("--limit", type=int, default=20)
-    s.add_argument("--nguong", type=float, default=0.6, help="tỉ lệ từ khoá trùng, 0-1")
+    s.add_argument("--nguong", type=float, default=0.5, help="tỉ lệ từ khoá trùng, 0-1")
     s.set_defaults(fn=cmd_duplicates)
     s = sub.add_parser("merge"); s.add_argument("--from", dest="from_id", required=True)
     s.add_argument("--into", dest="into_id", required=True); s.add_argument("--yes", action="store_true")

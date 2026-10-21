@@ -11,7 +11,7 @@ NHOM_A=(second-brain pdf-extract-crop css-video-production pptx-deck-builder)
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dir) SKILLS_DIR="${2:-}"; shift 2 ;;
+    --dir) SKILLS_DIR="${2:?--dir cần đường dẫn}"; shift 2 ;;
     *) echo "Tham số lạ: $1"; exit 2 ;;
   esac
 done
@@ -108,7 +108,7 @@ for s in "${NHOM_A[@]}"; do
   pad "  $s" 26
   if [ -d "$SKILLS_DIR/$s" ]; then
     DA_CO=$((DA_CO+1))
-    luu "đã có sẵn — cài lại sẽ ghi đè phần script, DỮ LIỆU GHI CHÚ KHÔNG BỊ ĐỤNG"
+    luu "đã có sẵn — install.sh sẽ BỎ QUA; muốn nâng cấp thì chạy ./install.sh --force (bản cũ được sao lưu, ghi chú không bị đụng)"
   else
     ok "chưa có, cài mới"
   fi
@@ -143,12 +143,27 @@ kiem_bin() {
 }
 kiem_py() {
   pad "  python: $1" 26
-  python3 -c "import $1" 2>/dev/null && ok "có" || luu "chưa có — cài: pip install $2"
+  python3 -c "import $1" 2>/dev/null && ok "có" || luu "chưa có — cài: python3 -m pip install --user $2  (xem PHẦN 2, Bước 1)"
+}
+kiem_pip() {
+  pad "  pip" 26
+  python3 -m pip --version >/dev/null 2>&1 && ok "có" || luu "chưa có (cần cho python-pptx) — cài: sudo apt install -y python3-pip"
 }
 kiem_bin pdftotext poppler-utils
 kiem_bin pdftoppm  poppler-utils
 kiem_bin ffmpeg    ffmpeg
 kiem_bin ffprobe   ffmpeg
+pad "  ffmpeg có libass" 26
+if command -v ffmpeg >/dev/null 2>&1; then
+  ffmpeg -hide_banner -filters 2>/dev/null | grep -qE '^ *[.A-Z|]+ +ass ' && ok "có (in phụ đề được)" \
+    || luu "ffmpeg này không có bộ lọc ass — phụ đề sẽ không in được. Cài bản của Ubuntu: sudo apt install -y ffmpeg"
+else
+  luu "chưa có ffmpeg nên chưa kiểm được"
+fi
+pad "  font tiếng Việt" 26
+if command -v fc-list >/dev/null 2>&1 && fc-list 2>/dev/null | grep -qi "DejaVu Sans"; then ok "có DejaVu Sans"
+else luu "chưa thấy font DejaVu Sans — phụ đề có thể lỗi dấu. Cài: sudo apt install -y fonts-dejavu-core"; fi
+kiem_pip
 kiem_py  PIL  pillow
 kiem_py  pptx python-pptx
 
@@ -191,8 +206,8 @@ echo
 if [ "$HONG" -gt 0 ]; then
   echo " ĐỪNG CÀI VỘI. Sửa các dòng CHƯA ĐẠT ở trên rồi chạy lại script này."
 elif [ "$DA_CO" -gt 0 ]; then
-  echo " Cài được. Lưu ý: $DA_CO skill đã có sẵn, cài lại chỉ ghi đè script."
-  echo " Ghi chú trong kho KHÔNG bị đụng tới."
+  echo " Cài được. Lưu ý: $DA_CO skill đã có sẵn — muốn nâng cấp thì dùng ./install.sh --force"
+  echo " (bản cũ được sao lưu sang skill-backups/). Ghi chú trong kho KHÔNG bị đụng tới."
 else
   echo " Máy sẵn sàng. Sang PHẦN 2 trong CAI-DAT.md."
 fi

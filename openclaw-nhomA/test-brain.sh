@@ -168,6 +168,29 @@ check "retag đổi cả ghi chú trong kho lưu" \
   'BR retag --from mobile --to di-dong --yes >/dev/null; BR show --id '"$B"' | jq_ "\"di-dong\" in d[\"note\"][\"tags\"]"' "True"
 
 echo
+echo "13. TIẾNG VIỆT: TRÙNG LẶP VÀ TÌM CÂU DÀI"
+BR add --title "Phụ đề ASS dùng dấu chấm" --content "Mili giây trong file phụ đề ASS phải dùng dấu chấm, dấu phẩy làm ffmpeg ẩn hết phụ đề." --category Video --tags ass >/dev/null
+check "viết lại bằng câu khác vẫn bị nhắc trùng" \
+  'BR add --title "Lỗi phụ đề không hiện" --content "Phụ đề không hiện vì mili giây viết bằng dấu phẩy, đổi sang dấu chấm là được." | jq_ "len(d.get(\"similar_existing\",[])) >= 1"' "True"
+check "ghi chú khác chủ đề không bị nhắc trùng" \
+  'BR add --title "Khách Hải Châu hỏi lọc tổng" --content "Khách khu Hải Châu hay hỏi hệ lọc tổng trước, hỏi giá sau." | jq_ "len(d.get(\"similar_existing\",[]))"' "0"
+check "câu hỏi dài vẫn tìm ra (chế độ mở rộng)" \
+  'BR search "anh từng ghi gì về lỗi phụ đề ffmpeg" | jq_ "(d[\"che_do\"], d[\"count\"] >= 1)"' "('mo_rong', True)"
+check "đủ mọi từ thì tìm chính xác" \
+  'BR search "dấu chấm" | jq_ "d[\"che_do\"]"' "chinh_xac"
+
+echo
+echo "14. QUYỀN FILE — người dùng khác trên máy không đọc được kho"
+check "file kho chỉ chủ sở hữu đọc (600)" 'stat -c %a "$SECOND_BRAIN_DB"' "600"
+check "bản sao lưu chỉ chủ sở hữu đọc" \
+  'BR snapshot >/dev/null; stat -c %a "$(ls -t "$TMP"/backups/* | head -1)"' "600"
+chmod 644 "$SECOND_BRAIN_DB"
+check "kho cũ để 644 được tự siết lại" 'BR stats >/dev/null; stat -c %a "$SECOND_BRAIN_DB"' "600"
+mkdir -p "$TMP/chung"; chmod 755 "$TMP/chung"
+check "không đổi quyền thư mục dùng chung" \
+  'SECOND_BRAIN_DB="$TMP/chung/k.sqlite" BR stats >/dev/null; stat -c %a "$TMP/chung"' "755"
+
+echo
 echo "======================================================================"
 printf " ĐẠT: %-5s HỎNG: %s\n" "$OK" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo " Tất cả test đều qua." || echo " CÓ TEST HỎNG — xem các dòng HỎNG ở trên."

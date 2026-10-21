@@ -123,6 +123,7 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Việc** (mới): theo hạn, tích là xong.
 - **Nạp** (tab mới): kéo thả nhiều file .md/.txt hoặc dán, xem trước, nạp.
 - **Thẻ chi tiết**: đường dẫn nhóm bấm được, nhãn loại, thẻ bấm được, khối Nguồn · Trích dẫn · Hạn (quá hạn tô đỏ), ghi chú liên kết, sửa được mọi trường.
+- Màu chủ đạo **xanh dương · vàng kim · cam**: nền navy có chiều sâu, vàng kim cho nhấn/liên kết/mục đang chọn, cam cho nút hành động và lõi BRAIN; chữ trên nền cam dùng navy để đủ tương phản (trắng trên cam chỉ ~2,6:1).
 - Đã kiểm bằng trình duyệt thật (Chromium) ở 1440×900 và 390×844 (điện thoại), không lỗi JavaScript, chạy dưới CSP chặt.
 
 ### Bền vững

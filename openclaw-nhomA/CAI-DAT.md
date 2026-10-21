@@ -336,7 +336,7 @@ ssh -N -L 8787:127.0.0.1:8787 root@IP_VPS
 ```
 Giữ cửa sổ đó mở, dán **đường link có mã** vào trình duyệt. Thử mở **http://127.0.0.1:8787** trong một cửa sổ ẩn danh (không có mã): phải thấy trang báo "cần mở bằng đường link có mã" — đó là đúng.
 
-*Đạt khi:* thấy lõi BRAIN đỏ ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ. Bấm **Thư viện**: thấy cây vùng/nhóm bên trái kèm số ghi chú, bấm một nhóm thì chỉ hiện ghi chú của nhóm đó.
+*Đạt khi:* thấy nền xanh dương, lõi BRAIN màu cam ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ. Bấm **Thư viện**: thấy cây vùng/nhóm bên trái kèm số ghi chú, bấm một nhóm thì chỉ hiện ghi chú của nhóm đó.
 
 **Test 4 — phân loại.** Nói với Mây:
 > "Ghi lại: quy trình lắp hệ lọc tổng gồm khảo sát nước, chọn cột lọc, lắp bypass, xả rửa 30 phút, bàn giao."

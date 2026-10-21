@@ -22,19 +22,19 @@ const api = async (path, body) => {
   }
 };
 
-/* màu nhóm — lấy từ bảng sơn mài: vàng kim, vỏ trứng, xà cừ, son cam, bạc, hồng đất */
-const MAU = ['#C9A227', '#EFE4D4', '#7FA8A0', '#D97A3C', '#A9B6C9', '#C98FA0'];
+/* màu vùng — họ xanh dương / vàng kim / cam, xen kẽ để hai vòng cạnh nhau luôn khác tông */
+const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#8EC1F5', '#F2C46D', '#F5A65B'];
 
 /* Loại kiến thức — trục phân loại thứ hai (nhóm = chủ đề, loại = dạng kiến thức). */
 const LOAI = {
-  'kien-thuc': { ten: 'Kiến thức', mau: '#C9A227' },
-  'quy-trinh': { ten: 'Quy trình', mau: '#7FA8A0' },
-  'khai-niem': { ten: 'Khái niệm', mau: '#A9B6C9' },
-  'tai-lieu': { ten: 'Tài liệu', mau: '#D9C9A8' },
-  'y-tuong': { ten: 'Ý tưởng', mau: '#C98FA0' },
-  'viec': { ten: 'Việc', mau: '#D97A3C' },
-  'nguoi': { ten: 'Người', mau: '#EFE4D4' },
-  'nhat-ky': { ten: 'Nhật ký', mau: '#9C8B7A' },
+  'kien-thuc': { ten: 'Kiến thức', mau: '#D4AF37' },
+  'quy-trinh': { ten: 'Quy trình', mau: '#3E8EDE' },
+  'khai-niem': { ten: 'Khái niệm', mau: '#8EC1F5' },
+  'tai-lieu': { ten: 'Tài liệu', mau: '#E9D8A6' },
+  'y-tuong': { ten: 'Ý tưởng', mau: '#6FB1F2' },
+  'viec': { ten: 'Việc', mau: '#F07F2D' },
+  'nguoi': { ten: 'Người', mau: '#EEF3FA' },
+  'nhat-ky': { ten: 'Nhật ký', mau: '#8A9BB5' },
 };
 const tenLoai = (k) => LOAI[k]?.ten || 'Kiến thức';
 const vungCua = (c) => (c || '').split('/')[0] || 'Chưa xếp chỗ';
@@ -232,7 +232,7 @@ function datLech() {
 }
 const mepPhai = () => W - lechDich;   // mép phải của vùng còn nhìn thấy
 
-const DO = '#C0392B', VANG = '#C9A227', TRUNG = '#EFE4D4';
+const DO = '#F07F2D', VANG = '#D4AF37', TRUNG = '#EEF3FA';
 const rgba = (hex, a) => {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
@@ -287,22 +287,22 @@ function ve() {
     cx.beginPath();
     cx.moveTo(p.x, p.y);
     cx.lineTo(q.x, q.y);
-    cx.strokeStyle = 'rgba(239,228,212,.17)';
+    cx.strokeStyle = 'rgba(238,243,250,.17)';
     cx.lineWidth = 1;
     cx.stroke();
   });
 
   // lõi
   const quang = cx.createRadialGradient(CX, CY, 2, CX, CY, 56);
-  quang.addColorStop(0, 'rgba(192,57,43,.55)');
-  quang.addColorStop(1, 'rgba(192,57,43,0)');
+  quang.addColorStop(0, 'rgba(240,127,45,.55)');
+  quang.addColorStop(1, 'rgba(240,127,45,0)');
   cx.fillStyle = quang;
   cx.beginPath(); cx.arc(CX, CY, 56, 0, Math.PI * 2); cx.fill();
   cx.beginPath(); cx.arc(CX, CY, 21, 0, Math.PI * 2);
   cx.fillStyle = DO; cx.fill();
   cx.strokeStyle = VANG; cx.lineWidth = 1.4; cx.stroke();
-  cx.fillStyle = TRUNG;
-  cx.font = '600 10.5px "Be Vietnam Pro",sans-serif';
+  cx.fillStyle = '#0A1424';          // chữ navy trên lõi cam — đủ tương phản
+  cx.font = '700 10.5px "Be Vietnam Pro",sans-serif';
   cx.textAlign = 'center'; cx.textBaseline = 'middle';
   cx.fillText('BRAIN', CX, CY + 0.5);
 
@@ -342,7 +342,7 @@ function ve() {
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     cx.textAlign = 'left';
-    cx.fillStyle = nb ? TRUNG : 'rgba(239,228,212,.62)';
+    cx.fillStyle = nb ? TRUNG : 'rgba(238,243,250,.62)';
     cx.fillText(t, x0, p.y);
   });
 }
@@ -412,7 +412,7 @@ async function moChiTiet(id) {
 
   const nl = $('#ctLoai');
   nl.textContent = tenLoai(n.kind);
-  nl.style.setProperty('--m', LOAI[n.kind]?.mau || '#C9A227');
+  nl.style.setProperty('--m', LOAI[n.kind]?.mau || '#D4AF37');
   const the = $('#ctThe');
   the.innerHTML = '';
   (n.tags || []).forEach((t) => {
@@ -924,7 +924,7 @@ async function napThuVien(themNua = false) {
 function theGhiChu(n) {
   const b = el('button', 'the-gc');
   b.type = 'button';
-  b.style.setProperty('--m', LOAI[n.kind]?.mau || '#C9A227');
+  b.style.setProperty('--m', LOAI[n.kind]?.mau || '#D4AF37');
   const dau = el('div', 'dau');
   dau.append(el('span', 'nhan', tenLoai(n.kind)), el('span', 'duong-nho', duongDep(n.category)));
   const meta = [];

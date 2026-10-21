@@ -43,7 +43,7 @@ Muốn xem trang web mà không cần SSH (ví dụ trên điện thoại): các
 
 ## Mở giao diện web của Second Brain
 
-Giao diện này giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
+Màu chủ đạo: **xanh dương** (nền, chiều sâu) · **vàng kim** (nhấn, liên kết, thẻ) · **cam** (nút hành động, lõi BRAIN). Bố cục giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
 
 **Bước 1 — trên VPS**, bật trang (chạy nền):
 ```bash
@@ -70,7 +70,7 @@ Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `we
 
 - **Toàn cảnh** — lõi **BRAIN** ở giữa, mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
 - **Thư viện** — chỗ truy xuất có hệ thống. Bên trái là **cây Vùng › Nhóm › Nhóm con** kèm số ghi chú (bấm ▸ để mở nhóm con; *Chưa xếp chỗ* màu vàng là chỗ cần dọn). Bên phải là các thẻ ghi chú, lọc nhanh bằng **chip loại** (Kiến thức, Quy trình, Khái niệm, Tài liệu…; số trên chip đếm trong nhóm đang xem), sắp theo mới sửa / mới tạo / cũ nhất / tên, bấm *Xem thêm* để xem tiếp. Mỗi thẻ ghi rõ loại, đường dẫn nhóm, có nguồn/trích dẫn không, hạn (nếu là việc).
-- **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
+- **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ cam) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
 
 ### Cột trái
 

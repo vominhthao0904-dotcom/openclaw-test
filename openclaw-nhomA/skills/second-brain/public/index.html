@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Brain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="panel">
+    <header class="brand">
+      <h1>Second Brain</h1>
+      <p id="count">đang nạp…</p>
+      <div class="bao">
+        <button id="choPhanLoai" class="cho-nut" type="button" hidden></button>
+        <button id="viecMo" class="cho-nut cam" type="button" hidden></button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true"  data-tab="them">Thêm</button>
+      <button role="tab" aria-selected="false" data-tab="nap">Nạp</button>
+      <button role="tab" aria-selected="false" data-tab="tim">Tìm</button>
+      <button role="tab" aria-selected="false" data-tab="hoi">Hỏi</button>
+      <button role="tab" aria-selected="false" data-tab="on">Ôn</button>
+    </nav>
+
+    <section class="tab" data-pane="them">
+      <form id="formThem">
+        <label>Chủ đề <span class="phu">— một câu khẳng định</span>
+          <input name="title" required maxlength="200" placeholder="Hero mobile dùng contain, không dùng cover">
+        </label>
+        <div class="hai">
+          <label>Loại
+            <select name="kind" id="chonLoai"></select>
+          </label>
+          <label>Nhóm
+            <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm/Nhóm con">
+          </label>
+        </div>
+        <datalist id="dsNhom"></datalist>
+        <label>Thẻ <span class="phu">— ngăn bằng dấu phẩy</span>
+          <input name="tags" maxlength="200" placeholder="landing, mobile, ux">
+        </label>
+        <label>Nội dung
+          <textarea name="content" required rows="7" placeholder="Điều gì đúng — và VÌ SAO, trong hoàn cảnh nào."></textarea>
+        </label>
+        <label class="theo-loai" data-loai="viec" hidden>Hạn
+          <input name="due" type="date">
+        </label>
+        <label class="theo-loai" data-loai="tai-lieu khai-niem" hidden>Trích dẫn
+          <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
+        </label>
+        <label>Nguồn <span class="phu">(link bài viết, khoá học… để sau còn kiểm lại)</span>
+          <input name="url" type="url" maxlength="500" placeholder="https://…">
+        </label>
+        <button class="go" type="submit">Lưu ghi chú</button>
+        <p class="say" id="sayThem" role="status" aria-live="polite"></p>
+        <div id="trungLap" class="trung" hidden></div>
+      </form>
+    </section>
+
+    <section class="tab" data-pane="nap" hidden>
+      <p class="hint dau">Dán văn bản hoặc chọn file <b>.md / .txt</b>. Markdown có nhiều tiêu đề <code>#</code>/<code>##</code>
+        được tách mỗi mục một ghi chú. Bản trùng y hệt tự bỏ qua. PDF, CSV, cả thư mục: nhờ Mây hoặc chạy <code>brain.py nap</code>.</p>
+      <label class="tha" id="vungTha">
+        <input id="chonTep" type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" multiple>
+        <span>Kéo thả file vào đây, hoặc <u>chọn file</u></span>
+        <em id="dsTep"></em>
+      </label>
+      <label>Hoặc dán nội dung
+        <textarea id="napChu" rows="6" placeholder="# Tiêu đề mục 1&#10;Nội dung…&#10;&#10;# Tiêu đề mục 2&#10;Nội dung…"></textarea>
+      </label>
+      <div class="hai">
+        <label>Nhóm cho tất cả
+          <input id="napNhom" list="dsNhom" maxlength="150" placeholder="Học tập/Khoá học">
+        </label>
+        <label>Loại
+          <select id="napLoai"></select>
+        </label>
+      </div>
+      <div class="hai">
+        <label>Thẻ thêm
+          <input id="napThe" maxlength="200" placeholder="khoa-hoc">
+        </label>
+        <label>Tách
+          <select id="napTach">
+            <option value="tu-dong">Tự động</option>
+            <option value="heading">Mỗi tiêu đề 1 ghi chú</option>
+            <option value="khong">Cả file 1 ghi chú</option>
+          </select>
+        </label>
+      </div>
+      <div class="hang-nut">
+        <button class="nhe" id="napThu" type="button">Xem trước</button>
+        <button class="go" id="napThat" type="button">Nạp vào kho</button>
+      </div>
+      <div id="napKq" class="nap-kq" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="tab" data-pane="tim" hidden>
+      <label class="only">Từ khoá
+        <input id="oTim" type="search" placeholder="hero mobile" autocomplete="off">
+      </label>
+      <div class="hai loc">
+        <select id="timLoai" aria-label="Lọc theo loại"></select>
+        <select id="timNhom" aria-label="Lọc theo vùng"></select>
+      </div>
+      <div id="ketQua" class="list"></div>
+    </section>
+
+    <section class="tab" data-pane="hoi" hidden>
+      <label class="only">Câu hỏi
+        <textarea id="oHoi" rows="3" placeholder="Anh từng ghi gì về ảnh hero trên mobile?"></textarea>
+      </label>
+      <button class="go" id="nutHoi" type="button">Hỏi Mây</button>
+      <p class="hint">Mây chỉ trả lời từ ghi chú trong kho và dẫn nguồn từng ý. Không gửi gì ra ngoài.</p>
+      <div id="traLoi" class="answer" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="tab" data-pane="on" hidden>
+      <div id="hopCho"></div>
+      <div id="khoLuu"></div>
+      <p class="hint on-mo">Ghi chú lâu chưa gặp lại. Đọc, thấy còn đúng thì bấm <b>Nhớ rồi</b>;
+         thấy thiếu thì mở ra sửa.</p>
+      <div id="hangOn" class="list"></div>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <nav class="che-do" aria-label="Chế độ xem">
+      <button type="button" data-xem="do" aria-pressed="true">Toàn cảnh</button>
+      <button type="button" data-xem="thu-vien" aria-pressed="false">Thư viện</button>
+      <button type="button" data-xem="viec" aria-pressed="false">Việc</button>
+    </nav>
+
+    <section class="xem" data-xem="do">
+      <canvas id="do" aria-label="Đồ thị ghi chú quanh lõi Brain"></canvas>
+      <p class="empty" id="trong" hidden>Kho đang trống.<br><span>Thêm ghi chú đầu tiên ở cột bên trái.</span></p>
+      <div class="duoi">
+        <div class="legend" id="chuGiai" aria-label="Các vùng kiến thức"></div>
+        <p class="con-lai" id="conLai" hidden></p>
+      </div>
+      <button class="pause" id="dung" type="button" aria-pressed="false" title="Dừng xoay">Dừng xoay</button>
+    </section>
+
+    <section class="xem thu-vien" data-xem="thu-vien" hidden>
+      <aside class="cay" aria-label="Cây nhóm">
+        <h2>Vùng &amp; nhóm</h2>
+        <div id="cayNhom"></div>
+      </aside>
+      <div class="ke">
+        <header class="ke-dau">
+          <div>
+            <p class="duong" id="kDuong">Toàn bộ kho</p>
+            <h2 id="kTieuDe">Tất cả ghi chú</h2>
+          </div>
+          <label class="sap">Sắp xếp
+            <select id="kSap">
+              <option value="moi-sua">Mới sửa</option>
+              <option value="moi-tao">Mới tạo</option>
+              <option value="cu-nhat">Cũ nhất</option>
+              <option value="ten">Theo tên</option>
+            </select>
+          </label>
+        </header>
+        <div class="chip-loai" id="kLoai" role="group" aria-label="Lọc theo loại"></div>
+        <p class="loc-the" id="kThe" hidden></p>
+        <div class="luoi" id="kDs"></div>
+        <button class="nhe them-nua" id="kThem" type="button" hidden>Xem thêm</button>
+      </div>
+    </section>
+
+    <section class="xem viec-xem" data-xem="viec" hidden>
+      <header class="ke-dau">
+        <div><p class="duong">Công việc</p><h2>Việc cần làm</h2></div>
+        <label class="sap"><input type="checkbox" id="vXong"> Hiện việc đã xong</label>
+      </header>
+      <p class="hint">Thêm việc: tab <b>Thêm</b>, chọn loại <b>Việc</b>, đặt hạn. Hoặc nói với Mây: “nhắc anh gọi chị Lan thứ sáu”.</p>
+      <div id="vDs"></div>
+    </section>
+  </main>
+
+  <article class="sheet" id="chiTiet" hidden aria-live="polite">
+    <button class="x" id="dong" type="button" aria-label="Đóng">×</button>
+    <nav class="vun" id="ctDuong" aria-label="Nhóm"></nav>
+    <p class="meta"><span class="nhan" id="ctLoai"></span><span id="ctThe"></span></p>
+    <h2 id="ctTitle"></h2>
+    <p class="ngay" id="ctNgay"></p>
+    <div class="nguon-khoi" id="ctNguonKhoi" hidden>
+      <p class="nguon" id="ctNguon" hidden></p>
+      <p class="trich" id="ctTrich" hidden></p>
+      <p class="han" id="ctHan" hidden></p>
+    </div>
+    <div class="body" id="ctBody"></div>
+    <div class="lien" id="ctLien" hidden></div>
+
+    <form class="sua" id="ctSua" hidden>
+      <label>Chủ đề
+        <input name="title" maxlength="200">
+      </label>
+      <div class="hai">
+        <label>Loại
+          <select name="kind" id="suaLoai"></select>
+        </label>
+        <label>Nhóm
+          <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm/Nhóm con">
+        </label>
+      </div>
+      <label>Thẻ
+        <input name="tags" maxlength="200" placeholder="landing, mobile, ux">
+      </label>
+      <div class="hai">
+        <label>Hạn
+          <input name="due" type="date">
+        </label>
+        <label>Nguồn
+          <input name="url" type="url" maxlength="500" placeholder="https://…">
+        </label>
+      </div>
+      <label>Trích dẫn
+        <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên. Nơi xuất bản, tr.">
+      </label>
+      <label>Nội dung
+        <textarea name="content" rows="10"></textarea>
+      </label>
+      <div class="nut">
+        <button class="go" type="submit">Lưu thay đổi</button>
+        <button type="button" id="ctHuy" class="nhe">Huỷ</button>
+      </div>
+      <p class="say" id="saySua" role="status" aria-live="polite"></p>
+    </form>
+
+    <footer>
+      <button id="ctSuaMo" type="button" class="nho">Sửa</button>
+      <button id="ctNho" type="button" class="nho">Nhớ rồi</button>
+      <button id="ctXong" type="button" class="nho" hidden>Đánh dấu xong</button>
+      <button id="ctCat" type="button" class="nhe">Cất vào kho lưu</button>
+      <button id="ctLay" type="button" class="nhe" hidden>Lấy lại khỏi kho lưu</button>
+    </footer>
+    <p class="ghi-chu-cuoi">Cất kho = ghi chú rời khỏi đồ thị và tìm kiếm, nhưng vẫn nằm nguyên trong file.
+      Ở đây không có nút xoá hẳn — muốn xoá thật phải chạy lệnh trên máy chủ.</p>
+  </article>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -131,6 +131,12 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - Hiệu năng đo ở **10.000 ghi chú**: thêm 0,11 s, tìm 0,08-0,11 s, lọc/cây nhóm/việc ≤ 0,15 s, `duplicates` 1,4 s, kho 8 MB.
 - `SKILL.md` viết lại: quy trình lưu chuẩn từng bước (xem cây nhóm → lưu → xử lý từng loại kết quả), quy tắc phân loại bắt buộc, cách tìm và trả lời có dẫn nguồn, nạp, việc.
 
+### Lõi Thái Cực – Tiên Thiên Bát Quái
+- Thay chữ "BRAIN" ở tâm đồ thị bằng Thái Cực đồ + Bát Quái **Tiên Thiên (Phục Hy)**, theo mẫu anh chốt (navy, vàng kim, xanh dương). Đã đối chiếu mẫu: đúng thứ tự Tiên Thiên, đúng chiều Thái Cực.
+- **Vẽ bằng hình học** chứ không dán ảnh: Thái Cực ghép từ các nửa đường tròn chuẩn, 8 quẻ đặt vuông góc với bán kính, hào sơ ở trong; nét sắc ở mọi kích thước và mọi độ phân giải màn hình. Vẽ một lần vào bộ đệm, mỗi khung hình chỉ dán lại.
+- Lõi đứng yên (Càn luôn ở trên); rê chuột hiện tên quẻ + phương vị. Có favicon SVG cùng hình học.
+- **Test tự động khoá chuẩn Kinh Dịch**: đúng hào 8 quẻ, đúng số Tiên Thiên, quẻ đối có hào ngược nhau, tổng mỗi cặp bằng 9, Càn trên – Khôn dưới – Ly trái. Đã thử đổi chỗ Đoài/Tốn: test báo hỏng ngay.
+
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.
 - Ô **Hỏi** truyền câu hỏi + ghi chú liên quan cho `openclaw agent` qua tham số dòng lệnh; trên VPS nhiều người dùng, user khác có thể thấy trong `ps` lúc lệnh đang chạy. VPS một người dùng thì không ảnh hưởng. (Chưa đổi vì chưa xác minh được `openclaw agent` có nhận nội dung qua stdin hay không.)

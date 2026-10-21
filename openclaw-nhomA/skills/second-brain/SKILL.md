@@ -175,7 +175,7 @@ bash {baseDir}/scripts/web.sh link       # in lại đường link có mã
 bash {baseDir}/scripts/web.sh status     # đang chạy không, tốn bao nhiêu RAM
 bash {baseDir}/scripts/web.sh stop       # tắt
 ```
-Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi BRAIN, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
+Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi Thái Cực – Tiên Thiên Bát Quái, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
 loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (quá hạn / hôm nay / sắp tới, tích xong).
 Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt hoặc dán, xem trước) ·
 **Tìm** (lọc loại/vùng) · **Hỏi** (Mây trả lời từ kho, dẫn nguồn) · **Ôn**. Thẻ chi tiết hiện đường dẫn nhóm bấm được,

@@ -241,10 +241,19 @@ const mo = (nd) => !!noiBat && nd.nhom !== noiBat;   // nhóm bị làm mờ
 
 const banKinh = () => Math.min((W - lechDich) * 0.40, H * 0.46);
 
+/* Vòng quỹ đạo trong cùng luôn nằm NGOÀI lõi Bát Quái (màn hình hẹp thì lõi chiếm tỉ lệ lớn hơn):
+   dồn dải bán kính 0.26–0.96 vào khoảng [mép lõi + khoảng thở, 0.96]. */
+function bkThat(bk) {
+  const R = banKinh();
+  const dau = Math.min(0.6, Math.max(0.26, (banKinhLoi() + 14) / (R * 0.74)));
+  return dau + (bk - 0.26) * (0.96 - dau) / 0.70;
+}
+
 function viTri(nd) {
   const R = banKinh();
   const a = nd.pha + goc * nd.toc;
-  return { x: CX + Math.cos(a) * R * nd.bk, y: CY + Math.sin(a) * R * nd.bk * 0.74 };
+  const b = bkThat(nd.bk);
+  return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * 0.74 };
 }
 
 function ve() {
@@ -256,7 +265,7 @@ function ve() {
   const tenVong = [];
   nodes.forEach((n) => { tenVong[n.vong] = n.nhom; });
   for (let i = 0; i < soVong; i++) {
-    const bk = 0.26 + (i + 1) / (soVong + 1) * 0.70;
+    const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70);
     const sang = noiBat ? (tenVong[i] === noiBat ? 0.3 : 0.04) : 0.11;
     cx.beginPath();
     cx.ellipse(CX, CY, R * bk, R * bk * 0.74, 0, 0, Math.PI * 2);
@@ -292,19 +301,14 @@ function ve() {
     cx.stroke();
   });
 
-  // lõi
-  const quang = cx.createRadialGradient(CX, CY, 2, CX, CY, 56);
-  quang.addColorStop(0, 'rgba(240,127,45,.55)');
+  // lõi: Thái Cực – Tiên Thiên Bát Quái (đứng yên — Càn luôn ở trên mới đúng phương vị)
+  const RK = banKinhLoi();
+  const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, RK * 1.75);
+  quang.addColorStop(0, 'rgba(240,127,45,.32)');
   quang.addColorStop(1, 'rgba(240,127,45,0)');
   cx.fillStyle = quang;
-  cx.beginPath(); cx.arc(CX, CY, 56, 0, Math.PI * 2); cx.fill();
-  cx.beginPath(); cx.arc(CX, CY, 21, 0, Math.PI * 2);
-  cx.fillStyle = DO; cx.fill();
-  cx.strokeStyle = VANG; cx.lineWidth = 1.4; cx.stroke();
-  cx.fillStyle = '#0A1424';          // chữ navy trên lõi cam — đủ tương phản
-  cx.font = '700 10.5px "Be Vietnam Pro",sans-serif';
-  cx.textAlign = 'center'; cx.textBaseline = 'middle';
-  cx.fillText('BRAIN', CX, CY + 0.5);
+  cx.beginPath(); cx.arc(CX, CY, RK * 1.75, 0, Math.PI * 2); cx.fill();
+  // (Thái Cực vẽ sau cùng — nằm trên mọi chấm và nhãn)
 
   // các ghi chú — vẽ chấm trước, nhãn sau (node đang chọn được ưu tiên chỗ)
   nodes.forEach((nd) => {
@@ -322,7 +326,8 @@ function ve() {
 
   cx.font = '500 12.5px "Be Vietnam Pro",sans-serif';
   cx.textBaseline = 'middle';
-  const daVe = [];                                   // ô chữ đã chiếm chỗ
+  // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
+  const daVe = [{ x0: CX - RK - 6, x1: CX + RK + 6, y0: CY - RK - 6, y1: CY + RK + 6 }];
   const uuTien = nodes.slice().sort((a, b) =>
     (b === hover || b === chon) - (a === hover || a === chon));
   uuTien.forEach((nd) => {
@@ -345,6 +350,118 @@ function ve() {
     cx.fillStyle = nb ? TRUNG : 'rgba(238,243,250,.62)';
     cx.fillText(t, x0, p.y);
   });
+
+  const hinh = hinhThaiCuc(RK);
+  cx.drawImage(hinh, CX - hinh.width / DV / 2, CY - hinh.height / DV / 2, hinh.width / DV, hinh.height / DV);
+  if (hoverLoi) veTenQue(RK);
+}
+
+/* ---------------- Thái Cực – Tiên Thiên Bát Quái (Phục Hy) ----------------
+   Chuẩn Kinh Dịch:
+   - Thứ tự Tiên Thiên, quy ước cổ phương Nam ở trên: Càn (Nam) trên, Khôn (Bắc) dưới, Ly (Đông) trái,
+     Khảm (Tây) phải, Đoài Đông Nam, Chấn Đông Bắc, Tốn Tây Nam, Cấn Tây Bắc.
+   - Hào đọc từ TRONG ra NGOÀI: hào sơ (dưới cùng) nằm sát Thái Cực, hào thượng ở vành ngoài.
+   - Hai quẻ đối nhau có hào ngược hoàn toàn; số Tiên Thiên mỗi cặp cộng lại bằng 9.
+   - Thái Cực: Dương (vàng kim) sinh ở Chấn, lên bên trái, cực thịnh ở Càn — đầu Dương ở trên;
+     Âm (xanh) sinh ở Tốn, xuống bên phải, cực thịnh ở Khôn — đầu Âm ở dưới.
+     Trong Dương có Âm (chấm xanh ở đầu Dương), trong Âm có Dương (chấm vàng ở đầu Âm). */
+const BAT_QUAI = [
+  // [tên, hào sơ→thượng (1 = liền/dương, 0 = đứt/âm), góc trên màn hình (độ, 0 = phải, chiều kim đồng hồ), phương, số Tiên Thiên]
+  ['Càn', [1, 1, 1], -90, 'Nam', 1],
+  ['Tốn', [0, 1, 1], -45, 'Tây Nam', 5],
+  ['Khảm', [0, 1, 0], 0, 'Tây', 6],
+  ['Cấn', [0, 0, 1], 45, 'Tây Bắc', 7],
+  ['Khôn', [0, 0, 0], 90, 'Bắc', 8],
+  ['Chấn', [1, 0, 0], 135, 'Đông Bắc', 4],
+  ['Ly', [1, 0, 1], 180, 'Đông', 3],
+  ['Đoài', [1, 1, 0], -135, 'Đông Nam', 2],
+];
+const MAU_DUONG = '#E6C46A', MAU_AM = '#2563C4', NAVY_LOI = '#0C2147', NAVY_VANH = '#0F2B5B';
+let hoverLoi = false;
+
+const banKinhLoi = () => Math.max(40, Math.min(80, banKinh() * 0.2));
+
+function veHinhThaiCuc(g, R) {
+  const u = R / 100;                 // mọi kích thước tính theo bán kính, nét giữ tỉ lệ ở mọi cỡ
+  const vong = (r, mau, day, dash) => {
+    g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2);
+    g.strokeStyle = mau; g.lineWidth = day; g.setLineDash(dash || []); g.stroke(); g.setLineDash([]);
+  };
+  // nền và các vành
+  g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fillStyle = NAVY_LOI; g.fill();
+  vong(R - 1.1 * u, MAU_DUONG, 2.2 * u);
+  vong(92 * u, MAU_DUONG, 0.7 * u, [0.9 * u, 2.6 * u]);
+  g.beginPath(); g.arc(0, 0, 64 * u, 0, Math.PI * 2); g.fillStyle = NAVY_VANH; g.fill();
+  vong(64 * u, MAU_DUONG, 0.9 * u);
+  vong(57.5 * u, '#3E8EDE', 0.5 * u);
+
+  // tám quẻ — mỗi hào là một thanh vuông góc với bán kính; hào đứt = hai nửa có khe giữa
+  const dai = 25 * u, day = 4.4 * u, khe = 5.2 * u, banKinhHao = [70 * u, 76.8 * u, 83.6 * u];
+  const thanh = (x, y, w, h) => {
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y, w, h, h * 0.22); else g.rect(x, y, w, h);
+    g.fill();
+  };
+  g.fillStyle = MAU_DUONG;
+  BAT_QUAI.forEach(([, hao, goc]) => {
+    g.save();
+    g.rotate(goc * Math.PI / 180 + Math.PI / 2);     // trục -y của hệ toạ độ mới chỉ thẳng ra ngoài
+    hao.forEach((lien, i) => {
+      const y = -banKinhHao[i] - day / 2;
+      if (lien) thanh(-dai / 2, y, dai, day);
+      else { thanh(-dai / 2, y, (dai - khe) / 2, day); thanh(khe / 2, y, (dai - khe) / 2, day); }
+    });
+    g.restore();
+  });
+
+  // Thái Cực
+  const r = 53 * u;
+  vong(r + 1.6 * u, MAU_DUONG, 1.1 * u);
+  g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fillStyle = MAU_DUONG; g.fill();   // Dương: cả hình tròn
+  g.beginPath();                                   // Âm: nửa phải + đầu Âm phình sang trái ở dưới,
+  g.moveTo(0, -r);                                 // đầu Dương lấn sang phải ở trên
+  g.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+  g.arc(0, r / 2, r / 2, Math.PI / 2, Math.PI * 1.5, false);
+  g.arc(0, -r / 2, r / 2, Math.PI / 2, -Math.PI / 2, true);
+  g.closePath(); g.fillStyle = MAU_AM; g.fill();
+  const cham = r * 0.15;
+  g.beginPath(); g.arc(0, -r / 2, cham, 0, Math.PI * 2); g.fillStyle = MAU_AM; g.fill();      // trong Dương có Âm
+  g.beginPath(); g.arc(0, r / 2, cham, 0, Math.PI * 2); g.fillStyle = MAU_DUONG; g.fill();    // trong Âm có Dương
+}
+
+/* Vẽ một lần vào canvas đệm, mỗi khung hình chỉ dán lại — 60 khung/giây không tốn CPU. */
+let dem = null;
+function hinhThaiCuc(R) {
+  const k = `${R.toFixed(1)}|${DV}`;
+  if (dem && dem.k === k) return dem.c;
+  const c = document.createElement('canvas');
+  c.width = c.height = Math.ceil((R * 2 + 4) * DV);
+  const g = c.getContext('2d');
+  g.setTransform(DV, 0, 0, DV, c.width / 2, c.height / 2);
+  veHinhThaiCuc(g, R);
+  dem = { k, c };
+  return c;
+}
+
+/* Rê chuột vào lõi: hiện tên tám quẻ và phương vị quanh vành. */
+function veTenQue(R) {
+  cx.font = '600 11.5px "Be Vietnam Pro",sans-serif';
+  cx.textBaseline = 'middle';
+  BAT_QUAI.forEach(([ten, , goc, huong]) => {
+    const a = goc * Math.PI / 180, rr = R + 15;
+    const x = CX + Math.cos(a) * rr, y = CY + Math.sin(a) * rr;
+    cx.textAlign = Math.abs(Math.cos(a)) < 0.3 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right';
+    cx.fillStyle = 'rgba(10,20,36,.78)';
+    const t = `${ten} · ${huong}`, w = cx.measureText(t).width;
+    const x0 = cx.textAlign === 'center' ? x - w / 2 : cx.textAlign === 'left' ? x : x - w;
+    cx.fillRect(x0 - 5, y - 9, w + 10, 18);
+    cx.fillStyle = MAU_DUONG;
+    cx.fillText(t, x, y);
+  });
+  cx.textAlign = 'center';
+  cx.fillStyle = 'rgba(238,243,250,.75)';
+  cx.font = '500 11px "Be Vietnam Pro",sans-serif';
+  cx.fillText('Thái Cực · Tiên Thiên Bát Quái', CX, CY + R + 42);
 }
 
 function vong() {
@@ -368,10 +485,12 @@ function timGan(mx, my) {
 }
 cv.addEventListener('mousemove', (e) => {
   const b = cv.getBoundingClientRect();
-  hover = timGan(e.clientX - b.left, e.clientY - b.top);
-  cv.style.cursor = hover ? 'pointer' : 'default';
+  const mx = e.clientX - b.left, my = e.clientY - b.top;
+  hoverLoi = Math.hypot(mx - CX, my - CY) < banKinhLoi();
+  hover = hoverLoi ? null : timGan(mx, my);
+  cv.style.cursor = hover ? 'pointer' : hoverLoi ? 'help' : 'default';
 });
-cv.addEventListener('mouseleave', () => { hover = null; });
+cv.addEventListener('mouseleave', () => { hover = null; hoverLoi = false; });
 cv.addEventListener('click', (e) => {
   const b = cv.getBoundingClientRect();
   const nd = timGan(e.clientX - b.left, e.clientY - b.top);

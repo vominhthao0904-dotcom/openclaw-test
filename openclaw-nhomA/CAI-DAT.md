@@ -4,7 +4,7 @@ Bốn skill trong gói này chạy hoàn toàn trên VPS của anh: **không c�
 
 | Skill | Dùng để làm gì | Cần cài thêm gì |
 |---|---|---|
-| `second-brain` | Kho kiến thức cá nhân: ghi, tìm toàn văn tiếng Việt, ôn lại, dọn kho, kèm giao diện web đồ thị BRAIN | **Không cần gì** |
+| `second-brain` | Kho kiến thức cá nhân: ghi, tìm toàn văn tiếng Việt, ôn lại, dọn kho, kèm giao diện web (Toàn cảnh, Thư viện, Việc) | **Không cần gì** |
 | `pdf-extract-crop` | Đọc PDF, tìm cụm chữ, cắt đúng vùng đó ra thành ảnh | `poppler-utils` |
 | `css-video-production` | Chèn B-roll không bị đứng hình, tạo phụ đề, kiểm tra bằng lưới ảnh | `ffmpeg` |
 | `pptx-deck-builder` | Dựng file PowerPoint từ dàn ý, có biểu đồ thật | `python-pptx`, `pillow` |
@@ -246,7 +246,7 @@ bash test-brain.sh     # 90 trường hợp: phân loại nhóm/loại, chống 
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 62 trường hợp: thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 64 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
@@ -336,7 +336,7 @@ ssh -N -L 8787:127.0.0.1:8787 root@IP_VPS
 ```
 Giữ cửa sổ đó mở, dán **đường link có mã** vào trình duyệt. Thử mở **http://127.0.0.1:8787** trong một cửa sổ ẩn danh (không có mã): phải thấy trang báo "cần mở bằng đường link có mã" — đó là đúng.
 
-*Đạt khi:* thấy nền xanh dương, lõi BRAIN màu cam ở giữa, các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ. Bấm **Thư viện**: thấy cây vùng/nhóm bên trái kèm số ghi chú, bấm một nhóm thì chỉ hiện ghi chú của nhóm đó.
+*Đạt khi:* thấy nền xanh dương, lõi **Thái Cực – Bát Quái** ở giữa (Càn ☰ ở trên, Khôn ☷ ở dưới; rê chuột vào lõi hiện tên 8 quẻ và phương vị), các ghi chú vừa ghi xoay quanh thành chấm có tên. Bấm một chấm phải mở ra nội dung đầy đủ. Bấm **Thư viện**: thấy cây vùng/nhóm bên trái kèm số ghi chú, bấm một nhóm thì chỉ hiện ghi chú của nhóm đó.
 
 **Test 4 — phân loại.** Nói với Mây:
 > "Ghi lại: quy trình lắp hệ lọc tổng gồm khảo sát nước, chọn cột lọc, lắp bypass, xả rửa 30 phút, bàn giao."
@@ -381,7 +381,7 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 |---|---|---|
 | second-brain | Ghi rồi hỏi lại | Mây đọc đúng nội dung + dẫn mã ghi chú |
 | second-brain | Tìm từ có dấu | Ra kết quả |
-| second-brain | Mở trang web qua SSH tunnel | Thấy đồ thị BRAIN, bấm chấm mở được ghi chú |
+| second-brain | Mở trang web qua SSH tunnel | Thấy lõi Thái Cực – Bát Quái, bấm chấm mở được ghi chú |
 | pdf-extract-crop | Tìm chữ + cắt ảnh | Ra file ảnh đúng vùng |
 | css-video-production | Tạo phụ đề | File `.ass` có `Dialogue:`, mili giây dùng dấu chấm |
 | pptx-deck-builder | Dựng slide | File `.pptx` mở được, đủ số trang |

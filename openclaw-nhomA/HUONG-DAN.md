@@ -43,7 +43,7 @@ Muốn xem trang web mà không cần SSH (ví dụ trên điện thoại): các
 
 ## Mở giao diện web của Second Brain
 
-Màu chủ đạo: **xanh dương** (nền, chiều sâu) · **vàng kim** (nhấn, liên kết, thẻ) · **cam** (nút hành động, lõi BRAIN). Bố cục giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
+Màu chủ đạo: **xanh dương** (nền, chiều sâu) · **vàng kim** (nhấn, liên kết, thẻ) · **cam** (nút hành động, quầng sáng quanh lõi). Bố cục giống bản cũ anh từng dùng: lõi ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
 
 **Bước 1 — trên VPS**, bật trang (chạy nền):
 ```bash
@@ -68,9 +68,26 @@ Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `we
 
 ### Ba chế độ xem (nút trên cùng)
 
-- **Toàn cảnh** — lõi **BRAIN** ở giữa, mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
+- **Toàn cảnh** — lõi **Thái Cực – Tiên Thiên Bát Quái** ở giữa (xem mục dưới), mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
 - **Thư viện** — chỗ truy xuất có hệ thống. Bên trái là **cây Vùng › Nhóm › Nhóm con** kèm số ghi chú (bấm ▸ để mở nhóm con; *Chưa xếp chỗ* màu vàng là chỗ cần dọn). Bên phải là các thẻ ghi chú, lọc nhanh bằng **chip loại** (Kiến thức, Quy trình, Khái niệm, Tài liệu…; số trên chip đếm trong nhóm đang xem), sắp theo mới sửa / mới tạo / cũ nhất / tên, bấm *Xem thêm* để xem tiếp. Mỗi thẻ ghi rõ loại, đường dẫn nhóm, có nguồn/trích dẫn không, hạn (nếu là việc).
 - **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ cam) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
+
+### Lõi Thái Cực – Tiên Thiên Bát Quái
+
+Lõi đồ thị là Thái Cực đồ với Bát Quái **Tiên Thiên (Phục Hy)**, dựng đúng chuẩn Kinh Dịch. Chọn Tiên Thiên vì đây là đồ của **bản thể** (trời đất, tri thức gốc), hợp với một "bộ não thứ hai". Hậu Thiên (Văn Vương) là đồ của **công dụng**, dùng cho phương vị nhà cửa.
+
+| Quẻ | Hào (trong → ngoài) | Phương | Số |  | Quẻ đối | Hào | Phương | Số |
+|---|---|---|---|---|---|---|---|---|
+| ☰ Càn (trên) | ▬ ▬ ▬ | Nam | 1 | ↔ | ☷ Khôn (dưới) | ╌ ╌ ╌ | Bắc | 8 |
+| ☱ Đoài | ▬ ▬ ╌ | Đông Nam | 2 | ↔ | ☶ Cấn | ╌ ╌ ▬ | Tây Bắc | 7 |
+| ☲ Ly (trái) | ▬ ╌ ▬ | Đông | 3 | ↔ | ☵ Khảm (phải) | ╌ ▬ ╌ | Tây | 6 |
+| ☳ Chấn | ▬ ╌ ╌ | Đông Bắc | 4 | ↔ | ☴ Tốn | ╌ ▬ ▬ | Tây Nam | 5 |
+
+- Quy ước cổ: **phương Nam ở trên**. Hào đọc **từ trong ra ngoài**: hào sơ nằm sát Thái Cực.
+- Hai quẻ đối nhau có hào **ngược hoàn toàn**; số Tiên Thiên mỗi cặp cộng lại bằng **9**.
+- Thái Cực: **Dương** (vàng kim) sinh ở Chấn, lên bên trái, cực thịnh ở Càn, nên đầu Dương ở trên. **Âm** (xanh dương) sinh ở Tốn, xuống bên phải, cực thịnh ở Khôn, nên đầu Âm ở dưới. Chấm xanh trong đầu Dương là "trong Dương có Âm"; chấm vàng trong đầu Âm là "trong Âm có Dương".
+- Lõi **đứng yên**, không xoay theo các vòng ghi chú: Càn luôn ở trên mới đúng phương vị.
+- Rê chuột vào lõi để xem tên 8 quẻ và phương vị. Biểu tượng này cũng là icon trên tab trình duyệt.
 
 ### Cột trái
 

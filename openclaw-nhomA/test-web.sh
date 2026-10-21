@@ -169,6 +169,36 @@ check "thông tin chi tiết có ghi chú liên kết kèm tên" \
   'curl -sS "$U/api/note?id='"$VID"'" | jq_ "type(d[\"note\"][\"linked\"]).__name__"' "list"
 
 echo
+echo "7c. LÕI THÁI CỰC – TIÊN THIÊN BÁT QUÁI ĐÚNG KINH DỊCH"
+cat > "$TMP/kinh_dich.py" <<'PY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+q = {m[0]: ([int(x) for x in m[1].split(",")], int(m[2]), int(m[3]))
+     for m in re.findall(r"\['(\S+?)', \[([01], ?[01], ?[01])\], (-?\d+), '[^']+', (\d)\]", src)}
+q = {k: ([int(x) for x in "".join(v[0] if isinstance(v[0], str) else map(str, v[0]))], v[1], v[2]) for k, v in q.items()}
+# tên quẻ <- hào sơ→thượng (chuẩn Kinh Dịch)
+CHUAN = {"Càn": [1,1,1], "Đoài": [1,1,0], "Ly": [1,0,1], "Chấn": [1,0,0],
+         "Tốn": [0,1,1], "Khảm": [0,1,0], "Cấn": [0,0,1], "Khôn": [0,0,0]}
+SO = {"Càn": 1, "Đoài": 2, "Ly": 3, "Chấn": 4, "Tốn": 5, "Khảm": 6, "Cấn": 7, "Khôn": 8}
+loi = []
+if set(q) != set(CHUAN): loi.append(f"thiếu/thừa quẻ: {sorted(q)}")
+for k, (hao, goc, so) in q.items():
+    if hao != CHUAN.get(k): loi.append(f"{k}: hào {hao} sai")
+    if so != SO.get(k): loi.append(f"{k}: số Tiên Thiên {so} sai")
+    doi = [t for t, (_, g, _) in q.items() if (g - goc) % 360 == 180]
+    if len(doi) != 1: loi.append(f"{k}: không có quẻ đối"); continue
+    h2, _, s2 = q[doi[0]]
+    if [1 - x for x in hao] != h2: loi.append(f"{k}–{doi[0]}: hào không ngược nhau")
+    if so + s2 != 9: loi.append(f"{k}–{doi[0]}: tổng số {so + s2} ≠ 9")
+if q.get("Càn", (0, 0))[1] != -90: loi.append("Càn không ở trên (phương Nam)")
+if q.get("Khôn", (0, 0))[1] != 90: loi.append("Khôn không ở dưới (phương Bắc)")
+if q.get("Ly", (0, 0))[1] != 180: loi.append("Ly không ở bên trái (phương Đông)")
+print("dung" if not loi else "; ".join(loi))
+PY
+check "8 quẻ đúng hào, đúng số, đúng phương" 'python3 "$TMP/kinh_dich.py" "$SB/public/app.js"' "dung"
+check "favicon Thái Cực mở được (không cần mã)" 'command curl -sS -o /dev/null -w "%{http_code} %{content_type}" "$U/favicon.svg"' "200 image/svg+xml"
+
+echo
 echo "8. SERVER VẪN SỐNG SAU TẤT CẢ"
 check "server còn chạy" 'kill -0 '"$PID"' && echo song' "song"
 check "không có traceback trong log" 'grep -c Traceback "$TMP/log" || true' "0"

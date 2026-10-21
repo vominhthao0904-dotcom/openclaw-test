@@ -22,7 +22,7 @@ Không cần gõ lệnh. Mây tự nhận ra việc nào cần skill nào.
 
 ## Mở giao diện web của Second Brain
 
-Giao diện này giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên máy anh, không gửi gì ra ngoài**.
+Giao diện này giống bản cũ anh từng dùng: lõi **BRAIN** ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên máy anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
 
 **Trên VPS**, chạy nền:
 ```bash
@@ -41,7 +41,7 @@ Giữ cửa sổ đó mở, rồi vào trình duyệt: **http://127.0.0.1:8787**
 Trong trang có bốn ô ở cột trái:
 
 - **Thêm** — lưu ghi chú mới. Điền ô *Nguồn* nếu lấy từ bài viết hay khoá học; sáu tháng sau anh sẽ cần biết điều này lấy ở đâu ra. Nếu kho đã có ghi chú gần giống, trang hiện cảnh báo kèm tên ghi chú cũ — bấm vào để xem rồi tự quyết gộp hay giữ cả hai.
-- **Tìm** — tìm toàn văn tiếng Việt có dấu, bấm kết quả để mở ghi chú.
+- **Tìm** — tìm toàn văn tiếng Việt có dấu, bấm kết quả để mở ghi chú. Gõ cả câu dài cũng được: không ghi chú nào có đủ mọi từ thì nó đưa ra ghi chú khớp nhiều từ nhất.
 - **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho (gọi `openclaw agent` ngay trên VPS).
 - **Ôn** — ba phần: *Chưa xếp chỗ* (ghi chú thiếu nhóm/thẻ), *Kho lưu* (ghi chú đã cất, bấm vào để mở và lấy lại), và hàng chờ ôn lại.
 
@@ -51,7 +51,7 @@ Trong thẻ chi tiết có **Sửa** (đổi nhóm, thẻ, nguồn, nội dung n
 
 Đổi cổng khi 8787 đã bận: `BRAIN_PORT=9090 python3 .../server.py` (nhớ đổi cả hai số trong lệnh `ssh -L`).
 
-> **Đừng** đặt `BRAIN_HOST=0.0.0.0` để vào thẳng bằng IP VPS. Làm vậy là mở toàn bộ kho ghi chú cho bất kỳ ai quét được cổng đó. Đường hầm SSH ở trên an toàn hơn và cũng nhanh như nhau.
+> **Đừng** đặt `BRAIN_HOST=0.0.0.0` để vào thẳng bằng IP VPS. Làm vậy là mở toàn bộ kho ghi chú cho bất kỳ ai quét được cổng đó. Đường hầm SSH ở trên an toàn hơn và cũng nhanh như nhau. (Nếu lỡ làm, `bash kiemtra.sh` sẽ báo CHƯA ĐẠT ở phần An toàn.)
 
 ---
 
@@ -184,13 +184,13 @@ Ba thư mục cạnh kho, nên biết để khỏi nhầm:
 
 Hai lớp:
 
-**Lúc ghi** — thêm ghi chú gần giống cái đã có, nó báo ngay kèm tên ghi chú cũ. Không chặn lưu, chỉ nhắc.
+**Lúc ghi** — thêm ghi chú gần giống cái đã có, nó báo ngay kèm tên ghi chú cũ. Không chặn lưu, chỉ nhắc. Nhận ra được cả khi anh viết lại cùng ý bằng câu khác (so theo cụm từ như "dấu chấm", "mili giây", không theo từng chữ rời). Muốn gộp thì Mây dùng `merge` — ghi chú thừa được cất kho, không bị xoá.
 
 **Quét định kỳ** — vài tháng một lần, hoặc khi kho vượt khoảng 200 ghi chú:
 ```bash
 $BR duplicates
 ```
-Nó liệt kê từng cặp nghi ngờ kèm tỉ lệ giống nhau. Đọc cả hai rồi quyết:
+Nó liệt kê từng cặp nghi ngờ kèm tỉ lệ giống nhau (mặc định từ 0,5; `--nguong 0.4` bắt rộng hơn, `0.7` chỉ bắt cặp rất giống). Đọc cả hai rồi quyết:
 ```bash
 $BR merge --from <id bỏ> --into <id giữ> --yes
 ```
@@ -198,7 +198,17 @@ Gộp sẽ nối nội dung, dồn thẻ và liên kết về ghi chú giữ l�
 
 Lưu ý: hai ghi chú cùng chủ đề nhưng khác góc nhìn thì nên `link` chứ đừng gộp. `duplicates` chỉ đưa ra nghi ngờ, người quyết là anh.
 
-> **Đừng ghi mật khẩu, token hay số thẻ vào ghi chú.** File SQLite không mã hoá; ai vào được VPS là đọc được.
+> **Đừng ghi mật khẩu, token hay số thẻ vào ghi chú.** File SQLite không mã hoá. Kho tự để quyền chỉ chủ sở hữu đọc được (user khác trên VPS không đọc được), nhưng ai đăng nhập được bằng user của anh hoặc root thì vẫn đọc được.
+
+---
+
+## Mẹo cho 3 skill còn lại
+
+**pdf-extract-crop.** Nói rõ tên file và cụm chữ. Cụm chữ xuất hiện nhiều chỗ thì Mây sẽ báo có bao nhiêu chỗ, ở trang nào — anh chọn chỗ cần cắt ("lấy chỗ ở trang 12"). Ảnh bị cụt bảng thông số thì nói "cắt rộng xuống dưới thêm". PDF scan (ảnh chụp) thì không tìm chữ được, chỉ chụp nguyên trang.
+
+**css-video-production.** Gửi kèm kịch bản chia theo cảnh và ghi luôn từ khoá muốn tô vàng cho mỗi câu. Mây luôn gửi kèm ảnh lưới QA (các khung hình cách đều nhau) — xem ảnh đó trước khi đăng: phụ đề đủ chưa, B-roll có đen/đứng hình không. Video ngang hay dọc đều được, phụ đề tự theo khung video.
+
+**pptx-deck-builder.** Mây sẽ hỏi trước: deck cho ai, mục tiêu gì, bao nhiêu slide, số liệu thật nào được dùng. Có số liệu thì đưa dạng bảng hoặc liệt kê ("Q1 120, Q2 150 triệu") — Mây không tự bịa số cho biểu đồ. So sánh hai năm thì nói rõ, biểu đồ sẽ có hai cột mỗi quý kèm chú giải. Muốn có lời dẫn khi thuyết trình thì nói "thêm ghi chú cho người trình bày" — nằm ở phần Notes dưới mỗi slide.
 
 ---
 

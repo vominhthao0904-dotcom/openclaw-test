@@ -57,7 +57,7 @@ Script này **chỉ đọc, không cài gì, không sửa gì**. Nó kiểm tra 
 | 1. Bắt buộc phải có | `python3` ≥ 3.8, SQLite có FTS5 (tìm tiếng Việt), `unzip`, lệnh `openclaw` |
 | 2. Chỗ sẽ cài vào | Tìm thư mục skills của OpenClaw, kiểm tra quyền ghi |
 | 3. Đã cài lần nào chưa | 4 skill đã có chưa, kho ghi chú cũ có bao nhiêu ghi chú |
-| 4. Công cụ cho 3 skill còn lại | `pdftotext`, `pdftoppm`, `ffmpeg`, `ffprobe`, `pillow`, `python-pptx` |
+| 4. Công cụ cho 3 skill còn lại | `pdftotext`, `pdftoppm`, `ffmpeg`, `ffprobe`, ffmpeg có libass (in phụ đề), font tiếng Việt, `pip`, `pillow`, `python-pptx` |
 | 5. Máy có đủ sức không | Ổ đĩa trống, RAM trống, cổng 8787 còn rảnh |
 
 ### 1.4. Đọc kết quả
@@ -65,14 +65,14 @@ Script này **chỉ đọc, không cài gì, không sửa gì**. Nó kiểm tra 
 Mỗi dòng ra một trong ba trạng thái:
 
 - **ĐẠT** — xong, không phải làm gì.
-- **LƯU Ý** — không chặn việc cài, chỉ cho anh biết trước điều gì sẽ xảy ra. Ví dụ: skill đã có sẵn nên cài lại sẽ ghi đè script (ghi chú thì không bị đụng), hoặc chưa có `ffmpeg` nên skill video sẽ chưa dùng được.
+- **LƯU Ý** — không chặn việc cài, chỉ cho anh biết trước điều gì sẽ xảy ra. Ví dụ: skill đã có sẵn nên `install.sh` sẽ bỏ qua (muốn nâng cấp thì dùng `--force`, xem Bước 3), hoặc chưa có `ffmpeg` nên skill video sẽ chưa dùng được.
 - **CHƯA ĐẠT** — **dừng lại, sửa rồi chạy lại script.** Mỗi dòng đều ghi sẵn lệnh để sửa.
 
 Cuối cùng in ra một trong ba câu:
 
 ```
  Máy sẵn sàng. Sang PHẦN 2 trong CAI-DAT.md.           ← cài được
- Cài được. Lưu ý: N skill đã có sẵn...                   ← cài được, có cái đã tồn tại
+ Cài được. Lưu ý: N skill đã có sẵn — muốn nâng cấp...   ← cài được, có cái đã tồn tại
  ĐỪNG CÀI VỘI. Sửa các dòng CHƯA ĐẠT ở trên...           ← chưa cài được
 ```
 
@@ -113,14 +113,17 @@ Bốn bước. Làm đúng thứ tự.
 
 ```bash
 sudo apt update
-sudo apt install -y poppler-utils ffmpeg
-pip install python-pptx pillow
+sudo apt install -y poppler-utils ffmpeg fonts-dejavu-core python3-pip
+python3 -m pip install --user python-pptx pillow
 ```
 
-Nếu `pip` báo *"externally-managed-environment"*:
+Chạy dòng `pip` bằng **đúng user đang chạy OpenClaw** (thư viện cài kiểu `--user` chỉ user đó thấy).
+
+Nếu `pip` báo *"externally-managed-environment"* (Ubuntu 23.04 trở lên):
 ```bash
-pip install --break-system-packages python-pptx pillow
+python3 -m pip install --user --break-system-packages python-pptx pillow
 ```
+Có `--user` thì thư viện nằm trong `~/.local/` của anh, **không đè lên thư viện hệ thống** — an toàn hơn chạy `pip` không có `--user` (cách đó có thể làm hỏng công cụ của Ubuntu).
 
 > **Vì sao cần bước này?** Skill chỉ là bản hướng dẫn kèm vài đoạn script — nó không tự xử lý PDF hay video được, nó *gọi* các chương trình có sẵn trên máy. Giống bản quy trình ghi "scan tài liệu rồi cắt lấy bảng biểu": đọc thì hiểu, nhưng phòng phải có máy scan mới làm được. Dòng `apt install` chính là đi sắm máy. `apt` không biết gì về OpenClaw hay skill — nó chỉ tải chương trình về đặt vào `/usr/bin/`.
 
@@ -133,6 +136,8 @@ python3 validate.py
 
 Phải ra **`4 skill, 0 lỗi`**. Ra khác thì dừng lại và báo tôi — file zip có vấn đề, đừng cài tiếp.
 
+`validate.py` kiểm cú pháp mọi script, tìm khoá API/mật khẩu lọt vào gói, và **chặn symlink** (một symlink trỏ tới `~/.ssh` chẳng hạn sẽ bị chép theo vào workspace). Máy không có Node.js thì nó bỏ qua bước kiểm file `.js`, không báo lỗi.
+
 ### Bước 3 — Chép skill vào chỗ của OpenClaw
 
 ```bash
@@ -141,16 +146,28 @@ Phải ra **`4 skill, 0 lỗi`**. Ra khác thì dừng lại và báo tôi — f
 
 In ra `Đã cài 4 skill vào /root/.openclaw/workspace/skills`.
 
-Việc nó làm chỉ là **chép 4 thư mục** vào đúng chỗ. Chép xong là xong — nó không tự báo cho OpenClaw biết.
+Việc nó làm chỉ là **chép 4 thư mục** vào đúng chỗ. Chép xong là xong — nó không tự báo cho OpenClaw biết. Không dùng `sudo`, không đụng cấu hình OpenClaw, không đụng kho ghi chú. Nó chép vào thư mục tạm rồi mới đổi tên, nên hỏng giữa chừng cũng không để lại skill dở dang. Quyền file được đặt để chỉ chủ sở hữu sửa được code mà agent sẽ chạy.
+
+Muốn xem trước nó sẽ làm gì mà không chép gì:
+```bash
+./install.sh --dry-run
+```
+
+**Nâng cấp khi đã cài bản cũ.** `install.sh` mặc định **bỏ qua** skill đã có (không ghi đè). Muốn thay bằng bản mới:
+```bash
+./install.sh --force
+```
+Bản cũ được chuyển sang `~/.openclaw/workspace/skill-backups/<tên>-<giờ>` — **nằm ngoài** thư mục `skills/`, để OpenClaw không quét trúng và thấy hai skill trùng tên. Ghi chú trong kho không bị đụng tới. Cài xong, kiểm tra ổn thì xoá thư mục sao lưu cho gọn.
 
 Workspace nằm chỗ khác thì chỉ định bằng `--dest` (lưu ý: `install.sh` dùng `--dest`, còn hai script kiểm tra dùng `--dir`):
 ```bash
 ./install.sh --dest /duong/dan/khac/skills
 ```
 
-Chỉ cài một vài skill:
+Chỉ cài một vài skill (gõ sai tên thì nó báo ngay, kèm danh sách tên đúng):
 ```bash
 ./install.sh --only second-brain
+./install.sh --only second-brain,pdf-extract-crop
 ```
 
 ### Bước 4 — Bắt OpenClaw đọc lại
@@ -179,7 +196,7 @@ Workspace ở chỗ khác:
 bash kiemtra.sh --dir /duong/dan/khac/skills
 ```
 
-Script kiểm tra 4 phần:
+Script kiểm tra 5 phần:
 
 **Phần 1 — Thư mục skill đã chép lên chưa.** Xem 4 thư mục có nằm đúng chỗ không. Hỏng ở đây nghĩa là `install.sh` chưa chạy hoặc chạy sai thư mục.
 
@@ -193,9 +210,15 @@ Script kiểm tra 4 phần:
 - `second-brain (duy trì kho)`: chạy `inbox`, `review`, `digest`, `stats`
 - `second-brain (giữ dữ liệu)`: cất kho → lấy lại → xoá hẳn → khôi phục từ bản sao
 - `second-brain (trang web)`: kiểm tra file giao diện và `server.py`
-- `pdf-extract-crop`: tạo một PDF mẫu rồi tìm chữ trong đó
+- `pdf-extract-crop`: tự tạo một PDF mẫu (không cần cài thêm gì), tìm chữ rồi cắt ảnh thật
+- `css-video (khuôn hình)`: kiểm B-roll tự khớp khung video chính
 - `css-video-production`: dựng một file phụ đề `.ass`
 - `pptx-deck-builder`: dựng một file `.pptx` thật
+
+**Phần 5 — An toàn.** Ba việc:
+- Không có file nào trong 4 skill mà user khác ghi được (nếu có, ai đó có thể sửa code mà Mây sẽ chạy).
+- Kho ghi chú chỉ chủ sở hữu đọc được (quyền 600).
+- Trang web Second Brain không mở cổng ra mọi địa chỉ (`0.0.0.0`).
 
 Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệu của anh**.
 
@@ -204,9 +227,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 50 trường hợp: kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
-                       # file hỏng, ghi chú rất dài, biến môi trường gõ sai…
-bash test-web.sh       # 30 trường hợp: leo thư mục, chặn trang lạ gửi lệnh,
+bash test-brain.sh     # 58 trường hợp: kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+                       # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
+                       # trùng lặp tiếng Việt, quyền file của kho…
+bash test-web.sh       # 35 trường hợp: leo thư mục, chặn trang lạ gửi lệnh,
+                       # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
 
@@ -219,16 +244,16 @@ Cả hai chạy trên kho tạm rồi tự xoá, **không đụng dữ liệu th
 ### Kết quả phải ra
 
 ```
- ĐẠT: 22     CHƯA ĐẠT: 0
+ ĐẠT: 25     CHƯA ĐẠT: 0
 
  Xong. Cả 4 skill đã sẵn sàng.
 ```
 
-**22 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
+**25 mục đạt, 0 mục chưa đạt.** Có dòng CHƯA ĐẠT nào là chưa xong.
 
-Con số có thể khác 22 trong hai trường hợp bình thường, không phải lỗi:
+Con số có thể khác 25 trong hai trường hợp bình thường, không phải lỗi:
 
-- **Ra 18 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
+- **Ra 21 và phần 2 ghi "bỏ qua"** — script không tìm thấy lệnh `openclaw`, nên nó bỏ 4 mục của phần 2. Nghĩa là anh đang đăng nhập sai user. SSH lại bằng đúng user chạy OpenClaw rồi chạy lại.
 - **Chỉ cài mỗi Second Brain** — các dòng của 3 skill kia sẽ báo CHƯA ĐẠT. Đúng như vậy. Chỉ cần 4 dòng `second-brain*` đều ĐẠT là ổn.
 
 ### Kiểm tra thêm bằng mắt
@@ -246,8 +271,11 @@ Phải thấy đủ 4 dòng.
 | Phần 1 đạt, phần 2 không thấy | Quên restart | `openclaw gateway restart` |
 | Phần 2 thiếu `css-video-production` | Chưa có `ffmpeg` | `sudo apt install -y ffmpeg` rồi restart |
 | Phần 2 thiếu `pdf-extract-crop` | Chưa có `poppler-utils` | `sudo apt install -y poppler-utils` rồi restart |
-| Phần 4 không dựng được `.pptx` | Chưa có `python-pptx` | `pip install python-pptx pillow` |
+| Phần 4 không dựng được `.pptx` | Chưa có `python-pptx` | `python3 -m pip install --user python-pptx pillow` |
 | Không tìm thấy lệnh `openclaw` | Đang đăng nhập sai user | SSH lại bằng user đang chạy OpenClaw |
+| Phần 5: file ai cũng ghi được | Chép tay bằng `cp` thay vì `install.sh`, hoặc umask lỏng | `chmod -R go-w ~/.openclaw/workspace/skills` |
+| Phần 5: kho user khác đọc được | Kho tạo từ bản cũ | `python3 .../brain.py stats` (tự siết về 600) |
+| Phần 5: cổng mở ra ngoài | Đã chạy trang web với `BRAIN_HOST=0.0.0.0` | `pkill -f second-brain/scripts/server.py` rồi chạy lại không đặt `BRAIN_HOST` |
 
 > OpenClaw **ẩn** skill nào thiếu công cụ bắt buộc. Nên nếu `openclaw skills list` không thấy một skill, hãy nghĩ tới thiếu công cụ trước khi nghĩ tới cài sai.
 
@@ -276,6 +304,11 @@ Sau đó: *"Tìm giúp anh ghi chú về phụ đề"*
 
 *Đạt khi:* tìm ra. Gõ "phụ đề" có dấu mà không ra là FTS5 có vấn đề.
 
+**Test 2b — nhắc trùng.** Ghi thêm một ghi chú nói lại ý trên bằng câu khác:
+> "Ghi lại: phụ đề không hiện là do mili giây viết bằng dấu phẩy, đổi sang dấu chấm là được."
+
+*Đạt khi:* Mây báo kho đã có ghi chú gần giống và hỏi anh muốn gộp hay giữ cả hai.
+
 **Test 3 — trang web.** Trên VPS:
 ```bash
 nohup python3 ~/.openclaw/workspace/skills/second-brain/scripts/server.py \
@@ -294,7 +327,7 @@ Giữ cửa sổ đó mở, vào trình duyệt: **http://127.0.0.1:8787**
 Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 > "Trong file /root/catalogue.pdf, tìm giúp anh chữ 'HA1600' rồi cắt vùng đó ra thành ảnh."
 
-*Đạt khi:* Mây trả về số trang tìm thấy và đường dẫn file ảnh đã cắt. Mở ảnh ra thấy đúng vùng chứa chữ đó.
+*Đạt khi:* Mây trả về số trang tìm thấy (và có bao nhiêu chỗ khớp) cùng đường dẫn file ảnh đã cắt. Mở ảnh ra thấy đúng vùng chứa chữ đó.
 
 ### css-video-production
 
@@ -306,7 +339,7 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 
 > "Làm cho anh bộ slide 5 trang giới thiệu dịch vụ lọc nước của công ty Phúc Khang."
 
-*Đạt khi:* ra file `.pptx`, tải về mở bằng PowerPoint hoặc Google Slides thấy đủ 5 trang có nội dung, không lỗi font.
+*Đạt khi:* ra file `.pptx`, tải về mở bằng PowerPoint hoặc Google Slides thấy đủ 5 trang có nội dung, không lỗi font, **không có chữ tràn khỏi khung**, các ý có dấu đầu dòng. Mây phải hỏi anh số liệu thật trước khi vẽ biểu đồ — tự bịa số là không đạt.
 
 ### Bảng tóm tắt
 
@@ -321,7 +354,26 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 
 ---
 
-# PHẦN 6 — Tốn RAM, CPU, ổ đĩa, swap bao nhiêu?
+# PHẦN 6 — An toàn: gói này làm gì và không làm gì
+
+| | |
+|---|---|
+| **Không cần** | `sudo` khi chép skill, khoá API, tài khoản, mở cổng firewall |
+| **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Chỉ `fetch_images.py` (tuỳ chọn, cần khoá Pexels) gọi Internet; trang web tải font chữ từ Google Fonts |
+| **Kho ghi chú** | `notes.sqlite`, `backups/`, `deleted/` chỉ chủ sở hữu đọc được (600/700) — user khác trên VPS không đọc được |
+| **Trang web** | Chỉ nghe `127.0.0.1`; từ chối mọi yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn |
+| **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan cho `openclaw agent` trên chính VPS, và dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
+| **Video** | Từ chối khi file kết quả trùng file gốc — không bao giờ ghi đè video gốc |
+| **Slide** | Ảnh tải từ link chỉ nhận https, máy chủ công khai, ≤ 15 MB; kiểm lại cả khi bị chuyển hướng (không lọt vào mạng nội bộ/metadata VPS) |
+
+Ba điều anh cần tự giữ:
+1. **Không** đặt `BRAIN_HOST=0.0.0.0`. Xem trang web qua đường hầm SSH.
+2. **Không** ghi mật khẩu, token, số thẻ vào ghi chú — file SQLite không mã hoá.
+3. Khoá Pexels (nếu dùng) để trong `~/.openclaw/secrets/pexels.env` với quyền 600: `chmod 600 ~/.openclaw/secrets/pexels.env`.
+
+---
+
+# PHẦN 7 — Tốn RAM, CPU, ổ đĩa, swap bao nhiêu?
 
 Tất cả số dưới đây tôi **đo thật** trên kho 2.000 ghi chú, không phải ước lượng.
 
@@ -357,7 +409,7 @@ python3 ~/.openclaw/workspace/skills/second-brain/scripts/brain.py stats
 ```
 Khối `luu_tru` có dòng `tong_dung_luong_mb`.
 
-Ba skill còn lại không sinh dữ liệu — chúng đọc file anh đưa, ghi kết quả ra rồi thôi. Nhưng `ffmpeg` nếu phải cài thì kéo theo khoảng **300 MB** thư viện hệ thống. Đó là phần nặng nhất của cả gói, và chỉ cài một lần.
+Ba skill còn lại không sinh dữ liệu — chúng đọc file anh đưa, ghi kết quả ra rồi thôi. File tạm (ảnh cắt khi dựng slide) tự xoá sau mỗi lần chạy. Tìm chữ trong catalogue PDF 300 trang mất khoảng 0,1 giây. Nhưng `ffmpeg` nếu phải cài thì kéo theo khoảng **300 MB** thư viện hệ thống. Đó là phần nặng nhất của cả gói, và chỉ cài một lần.
 
 ### RAM
 
@@ -366,7 +418,7 @@ Ba skill còn lại không sinh dữ liệu — chúng đọc file anh đưa, gh
 | Không ai dùng | **0 MB** — không có tiến trình nào chạy |
 | Mây ghi/tìm một ghi chú | **~18 MB**, trong vòng dưới 0,1 giây rồi thoát |
 | Trang web đang chạy (kho 2.000 ghi chú) | **28 MB**, đứng yên không tăng |
-| Lệnh `duplicates` quét cả kho | **27 MB** |
+| Lệnh `duplicates` quét cả kho | **~27 MB** |
 
 28 MB là mức của trang web, đo sau 20 lượt gọi API vẫn y nguyên — không rò rỉ bộ nhớ. VPS 1 GB chạy thoải mái.
 
@@ -378,7 +430,7 @@ Ba skill còn lại không sinh dữ liệu — chúng đọc file anh đưa, gh
 | Tìm kiếm trong 2.000 ghi chú | 0,05 giây |
 | `stats` | 0,05 giây |
 | `digest --days 7` | 0,41 giây |
-| `duplicates` quét cả 2.000 ghi chú | 0,20 giây |
+| `duplicates` quét cả 2.000 ghi chú | 0,24 giây |
 | Trang web trả danh sách 2.000 ghi chú | 0,02 giây |
 
 Trang web khi không ai thao tác: **0% CPU**. Nó nằm chờ kết nối, không quét gì theo chu kỳ.

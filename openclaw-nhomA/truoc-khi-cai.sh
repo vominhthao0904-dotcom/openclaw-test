@@ -192,7 +192,13 @@ else
 fi
 
 pad "  cổng 8787" 26
-if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ':8787 '; then
+# đọc /proc/net/tcp thay vì ss — nhiều VPS tối giản không có ss
+BAN=$(python3 -c '
+for f in ("/proc/net/tcp", "/proc/net/tcp6"):
+    try: rows = open(f).read().splitlines()[1:]
+    except OSError: continue
+    if any(r.split()[3] == "0A" and int(r.split()[1].split(":")[1], 16) == 8787 for r in rows): print("ban")' 2>/dev/null)
+if [ "$BAN" = "ban" ]; then
   luu "đang có thứ khác dùng cổng 8787 — chạy trang web bằng: BRAIN_PORT=9090 python3 .../server.py"
 else
   ok "trống, trang web dùng được"

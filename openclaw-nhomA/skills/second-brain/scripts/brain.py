@@ -4,7 +4,7 @@
 Q&A/synthesis is done by the agent reading `search`/`show` output - this tool never calls an LLM,
 so no note ever leaves the machine. Replaces the old Netlify/LLM-endpoint version.
 """
-import argparse, gzip, json, os, re, sqlite3, sys, textwrap, uuid
+import argparse, gzip, hashlib, json, os, re, sqlite3, sys, textwrap, unicodedata, uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -26,7 +26,22 @@ BACKUP_DIR = DB_PATH.parent / "backups"
 DELETED_DIR = DB_PATH.parent / "deleted"      # bản sao vĩnh viễn, KHÔNG bao giờ tự dọn
 KEEP_BACKUPS = so_env("SECOND_BRAIN_KEEP_BACKUPS", 60, 1)   # luôn giữ ít nhất 1 bản
 SOURCES = ("book", "course", "experiment", "chat", "web", "meeting", "other")
-COLS = "id,title,content,category,tags,source,url,created_at,updated_at,reviewed_at,status"
+# Loại kiến thức — trục phân loại thứ hai, độc lập với nhóm (chủ đề) và thẻ.
+# Một ghi chú "Landing page" có thể là kết luận, quy trình, hay tài liệu tham khảo: biết loại thì
+# lấy ra đúng thứ cần (cần cách làm -> quy-trinh; cần trích dẫn -> tai-lieu; cần việc -> viec).
+KINDS = {
+    "kien-thuc": "Kiến thức / kết luận rút ra",
+    "quy-trinh": "Quy trình / cách làm từng bước",
+    "khai-niem": "Khái niệm / định nghĩa",
+    "tai-lieu": "Tài liệu / trích dẫn học thuật",
+    "y-tuong": "Ý tưởng / giả thuyết chưa kiểm",
+    "viec": "Công việc / việc cần làm",
+    "nguoi": "Người / khách hàng / đối tác",
+    "nhat-ky": "Nhật ký / biên bản họp",
+}
+MAX_TANG = 3                                   # Vùng / Nhóm / Nhóm con — sâu hơn thì khó tìm, không dễ hơn
+COLS = ("id,title,content,category,tags,source,url,created_at,updated_at,reviewed_at,status,"
+        "kind,cite,due,done_at,content_hash")
 CON = "status='active'"                        # ghi chú đang dùng; 'archived' là đã cất kho
 
 
@@ -107,13 +122,132 @@ def nang_cap(db):
     co = {r["name"] for r in db.execute("PRAGMA table_info(notes)")}
     them = False
     for ten, kieu in (("url", "TEXT DEFAULT ''"), ("reviewed_at", "TEXT"),
-                      ("status", "TEXT DEFAULT 'active'")):
+                      ("status", "TEXT DEFAULT 'active'"), ("kind", "TEXT DEFAULT 'kien-thuc'"),
+                      ("cite", "TEXT DEFAULT ''"), ("due", "TEXT"), ("done_at", "TEXT"),
+                      ("content_hash", "TEXT")):
         if ten not in co:
             db.execute(f"ALTER TABLE notes ADD COLUMN {ten} {kieu}")
             them = True
     if them:   # chỉ quét cả bảng ngay sau khi nâng cấp, không phải mỗi lần mở kho
         db.execute("UPDATE notes SET status='active' WHERE status IS NULL OR trim(status)=''")
+        db.execute("UPDATE notes SET kind='kien-thuc' WHERE kind IS NULL OR trim(kind)=''")
+        for r in db.execute("SELECT id,title,content FROM notes WHERE content_hash IS NULL").fetchall():
+            db.execute("UPDATE notes SET content_hash=? WHERE id=?", (van_tay(r["title"], r["content"]), r["id"]))
+    db.execute("CREATE INDEX IF NOT EXISTS ix_notes_hash ON notes(content_hash)")
+    db.execute("CREATE INDEX IF NOT EXISTS ix_notes_cat ON notes(status, category)")
+    db.execute("CREATE INDEX IF NOT EXISTS ix_notes_kind ON notes(status, kind)")
     db.commit()
+
+
+# ---------------- chuẩn hoá: nhóm, thẻ, dấu vân tay ----------------
+def gon(s):
+    """NFC + gộp khoảng trắng. Gõ trên điện thoại/Mac hay ra dấu tách rời (NFD) — không chuẩn hoá
+    thì "Lọc nước" gõ hai kiểu thành hai nhóm khác nhau."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s or "")).strip()
+
+
+def bo_dau(s):
+    s = unicodedata.normalize("NFD", (s or "").lower()).replace("đ", "d").replace("đ", "d")
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
+
+def van_tay(title, content):
+    """Dấu vân tay nội dung: giống hệt nhau (bỏ qua hoa/thường, khoảng trắng, kiểu gõ dấu) là một."""
+    t = gon(title).lower() + "\n" + gon(content).lower()
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()[:32]
+
+
+def chuan_nhom(db, raw):
+    """Chuẩn hoá đường dẫn nhóm "Vùng/Nhóm/Nhóm con" và khớp với nhóm đã có.
+
+    - "kinh doanh / lọc  nước" -> "Kinh doanh/Lọc nước" nếu kho đã có nhóm đó (khớp không phân biệt hoa/thường)
+    - Gõ thiếu dấu ("loc nuoc") KHÔNG tự đổi — chỉ gợi ý, vì "Ban" và "Bán" là hai nghĩa khác nhau
+    - Tối đa 3 tầng
+    Trả về (đường dẫn chuẩn, danh sách tầng mới tạo, gợi ý, cảnh báo).
+    """
+    segs = [gon(x) for x in re.split(r"[/\\>›]", raw or "")]
+    segs = [x for x in segs if x]
+    canh_bao = []
+    if len(segs) > MAX_TANG:
+        canh_bao.append(f"Nhóm sâu {len(segs)} tầng — chỉ giữ {MAX_TANG} tầng đầu; phần sau nên đưa vào thẻ")
+        segs = segs[:MAX_TANG]
+    if not segs:
+        return "", [], [], canh_bao
+    da_co = [r[0] for r in db.execute("SELECT DISTINCT category FROM notes WHERE trim(coalesce(category,''))<>''")]
+    cay = {}                                            # (tầng, cha) -> {lower: tên gốc}
+    for c in da_co:
+        ps = [x for x in c.split("/") if x]
+        for i, x in enumerate(ps):
+            cay.setdefault((i, "/".join(ps[:i]).lower()), {}).setdefault(x.lower(), x)
+    ra, moi, goi_y = [], [], []
+    for i, x in enumerate(segs):
+        cung_cap = cay.get((i, "/".join(ra).lower()), {})
+        if x.lower() in cung_cap:
+            ra.append(cung_cap[x.lower()])
+            continue
+        gan = [v for k, v in cung_cap.items() if bo_dau(k) == bo_dau(x)]
+        if not gan:                                     # gõ sai chính tả: "Maketing" ~ "Marketing"
+            import difflib
+            khop = difflib.get_close_matches(bo_dau(x), [bo_dau(k) for k in cung_cap], n=1, cutoff=0.82)
+            gan = [v for k, v in cung_cap.items() if khop and bo_dau(k) == khop[0]]
+        if gan:
+            goi_y.append(f"Nhóm '{x}' rất giống nhóm đã có '{gan[0]}' — nếu cùng ý thì sửa lại cho dùng chung nhóm")
+        ten = x[:1].upper() + x[1:]
+        ra.append(ten)
+        moi.append("/".join(ra))
+    return "/".join(ra), moi, goi_y, canh_bao
+
+
+def goi_y_the(db, tags_csv):
+    """Thẻ mới mà chỉ khác thẻ cũ ở dấu ("phu-de" vs "phụ-đề") -> gợi ý dùng lại thẻ cũ."""
+    if not tags_csv:
+        return []
+    cu = {}
+    for r in db.execute(f"SELECT tags FROM notes WHERE {CON}"):
+        for t in (r["tags"] or "").split(","):
+            if t:
+                cu.setdefault(bo_dau(t), set()).add(t)
+    ra = []
+    for t in tags_csv.split(","):
+        khac = sorted(cu.get(bo_dau(t), set()) - {t})
+        if khac and t not in {x for v in cu.values() for x in v}:
+            ra.append(f"Thẻ '{t}' gần giống thẻ đã có '{khac[0]}' — nên dùng chung một thẻ")
+    return ra
+
+
+def chuan_kind(k):
+    k = bo_dau(gon(k or "kien-thuc")).replace(" ", "-")
+    bi_danh = {"kien-thuc": "kien-thuc", "ket-luan": "kien-thuc", "knowledge": "kien-thuc",
+               "quy-trinh": "quy-trinh", "cach-lam": "quy-trinh", "how-to": "quy-trinh", "howto": "quy-trinh",
+               "khai-niem": "khai-niem", "dinh-nghia": "khai-niem", "concept": "khai-niem",
+               "tai-lieu": "tai-lieu", "trich-dan": "tai-lieu", "hoc-thuat": "tai-lieu", "reference": "tai-lieu",
+               "y-tuong": "y-tuong", "idea": "y-tuong", "viec": "viec", "cong-viec": "viec", "task": "viec",
+               "todo": "viec", "nguoi": "nguoi", "khach-hang": "nguoi", "person": "nguoi",
+               "nhat-ky": "nhat-ky", "hop": "nhat-ky", "bien-ban": "nhat-ky", "meeting": "nhat-ky", "log": "nhat-ky"}
+    if k not in bi_danh:
+        return None
+    return bi_danh[k]
+
+
+def chuan_han(d):
+    """Hạn công việc: nhận 2026-11-05, 5/11/2026, 05-11-2026. Trả về YYYY-MM-DD hoặc None."""
+    d = (d or "").strip()
+    if not d:
+        return None
+    for f in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(d, f).strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    raise ValueError(f"Hạn '{d}' không đọc được — ghi dạng 2026-11-05 hoặc 5/11/2026")
+
+
+def loc_nhom(where, params, category, cot="category"):
+    """Lọc theo nhóm, GỒM cả nhóm con: "Kinh doanh" lấy cả "Kinh doanh/Lọc nước"."""
+    if category:
+        c = "/".join(gon(x) for x in category.split("/") if gon(x))
+        where.append(f"(lower({cot})=lower(?) OR lower({cot}) LIKE lower(?) ESCAPE '\\')")
+        params += [c, c.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "/%"]
 
 
 def norm_tags(s):
@@ -136,7 +270,7 @@ def norm_tags(s):
 
 
 def row_dict(r, snippet=None):
-    d = {k: r[k] for k in r.keys() if not k.startswith("_")}
+    d = {k: r[k] for k in r.keys() if not k.startswith("_") and k != "content_hash"}
     d["tags"] = [t for t in (d.get("tags") or "").split(",") if t]
     if snippet is not None:
         d["snippet"] = snippet
@@ -144,11 +278,20 @@ def row_dict(r, snippet=None):
 
 
 def them_note(db, nid, title, content, category="", tags="", source="chat", url="",
-              created=None, updated=None, reviewed=None, status="active"):
+              created=None, updated=None, reviewed=None, status="active",
+              kind="kien-thuc", cite="", due=None, done_at=None):
     t = now()
-    db.execute(f"INSERT INTO notes({COLS}) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+    title, content = gon(title), content.strip()
+    db.execute(f"INSERT INTO notes({COLS}) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                (nid, title, content, category, tags, source, url,
-                created or t, updated or t, reviewed, status or "active"))
+                created or t, updated or t, reviewed, status or "active",
+                kind or "kien-thuc", cite or "", due, done_at, van_tay(title, content)))
+
+
+def trung_hoan_toan(db, title, content, bo_qua=None):
+    r = db.execute("SELECT id,title,status FROM notes WHERE content_hash=?" + (" AND id<>?" if bo_qua else ""),
+                   (van_tay(title, content),) + ((bo_qua,) if bo_qua else ())).fetchone()
+    return dict(r) if r else None
 
 
 def doc_json(path):
@@ -305,21 +448,48 @@ def tim_tuong_tu(db, title, content, bo_qua=None, limit=3, nguong=0.5):
 # ---------------- commands ----------------
 def cmd_add(a, db):
     content = read_content(a)
-    if not a.title.strip() or not content.strip():
+    title = gon(a.title)
+    if not title or not content.strip():
         out({"ok": False, "error": "Cần --title và nội dung (--content, --content-file hoặc stdin với --content -)"}, 2)
     if a.source not in SOURCES:
         out({"ok": False, "error": f"--source phải thuộc {SOURCES}"}, 2)
-    giong = tim_tuong_tu(db, a.title.strip(), content.strip())
+    kind = chuan_kind(a.kind)
+    if not kind:
+        out({"ok": False, "error": f"--kind '{a.kind}' không có. Dùng một trong: {', '.join(KINDS)}"}, 2)
+    try:
+        due = chuan_han(a.due)
+    except ValueError as e:
+        out({"ok": False, "error": str(e)}, 2)
+    # Lớp 1: trùng y hệt -> không thêm bản thứ hai (trừ khi --force)
+    trung = trung_hoan_toan(db, title, content)
+    if trung and not a.force:
+        out({"ok": True, "trung_hoan_toan": trung["id"], "title": trung["title"], "da_them": False,
+             "note": "Kho đã có ghi chú y hệt" + (" (đang ở kho lưu — unarchive để dùng lại)" if trung["status"] == "archived" else "")
+                     + ". Không thêm bản trùng; muốn thêm vẫn thêm thì dùng --force."})
+    nhom, nhom_moi, goi_y, canh_bao = chuan_nhom(db, a.category)
+    tags = norm_tags(a.tags)
+    goi_y += goi_y_the(db, tags)
+    # Lớp 2: gần giống -> vẫn lưu, nhưng nhắc
+    giong = tim_tuong_tu(db, title, content.strip())
     nid = uuid.uuid4().hex[:12]
-    them_note(db, nid, a.title.strip(), content.strip(), (a.category or "").strip(),
-              norm_tags(a.tags), a.source, (a.url or "").strip())
+    them_note(db, nid, title, content, nhom, tags, a.source, (a.url or "").strip(),
+              kind=kind, cite=gon(a.cite), due=due)
     db.commit()
-    kq = {"ok": True, "id": nid, "title": a.title.strip(), "db": str(DB_PATH)}
+    kq = {"ok": True, "id": nid, "title": title, "kind": kind, "category": nhom, "tags": [t for t in tags.split(",") if t],
+          "db": str(DB_PATH)}
+    if nhom_moi:
+        kq["nhom_moi"] = nhom_moi
+    if goi_y:
+        kq["goi_y"] = goi_y
+    if canh_bao:
+        kq["canh_bao"] = canh_bao
     if giong:
         kq["similar_existing"] = giong
         kq["hint"] = ("Kho đã có ghi chú gần giống. Hỏi người dùng: gộp vào ghi chú cũ "
                       f"(merge --from {nid} --into <id cũ> --yes — ghi chú vừa tạo được cất kho, không mất), "
                       "hay giữ cả hai rồi link lại?")
+    if not nhom:
+        kq["nhac"] = "Chưa có nhóm — ghi chú nằm ở 'Chưa xếp chỗ'. Xem các nhóm sẵn có: categories"
     out(kq)
 
 
@@ -329,9 +499,10 @@ def cmd_list(a, db):
     if a.tag:
         where.append("(',' || tags || ',') LIKE ?")
         params.append(f"%,{a.tag.lstrip('#').lower()},%")
-    if a.category:
-        where.append("lower(category)=lower(?)")
-        params.append(a.category)
+    loc_nhom(where, params, a.category)
+    if a.kind:
+        where.append("kind=?")
+        params.append(chuan_kind(a.kind) or a.kind)
     if a.source:
         where.append("source=?")
         params.append(a.source)
@@ -344,7 +515,7 @@ def cmd_list(a, db):
     out({"ok": True, "count": len(rows), "notes": rows})
 
 
-def _tim(db, q, limit, ca_kho=False):
+def _tim(db, q, limit, ca_kho=False, category=None, kind=None):
     """Tìm toàn văn. Trả về (các dòng, chế độ).
 
     chế độ "chinh_xac": mọi từ đều phải có (FTS mặc định AND).
@@ -352,19 +523,26 @@ def _tim(db, q, limit, ca_kho=False):
     Nhờ vậy câu hỏi dài kiểu "anh từng ghi gì về lỗi phụ đề không hiện" vẫn ra kết quả,
     thay vì agent phải đoán lại từ khoá nhiều lần.
     """
+    them, tham = [], []
+    loc_nhom(them, tham, category, "n.category")
+    if kind:
+        them.append("n.kind=?")
+        tham.append(kind)
+    # bm25 trọng số: tiêu đề x4, thẻ x3, nhóm x2, nội dung x1 — khớp ở tiêu đề quan trọng hơn khớp giữa bài
     sql = ("SELECT n.*, snippet(notes_fts, 1, '«', '»', '…', 14) AS snip FROM notes_fts f "
            "JOIN notes n ON n.rowid = f.rowid WHERE notes_fts MATCH ?" +
-           ("" if ca_kho else f" AND n.{CON}") + " ORDER BY bm25(notes_fts) LIMIT ?")
+           ("" if ca_kho else f" AND n.{CON}") + "".join(" AND " + w for w in them) +
+           " ORDER BY bm25(notes_fts, 4.0, 1.0, 3.0, 2.0) LIMIT ?")
     try:
-        rows = db.execute(sql, (q, limit)).fetchall()
+        rows = db.execute(sql, (q, *tham, limit)).fetchall()
     except sqlite3.OperationalError:   # user typed FTS operators wrongly -> fall back to a plain phrase
-        rows = db.execute(sql, ('"' + q.replace('"', " ") + '"', limit)).fetchall()
+        rows = db.execute(sql, ('"' + q.replace('"', " ") + '"', *tham, limit)).fetchall()
     if rows:
         return rows, "chinh_xac"
     tu = [w for w in dict.fromkeys(_tu(q)) if w not in STOP]
     if len(tu) < 2:
         return rows, "chinh_xac"
-    return db.execute(sql, (" OR ".join(f'"{w}"' for w in tu[:16]), limit)).fetchall(), "mo_rong"
+    return db.execute(sql, (" OR ".join(f'"{w}"' for w in tu[:16]), *tham, limit)).fetchall(), "mo_rong"
 
 
 def cmd_search(a, db):
@@ -372,7 +550,7 @@ def cmd_search(a, db):
     if not q:
         out({"ok": False, "error": "Thiếu từ khoá"}, 2)
     notes = []
-    rows, che_do = _tim(db, q, a.limit, a.all)
+    rows, che_do = _tim(db, q, a.limit, a.all, a.category, chuan_kind(a.kind) if a.kind else None)
     for r in rows:
         d = row_dict(r, snippet=r["snip"])
         d.pop("snip", None)
@@ -393,7 +571,55 @@ def cmd_show(a, db):
     linked = [x["b"] for x in db.execute("SELECT b FROM links WHERE a=?", (a.id,))] + \
              [x["a"] for x in db.execute("SELECT a FROM links WHERE b=?", (a.id,))]
     d["linked_notes"] = sorted(set(linked))
+    d["linked"] = [{"id": x["id"], "title": x["title"], "kind": x["kind"]} for x in db.execute(
+        f"SELECT id,title,kind FROM notes WHERE id IN ({','.join('?' * len(d['linked_notes']))})",
+        d["linked_notes"])] if d["linked_notes"] else []
+    d["loai"] = KINDS.get(d.get("kind") or "", "")
     out({"ok": True, "note": d})
+
+
+def sua_note(db, r, title=None, content=None, category=None, tags=None, url=None,
+             kind=None, cite=None, due=None):
+    """Một chỗ duy nhất sửa ghi chú (dòng lệnh, trang web, gộp đều đi qua đây): chuẩn hoá nhóm/thẻ/loại,
+    tính lại dấu vân tay, chặn sửa thành bản trùng y hệt ghi chú khác. Trả về (ok, thông tin)."""
+    title = gon(title) if title else r["title"]
+    content = content.strip() if content and content.strip() else r["content"]
+    info = {}
+    if category is not None:
+        category, moi, goi_y, cb = chuan_nhom(db, category)
+        if moi:
+            info["nhom_moi"] = moi
+        if goi_y:
+            info["goi_y"] = goi_y
+        if cb:
+            info["canh_bao"] = cb
+    else:
+        category = r["category"]
+    if kind is not None:
+        k = chuan_kind(kind)
+        if not k:
+            return False, {"error": f"Loại '{kind}' không có. Dùng: {', '.join(KINDS)}"}
+        kind = k
+    else:
+        kind = r["kind"] or "kien-thuc"
+    if due is not None:
+        try:
+            due = chuan_han(due)
+        except ValueError as e:
+            return False, {"error": str(e)}
+    else:
+        due = r["due"]
+    trung = trung_hoan_toan(db, title, content, bo_qua=r["id"])
+    if trung:
+        return False, {"error": f"Sửa xong sẽ y hệt ghi chú '{trung['title']}' ({trung['id']}) — gộp bằng merge thay vì sửa"}
+    db.execute("UPDATE notes SET title=?, content=?, category=?, tags=?, url=?, kind=?, cite=?, due=?, "
+               "content_hash=?, updated_at=? WHERE id=?",
+               (title, content, category, norm_tags(tags) if tags is not None else r["tags"],
+                (url if url is not None else (r["url"] or "")).strip(), kind,
+                gon(cite) if cite is not None else (r["cite"] or ""), due,
+                van_tay(title, content), now(), r["id"]))
+    db.commit()
+    return True, info
 
 
 def cmd_edit(a, db):
@@ -404,15 +630,13 @@ def cmd_edit(a, db):
     if a.append and not co_noi_dung_moi:
         # trước đây chỗ này nối ghi chú với chính nó, nhân đôi nội dung
         out({"ok": False, "error": "--append cần kèm --content hoặc --content-file"}, 2)
-    content = read_content(a) if co_noi_dung_moi else r["content"]
+    content = read_content(a) if co_noi_dung_moi else None
     if a.append:
         content = r["content"].rstrip() + "\n\n" + content.strip()
-    db.execute("UPDATE notes SET title=?, content=?, category=?, tags=?, url=?, updated_at=? WHERE id=?",
-               (a.title or r["title"], content, a.category if a.category is not None else r["category"],
-                norm_tags(a.tags) if a.tags is not None else r["tags"],
-                a.url if a.url is not None else (r["url"] or ""), now(), a.id))
-    db.commit()
-    out({"ok": True, "id": a.id, "updated": True})
+    ok, info = sua_note(db, r, a.title, content, a.category, a.tags, a.url, a.kind, a.cite, a.due)
+    if not ok:
+        out({"ok": False, **info}, 2)
+    out({"ok": True, "id": a.id, "updated": True, **info})
 
 
 def cmd_archive(a, db):
@@ -463,7 +687,7 @@ def cmd_restore(a, db):
                  "thu_muc": str(DELETED_DIR)}, 2)
         f = ds[-1]
     d = doc_json(f)
-    trung = db.execute("SELECT id FROM notes WHERE title=? AND content=?", (d.get("title"), d.get("content"))).fetchone()
+    trung = trung_hoan_toan(db, d.get("title") or "", d.get("content") or "")
     if trung:                    # chạy restore hai lần không được đẻ ra hai bản giống hệt
         out({"ok": True, "lay_lai": trung["id"], "note": "Ghi chú này đã có trong kho, không thêm bản trùng"})
     nid = d.get("id") or uuid.uuid4().hex[:12]
@@ -473,7 +697,8 @@ def cmd_restore(a, db):
     them_note(db, nid, d["title"], d["content"], d.get("category", ""),
               norm_tags(",".join(tags) if isinstance(tags, list) else (tags or "")),
               d.get("source", "other"), d.get("url", ""),
-              d.get("created_at"), now(), d.get("reviewed_at"), "active")
+              d.get("created_at"), now(), d.get("reviewed_at"), "active",
+              chuan_kind(d.get("kind")) or "kien-thuc", d.get("cite") or "", d.get("due"), d.get("done_at"))
     db.commit()
     out({"ok": True, "lay_lai": nid, "title": d["title"], "tu_file": str(f)})
 
@@ -544,10 +769,12 @@ def cmd_review(a, db):
             n += cur.rowcount
         db.commit()
         out({"ok": True, "da_on": n, "ids": ids})
-    where, params = [CON, "created_at < ?"], [days_ago(a.min_age)]
-    if a.category:
-        where.append("lower(category)=lower(?)")
-        params.append(a.category)
+    # việc đã xong và việc nói chung không cần "ôn" — ôn là cho kiến thức
+    where, params = [CON, "created_at < ?", "kind<>'viec'"], [days_ago(a.min_age)]
+    loc_nhom(where, params, a.category)
+    if a.kind:
+        where.append("kind=?")
+        params.append(chuan_kind(a.kind) or a.kind)
     if a.tag:
         where.append("(',' || tags || ',') LIKE ?")
         params.append(f"%,{a.tag.lstrip('#').lower()},%")
@@ -678,8 +905,9 @@ def cmd_merge(a, db):
     noi_dung = dich["content"].rstrip() + "\n\n---\n\n" + nguon["content"].strip()
     the = dict.fromkeys([t for t in (dich["tags"] or "").split(",") if t] +
                         [t for t in (nguon["tags"] or "").split(",") if t])
-    db.execute("UPDATE notes SET content=?, tags=?, url=?, updated_at=? WHERE id=?",
-               (noi_dung, ",".join(the), dich["url"] or nguon["url"] or "", now(), a.into_id))
+    db.execute("UPDATE notes SET content=?, tags=?, url=?, cite=?, content_hash=?, updated_at=? WHERE id=?",
+               (noi_dung, ",".join(the), dich["url"] or nguon["url"] or "",
+                dich["cite"] or nguon["cite"] or "", van_tay(dich["title"], noi_dung), now(), a.into_id))
     # liên kết của ghi chú nguồn chuyển sang ghi chú giữ lại
     for r in db.execute("SELECT a,b FROM links WHERE a=? OR b=?", (a.from_id, a.from_id)).fetchall():
         kia = r["b"] if r["a"] == a.from_id else r["a"]
@@ -782,9 +1010,10 @@ def cmd_doctor(a, db):
 
 def cmd_export(a, db):
     where, params = ([] if a.all else [CON]), []
-    if a.category:
-        where.append("lower(category)=lower(?)")
-        params.append(a.category)
+    loc_nhom(where, params, a.category)
+    if a.kind:
+        where.append("kind=?")
+        params.append(chuan_kind(a.kind) or a.kind)
     if a.tag:
         where.append("(',' || tags || ',') LIKE ?")
         params.append(f"%,{a.tag.lstrip('#').lower()},%")
@@ -805,9 +1034,14 @@ def cmd_export(a, db):
         parts = []
         for n in rows:
             tags = " ".join("#" + t for t in n["tags"])
-            dong = f"*{n['category'] or 'Chưa phân loại'}* · {tags} · {n['created_at']} · `{n['id']}`"
+            nhom = (n['category'] or 'Chưa phân loại').replace("/", " › ")
+            dong = f"*{nhom}* · {KINDS.get(n.get('kind') or '', '')} · {tags} · {n['created_at'][:10]} · `{n['id']}`"
             if n.get("url"):
                 dong += f"\n\nNguồn: {n['url']}"
+            if n.get("cite"):
+                dong += f"\n\nTrích dẫn: {n['cite']}"
+            if n.get("due"):
+                dong += f"\n\nHạn: {n['due']}" + (" (đã xong)" if n.get("done_at") else "")
             parts.append(f"# {n['title']}\n\n{dong}\n\n{n['content']}\n")
         dest.write_text("\n---\n\n".join(parts), encoding="utf-8")
     out({"ok": True, "file": str(dest), "notes": len(rows), "format": a.format})
@@ -824,7 +1058,7 @@ def cmd_import(a, db):
         if not title or not content:
             skipped += 1
             continue
-        if db.execute("SELECT 1 FROM notes WHERE title=? AND content=?", (title, content)).fetchone():
+        if trung_hoan_toan(db, title, content):
             skipped += 1
             continue
         nid = (it.get("id") or uuid.uuid4().hex[:12])[:12]
@@ -836,10 +1070,315 @@ def cmd_import(a, db):
                   it.get("source", "other"), it.get("url", ""),
                   it.get("created_at"), it.get("updated_at"), it.get("reviewed_at"),
                   # giữ nguyên trạng thái: nhập lại bản sao lưu không được làm sống dậy ghi chú đã cất kho
-                  "archived" if it.get("status") == "archived" else "active")
+                  "archived" if it.get("status") == "archived" else "active",
+                  chuan_kind(it.get("kind")) or "kien-thuc", it.get("cite") or "",
+                  it.get("due"), it.get("done_at"))
         added += 1
     db.commit()
     out({"ok": True, "added": added, "skipped_duplicate_or_empty": skipped, "backup": str(b) if b else None})
+
+
+# ---------------- phân loại: cây nhóm, loại ----------------
+def cay_nhom(db, ca_kho=False):
+    """Cây Vùng/Nhóm/Nhóm con kèm số ghi chú (của riêng nút và gồm cả nhóm con)."""
+    goc = {"ten": "", "duong_dan": "", "rieng": 0, "tong": 0, "con": {}}
+    for r in db.execute("SELECT category, count(*) n FROM notes WHERE " + ("1" if ca_kho else CON) +
+                        " GROUP BY category"):
+        ps = [x for x in (r["category"] or "").split("/") if x] or ["Chưa xếp chỗ"]
+        nut = goc
+        nut["tong"] += r["n"]
+        for i, x in enumerate(ps):
+            nut = nut["con"].setdefault(x, {"ten": x, "duong_dan": "/".join(ps[:i + 1]) if r["category"] else "",
+                                            "rieng": 0, "tong": 0, "con": {}})
+            nut["tong"] += r["n"]
+        nut["rieng"] += r["n"]
+
+    def ra_list(nut):
+        con = sorted(nut["con"].values(), key=lambda x: (x["ten"] == "Chưa xếp chỗ", -x["tong"], x["ten"]))
+        return [{"ten": c["ten"], "duong_dan": c["duong_dan"], "so": c["tong"], "rieng": c["rieng"],
+                 "con": ra_list(c)} for c in con]
+    return ra_list(goc), goc["tong"]
+
+
+def cmd_categories(a, db):
+    cay, tong = cay_nhom(db)
+
+    def ve(ds, sau=0):
+        for c in ds:
+            yield "  " * sau + f"{c['ten']} ({c['so']})"
+            yield from ve(c["con"], sau + 1)
+    out({"ok": True, "tong": tong, "cay": cay, "dang_chu": list(ve(cay)),
+         "note": "Dùng lại đúng đường dẫn nhóm đã có (duong_dan). Chỉ tạo nhóm mới khi không nhóm nào hợp; "
+                 f"tối đa {MAX_TANG} tầng: Vùng/Nhóm/Nhóm con."})
+
+
+def cmd_kinds(a, db):
+    dem = {r[0]: r[1] for r in db.execute(f"SELECT kind, count(*) FROM notes WHERE {CON} GROUP BY kind")}
+    out({"ok": True, "loai": [{"kind": k, "mo_ta": v, "so": dem.get(k, 0)} for k, v in KINDS.items()]})
+
+
+# ---------------- công việc ----------------
+def cmd_viec(a, db):
+    """Việc cần làm: một loại ghi chú có hạn và trạng thái xong."""
+    for cot, gia_tri, ids in (("done_at", now(), a.xong), ("done_at", None, a.mo_lai)):
+        if ids:
+            n = 0
+            for i in [x.strip() for x in ids.split(",") if x.strip()]:
+                n += db.execute(f"UPDATE notes SET {cot}=?, updated_at=? WHERE id=? AND kind='viec'",
+                                (gia_tri, now(), i)).rowcount
+            db.commit()
+            out({"ok": bool(n), "da_cap_nhat": n, **({} if n else {"error": "Không thấy việc nào với id đó"})},
+                0 if n else 2)
+    where, params = [CON, "kind='viec'"], []
+    if not a.tat_ca:
+        where.append("done_at IS NULL")
+    loc_nhom(where, params, a.category)
+    rows = db.execute("SELECT * FROM notes WHERE " + " AND ".join(where) +
+                      " ORDER BY done_at IS NOT NULL, due IS NULL, due, created_at", params).fetchall()
+    hom_nay = datetime.now().strftime("%Y-%m-%d")
+    tuan = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+    nhom = {"qua_han": [], "hom_nay": [], "7_ngay_toi": [], "sau_nay": [], "khong_han": [], "da_xong": []}
+    for r in rows:
+        d = {"id": r["id"], "title": r["title"], "due": r["due"], "category": r["category"],
+             "tom_tat": rut_gon(r["content"], 120)}
+        if r["done_at"]:
+            nhom["da_xong"].append(d)
+        elif not r["due"]:
+            nhom["khong_han"].append(d)
+        elif r["due"] < hom_nay:
+            nhom["qua_han"].append(d)
+        elif r["due"] == hom_nay:
+            nhom["hom_nay"].append(d)
+        elif r["due"] <= tuan:
+            nhom["7_ngay_toi"].append(d)
+        else:
+            nhom["sau_nay"].append(d)
+    out({"ok": True, "dang_mo": sum(len(v) for k, v in nhom.items() if k != "da_xong"),
+         **{k: v for k, v in nhom.items() if v or k != "da_xong"},
+         "note": "Thêm việc: add --kind viec --due 2026-11-05. Xong: viec --xong <id>."})
+
+
+# ---------------- nạp kiến thức từ nhiều nguồn ----------------
+NAP_DUOI = {".md", ".markdown", ".txt", ".pdf", ".csv", ".json", ".gz", ".html", ".htm"}
+NAP_MAX_FILE = 5 * 1024 * 1024
+NAP_MAX_SO_FILE = 2000
+
+
+def _frontmatter(text):
+    """--- key: value --- ở đầu file Markdown (kiểu Obsidian). Chỉ đọc cặp key: value đơn giản."""
+    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
+    if not m:
+        return {}, text
+    meta = {}
+    for line in m.group(1).splitlines():
+        k, _, v = line.partition(":")
+        if _ and k.strip():
+            v = v.strip().strip("\"'")
+            if v.startswith("[") and v.endswith("]"):
+                v = ",".join(x.strip().strip("\"'") for x in v[1:-1].split(","))
+            meta[k.strip().lower()] = v
+    return meta, text[m.end():]
+
+
+def _tieu_de_tu_ten(path):
+    t = re.sub(r"[-_]+", " ", Path(path).stem).strip()
+    return t[:1].upper() + t[1:] if t else "Không tên"
+
+
+def _tach_markdown(text, tach, mac_dinh_tieu_de, dung_dong_dau=False):
+    """Tách Markdown theo tiêu đề # / ##. Mỗi mục có nội dung thành một ghi chú."""
+    dong = text.splitlines()
+    vi_tri = [i for i, l in enumerate(dong) if re.match(r"^#{1,2}\s+\S", l)]
+    if not vi_tri or tach == "khong" or (tach != "heading" and len(vi_tri) < 2):
+        tieu_de = mac_dinh_tieu_de
+        if vi_tri and vi_tri[0] < 3:            # tiêu đề nằm ngay đầu file thì dùng làm tên ghi chú
+            tieu_de = re.sub(r"^#+\s*", "", dong[vi_tri[0]]).strip()
+            dong = dong[:vi_tri[0]] + dong[vi_tri[0] + 1:]
+        elif dung_dong_dau:
+            # văn bản thường: dòng đầu ngắn, không kết thúc bằng dấu câu -> đó là tên (giữ được dấu tiếng Việt,
+            # tên file thường bị bỏ dấu)
+            dau = next((i for i, l in enumerate(dong) if l.strip()), None)
+            if dau is not None and len(dong[dau].strip()) <= 100 and not dong[dau].strip().endswith((".", ",", ";", ":")) \
+                    and any(l.strip() for l in dong[dau + 1:]):
+                tieu_de = dong[dau].strip()
+                dong = dong[dau + 1:]
+        return [(tieu_de, "\n".join(dong).strip())]
+    ra = []
+    dau = "\n".join(dong[:vi_tri[0]]).strip()
+    if len(dau) > 40:
+        ra.append((mac_dinh_tieu_de, dau))
+    for k, i in enumerate(vi_tri):
+        j = vi_tri[k + 1] if k + 1 < len(vi_tri) else len(dong)
+        ra.append((re.sub(r"^#+\s*", "", dong[i]).strip(), "\n".join(dong[i + 1:j]).strip()))
+    return ra
+
+
+def _doc_html(text):
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.chu, self.title, self._bo, self._t = [], "", 0, False
+
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style", "noscript", "nav", "footer"):
+                self._bo += 1
+            self._t = tag == "title"
+            if tag in ("p", "br", "li", "h1", "h2", "h3", "h4", "tr", "div"):
+                self.chu.append("\n")
+
+        def handle_endtag(self, tag):
+            if tag in ("script", "style", "noscript", "nav", "footer") and self._bo:
+                self._bo -= 1
+            self._t = False
+
+        def handle_data(self, d):
+            if self._t:
+                self.title += d
+            elif not self._bo:
+                self.chu.append(d)
+    p = P()
+    p.feed(text)
+    noi_dung = re.sub(r"\n\s*\n+", "\n\n", re.sub(r"[ \t]+", " ", "".join(p.chu))).strip()
+    return gon(p.title), noi_dung
+
+
+def doc_nguon(path, tach):
+    """Đọc một file thành danh sách mục {title, content, ...}. Ném ValueError khi không đọc được."""
+    f = Path(path)
+    if f.stat().st_size > NAP_MAX_FILE:
+        raise ValueError(f"lớn hơn {NAP_MAX_FILE // 1024 // 1024} MB — tách nhỏ hoặc trích phần cần thiết")
+    duoi = "".join(f.suffixes[-2:]).lower() if f.name.lower().endswith(".json.gz") else f.suffix.lower()
+    ten = _tieu_de_tu_ten(f)
+    if duoi in (".md", ".markdown", ".txt"):
+        try:
+            text = f.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            raise ValueError("không phải văn bản UTF-8")
+        meta, than = _frontmatter(text)
+        tieu_de = meta.get("title") or meta.get("tieu_de") or ten
+        muc = _tach_markdown(than, tach, tieu_de, dung_dong_dau=not (meta.get("title") or meta.get("tieu_de")))
+        chung = {"category": meta.get("category") or meta.get("nhom") or "",
+                 "tags": meta.get("tags") or meta.get("the") or "", "kind": meta.get("kind") or meta.get("loai"),
+                 "url": meta.get("url") or meta.get("source") or meta.get("nguon") or "",
+                 "cite": meta.get("cite") or meta.get("trich_dan") or "", "due": meta.get("due") or meta.get("han")}
+        return [{"title": t, "content": c, **chung} for t, c in muc]
+    if duoi == ".pdf":
+        import shutil, subprocess
+        if not shutil.which("pdftotext"):
+            raise ValueError("cần pdftotext (sudo apt install -y poppler-utils)")
+        r = subprocess.run(["pdftotext", "-enc", "UTF-8", str(f.resolve()), "-"], capture_output=True, text=True)
+        if r.returncode:
+            raise ValueError("pdftotext lỗi: " + (r.stderr or "").strip()[:150])
+        trang = [unicodedata.normalize("NFC", x).strip() for x in r.stdout.split("\f")]
+        if not any(trang):
+            raise ValueError("PDF không có lớp chữ (PDF scan) — cần OCR trước")
+        if tach == "trang":
+            return [{"title": f"{ten} — trang {i}", "content": t, "cite": f"{ten}, tr. {i}"}
+                    for i, t in enumerate(trang, 1) if len(t) > 40]
+        return [{"title": ten, "content": "\n\n".join(t for t in trang if t), "cite": ten}]
+    if duoi in (".html", ".htm"):
+        tieu_de, noi_dung = _doc_html(f.read_text(encoding="utf-8", errors="replace"))
+        return [{"title": tieu_de or ten, "content": noi_dung}]
+    if duoi == ".csv":
+        import csv
+        with open(f, newline="", encoding="utf-8-sig") as fh:
+            rows = list(csv.DictReader(fh))
+        bi_danh = {"tieu_de": "title", "tiêu đề": "title", "noi_dung": "content", "nội dung": "content",
+                   "nhom": "category", "nhóm": "category", "the": "tags", "thẻ": "tags", "loai": "kind",
+                   "loại": "kind", "nguon": "url", "nguồn": "url", "trich_dan": "cite", "han": "due", "hạn": "due"}
+        ra = []
+        for r in rows:
+            d = {bi_danh.get((k or "").strip().lower(), (k or "").strip().lower()): (v or "").strip()
+                 for k, v in r.items()}
+            ra.append(d)
+        return ra
+    if duoi in (".json", ".json.gz"):
+        data = doc_json(f)
+        return data if isinstance(data, list) else data.get("notes", [])
+    raise ValueError(f"chưa hỗ trợ đuôi {duoi or '(không đuôi)'}")
+
+
+def cmd_nap(a, db):
+    """Nạp kiến thức hàng loạt: file hoặc cả thư mục. Chống trùng, xem trước được, một giao dịch."""
+    nguon = []
+    for p in a.duong_dan:
+        if p == "-":
+            nguon.append("-")
+            continue
+        P = Path(p).expanduser()
+        if P.is_dir():
+            for f in sorted(P.rglob("*")):
+                if any(x.startswith(".") for x in f.relative_to(P).parts) or f.is_symlink() or not f.is_file():
+                    continue
+                if f.suffix.lower() in NAP_DUOI:
+                    nguon.append(f)
+        elif P.is_file():
+            nguon.append(P)
+        else:
+            out({"ok": False, "error": f"Không thấy file/thư mục: {p}"}, 2)
+    if len(nguon) > NAP_MAX_SO_FILE:
+        out({"ok": False, "error": f"{len(nguon)} file — quá {NAP_MAX_SO_FILE}. Nạp từng thư mục con."}, 2)
+    kind_mac_dinh = chuan_kind(a.kind) if a.kind else None
+    if a.kind and not kind_mac_dinh:
+        out({"ok": False, "error": f"--kind '{a.kind}' không có. Dùng: {', '.join(KINDS)}"}, 2)
+    muc, loi = [], []
+    for f in nguon:
+        try:
+            if f == "-":
+                text = sys.stdin.read()
+                meta, than = _frontmatter(text)
+                ds = [{"title": t, "content": c} for t, c in
+                      _tach_markdown(than, a.tach, meta.get("title") or a.title or "Ghi chú dán vào")]
+                ten_f = "(dán vào)"
+            else:
+                ds, ten_f = doc_nguon(f, a.tach), str(f)
+            for d in ds:
+                d["_file"] = ten_f
+            muc += ds
+        except (ValueError, OSError) as e:
+            loi.append({"file": str(f), "loi": str(e)})
+    da_thay, them, trung, rong, ket_qua, nhom_moi = set(), [], 0, 0, [], set()
+    for d in muc:
+        title = gon(str(d.get("title") or ""))[:200]
+        content = str(d.get("content") or "").strip()
+        if not title or len(content) < 3:
+            rong += 1
+            continue
+        vt = van_tay(title, content)
+        if vt in da_thay or db.execute("SELECT 1 FROM notes WHERE content_hash=?", (vt,)).fetchone():
+            trung += 1
+            continue
+        da_thay.add(vt)
+        k = chuan_kind(d.get("kind")) if d.get("kind") else None
+        try:
+            due = chuan_han(d.get("due"))
+        except ValueError:
+            due = None
+        them.append((title, content, d.get("category") or a.category or "",
+                     ",".join(x for x in (norm_tags(str(d.get("tags") or "")), norm_tags(a.tags)) if x),
+                     k or kind_mac_dinh or "kien-thuc", d.get("url") or a.url or "", d.get("cite") or a.cite or "",
+                     due, d["_file"]))
+    if not a.dry_run and them:
+        b = backup(db, "before-nap") if db.execute("SELECT count(*) FROM notes").fetchone()[0] else None
+        for title, content, cat, tags, kind, url, cite, due, ten_f in them:
+            nhom, moi, _, _ = chuan_nhom(db, cat)
+            nhom_moi.update(moi)
+            nid = uuid.uuid4().hex[:12]
+            them_note(db, nid, title, content, nhom, norm_tags(tags), a.source, url, kind=kind, cite=cite, due=due)
+            ket_qua.append({"id": nid, "title": title, "category": nhom, "kind": kind, "tu": ten_f})
+        db.commit()
+    else:
+        b = None
+        ket_qua = [{"title": t[0], "category": t[2], "kind": t[4], "tu": t[8], "do_dai": len(t[1])} for t in them]
+    out({"ok": not loi or bool(them), "xem_truoc": a.dry_run, "so_file": len(nguon),
+         ("se_them" if a.dry_run else "da_them"): len(them), "bo_qua_trung": trung, "bo_qua_rong": rong,
+         "loi": loi, "nhom_moi": sorted(nhom_moi), "ghi_chu": ket_qua[:40],
+         **({"con_nua": len(ket_qua) - 40} if len(ket_qua) > 40 else {}),
+         "backup": str(b) if b else None,
+         "note": ("Chỉ xem trước — chạy lại không có --dry-run để nạp thật." if a.dry_run else
+                  "Nạp xong. Ghi chú thiếu nhóm/thẻ nằm ở inbox; nên xếp chỗ ngay.")})
 
 
 def cmd_stats(a, db):
@@ -862,6 +1401,9 @@ def cmd_stats(a, db):
     out({"ok": True, "db": str(DB_PATH), "total_notes": total, "categories": cats,
          "tags": dict(sorted(tags.items(), key=lambda x: -x[1])[:25]),
          "links": q("SELECT count(*) FROM links"),
+         "theo_loai": {r[0]: r[1] for r in db.execute(
+             f"SELECT kind, count(*) FROM notes WHERE {CON} GROUP BY kind ORDER BY 2 DESC")},
+         "viec_dang_mo": q(f"SELECT count(*) FROM notes WHERE {CON} AND kind='viec' AND done_at IS NULL"),
          "suc_khoe_kho": {
              "them_7_ngay_qua": q(f"SELECT count(*) FROM notes WHERE {CON} AND created_at>=?", days_ago(7)),
              "them_30_ngay_qua": q(f"SELECT count(*) FROM notes WHERE {CON} AND created_at>=?", days_ago(30)),
@@ -887,19 +1429,27 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("add"); s.add_argument("--title", required=True); s.add_argument("--content")
-    s.add_argument("--content-file"); s.add_argument("--category", default=""); s.add_argument("--tags", default="")
-    s.add_argument("--source", default="chat"); s.add_argument("--url", default=""); s.set_defaults(fn=cmd_add)
+    s.add_argument("--content-file"); s.add_argument("--category", default="", help="Vùng/Nhóm/Nhóm con")
+    s.add_argument("--tags", default="")
+    s.add_argument("--source", default="chat"); s.add_argument("--url", default="")
+    s.add_argument("--kind", default="kien-thuc", help="loại: " + ", ".join(KINDS))
+    s.add_argument("--cite", default="", help="trích dẫn: Tác giả (năm). Tên. Nơi xuất bản, tr.")
+    s.add_argument("--due", help="hạn (cho --kind viec): 2026-11-05 hoặc 5/11/2026")
+    s.add_argument("--force", action="store_true", help="thêm cả khi kho đã có bản y hệt")
+    s.set_defaults(fn=cmd_add)
     s = sub.add_parser("list"); s.add_argument("--tag"); s.add_argument("--category"); s.add_argument("--source")
+    s.add_argument("--kind")
     s.add_argument("--limit", type=int, default=20)
     s.add_argument("--archived", action="store_true", help="xem ghi chú trong kho lưu")
     s.set_defaults(fn=cmd_list)
     s = sub.add_parser("search"); s.add_argument("query"); s.add_argument("--limit", type=int, default=10)
-    s.add_argument("--full", action="store_true")
+    s.add_argument("--full", action="store_true"); s.add_argument("--category"); s.add_argument("--kind")
     s.add_argument("--all", action="store_true", help="tìm cả trong kho lưu"); s.set_defaults(fn=cmd_search)
     s = sub.add_parser("show"); s.add_argument("--id", required=True); s.set_defaults(fn=cmd_show)
     s = sub.add_parser("edit"); s.add_argument("--id", required=True); s.add_argument("--title")
     s.add_argument("--content"); s.add_argument("--content-file"); s.add_argument("--category")
     s.add_argument("--tags"); s.add_argument("--url"); s.add_argument("--append", action="store_true")
+    s.add_argument("--kind"); s.add_argument("--cite"); s.add_argument("--due")
     s.set_defaults(fn=cmd_edit)
     s = sub.add_parser("archive"); s.add_argument("--id", required=True); s.set_defaults(fn=cmd_archive)
     s = sub.add_parser("unarchive"); s.add_argument("--id", required=True); s.set_defaults(fn=cmd_unarchive)
@@ -912,7 +1462,7 @@ def main():
     s = sub.add_parser("inbox"); s.add_argument("--limit", type=int, default=15); s.set_defaults(fn=cmd_inbox)
     s = sub.add_parser("review"); s.add_argument("--limit", type=int, default=5)
     s.add_argument("--min-age", type=int, default=3, help="chỉ ôn ghi chú cũ hơn N ngày")
-    s.add_argument("--category"); s.add_argument("--tag")
+    s.add_argument("--category"); s.add_argument("--tag"); s.add_argument("--kind")
     s.add_argument("--done", help="đánh dấu đã ôn: id1,id2"); s.set_defaults(fn=cmd_review)
     s = sub.add_parser("digest"); s.add_argument("--days", type=int, default=7); s.set_defaults(fn=cmd_digest)
     s = sub.add_parser("tags"); s.set_defaults(fn=cmd_tags)
@@ -928,11 +1478,26 @@ def main():
     s = sub.add_parser("snapshot"); s.add_argument("--reason", default="dinh-ky"); s.set_defaults(fn=cmd_snapshot)
     s = sub.add_parser("export"); s.add_argument("--out", required=True)
     s.add_argument("--format", choices=["markdown", "json"], default="markdown")
-    s.add_argument("--category"); s.add_argument("--tag")
+    s.add_argument("--category"); s.add_argument("--tag"); s.add_argument("--kind")
     s.add_argument("--all", action="store_true", help="xuất cả ghi chú trong kho lưu")
     s.add_argument("--since", type=int, help="chỉ lấy ghi chú trong N ngày gần đây"); s.set_defaults(fn=cmd_export)
     s = sub.add_parser("import"); s.add_argument("--file", required=True); s.set_defaults(fn=cmd_import)
     s = sub.add_parser("stats"); s.set_defaults(fn=cmd_stats)
+    s = sub.add_parser("categories", help="cây nhóm Vùng/Nhóm/Nhóm con kèm số ghi chú"); s.set_defaults(fn=cmd_categories)
+    s = sub.add_parser("kinds", help="các loại kiến thức"); s.set_defaults(fn=cmd_kinds)
+    s = sub.add_parser("viec", help="công việc: quá hạn / hôm nay / sắp tới")
+    s.add_argument("--xong", help="đánh dấu xong: id1,id2"); s.add_argument("--mo-lai", dest="mo_lai")
+    s.add_argument("--category"); s.add_argument("--tat-ca", dest="tat_ca", action="store_true")
+    s.set_defaults(fn=cmd_viec)
+    s = sub.add_parser("nap", help="nạp hàng loạt: .md .txt .pdf .csv .json .html, cả thư mục; - = stdin")
+    s.add_argument("duong_dan", nargs="+")
+    s.add_argument("--tach", choices=["tu-dong", "heading", "khong", "trang"], default="tu-dong",
+                   help="tu-dong: Markdown có ≥2 tiêu đề thì mỗi mục một ghi chú; trang: PDF mỗi trang một ghi chú")
+    s.add_argument("--category", default=""); s.add_argument("--tags", default=""); s.add_argument("--kind")
+    s.add_argument("--url", default=""); s.add_argument("--cite", default=""); s.add_argument("--title", default="")
+    s.add_argument("--source", default="other", choices=SOURCES)
+    s.add_argument("--dry-run", action="store_true", help="chỉ xem trước, không ghi gì")
+    s.set_defaults(fn=cmd_nap)
     s = sub.add_parser("doctor", help="khám sức khoẻ kho"); s.add_argument("--fix", action="store_true")
     s.set_defaults(fn=cmd_doctor)
     a = ap.parse_args()

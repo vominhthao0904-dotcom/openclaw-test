@@ -912,6 +912,7 @@ function timNgay() {
       box.appendChild(b);
     });
     if (r.che_do === 'mo_rong') box.prepend(el('p', 'none', 'Không ghi chú nào có đủ mọi từ — đây là các ghi chú khớp nhiều từ nhất.'));
+    else if (r.che_do === 'khong_dau') box.prepend(el('p', 'none', 'Không có kết quả đúng dấu — đây là các ghi chú khớp khi bỏ dấu.'));
   }, 220);
 }
 $('#oTim').addEventListener('input', timNgay);

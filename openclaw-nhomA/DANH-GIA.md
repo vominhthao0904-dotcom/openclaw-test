@@ -10,12 +10,13 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **100** |
-| Test `test-web.sh` | 30 | **67** |
+| Test `test-brain.sh` | 50 | **111** |
+| Test `test-web.sh` | 30 | **68** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
 | Tìm bằng câu hỏi dài ("anh từng ghi gì về lỗi phụ đề") | 0 kết quả | **Ra kết quả** |
+| Tìm gõ không dấu ("lap dat", "duong ong") | 0 kết quả | **Ra kết quả** |
 
 ## An toàn
 
@@ -148,6 +149,12 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - `scripts/sao-luu-drive.sh` (`kiem` · `chay` · `ds` · `khoi-phuc [ngày]` · `lich`): mỗi đêm 2h47 chụp kho thành một file nhất quán, **mã hoá trên VPS bằng rclone crypt** (cả tên file lẫn nội dung) rồi mới gửi lên Drive; gửi cả `deleted/`; giữ 90 ngày, tự dọn bản cũ; ghi trạng thái cho `doctor` và `kiemtra.sh`.
 - An toàn: **chỉ chịu gửi qua remote kiểu `crypt`** (cấu hình nhầm sang kết nối thường là từ chối); quyền Google `drive.file` — rclone chỉ thấy file do nó tạo; khôi phục ra **file riêng**, kiểm toàn vẹn, không đè kho đang dùng; sai mật khẩu báo đúng "không giải mã được"; khoá chống chạy chồng; nhật ký `drive.log`.
 - Thử thật bằng "Drive giả" (thư mục cục bộ, cùng cơ chế crypt, rclone 1.60 — bản của Ubuntu 24.04): sao lưu, kiểm không lộ chữ thô, liệt kê, khôi phục, dọn bản > 90 ngày, sai mật khẩu, remote không mã hoá, đặt lịch 2 lần không trùng. 8 test tự động (brain 100). **Chưa thử với Google Drive thật** (cần tài khoản Google của anh) — phần đăng nhập Google làm theo Bước 6 trong CAI-DAT.md.
+
+## Giọng nói và tìm không dấu (bổ sung)
+- **Quy tắc giọng nói** (SKILL.md mục 2b): nội dung đến từ giọng nói thì Mây đọc lại chủ đề / nhóm / loại / thẻ / hạn và **chờ xác nhận mới lưu**; bắt buộc hỏi lại tên người, số tiền, số đo, số điện thoại, ngày giờ (đọc bằng số); tin thoại nhiều ý tách thành từng ghi chú, xác nhận cả lô; lệnh xoá/gộp/cất kho/xong việc bằng giọng phải nhắc lại và chờ xác nhận, "xoá" mặc định thành cất kho; ghi chú lưu với `--source voice` + thẻ `giong-noi` để rà lại; trả lời ngắn, nói được thành lời.
+- **Lỗi tìm kiếm đã sửa:** gõ không dấu chỉ ra kết quả khi may mắn — "loc nuoc" ra, nhưng "lap dat", "duong ong" ra 0 (bộ tách từ của SQLite không bỏ được dấu chồng như ắ, ợ và không coi "đ" là "d"). Thêm chỉ mục thứ hai đã bỏ hết dấu: thứ tự tìm là *đúng dấu* → *bỏ dấu, đủ mọi từ* → *khớp nhiều từ nhất*; đoạn trích vẫn hiện chữ gốc có dấu và tô chỗ khớp. Dùng cho lệnh `search`, ô Tìm và ô Hỏi trên web.
+- Chỉ mục mới tự dựng khi mở kho cũ, tự cập nhật khi thêm/sửa/xoá; sửa kho bằng công cụ khác thì `doctor` phát hiện, `doctor --fix` dựng lại. Đo trên kho 5.000 ghi chú: mở kho 0,02 giây, tìm 0,02 giây; kho to thêm khoảng bằng phần chữ của ghi chú.
+- 11 test mới (brain 111, web 68).
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.

@@ -295,6 +295,26 @@ else
 fi
 
 echo
+echo "20. TÌM KHÔNG DẤU (gõ vội, bàn phím không dấu, giọng nói chép sai dấu)"
+KD_ID="$(BR add --title "Thẩm định móng cọc khoan nhồi" --content "Kiểm định độ sụt bê tông tươi trước khi đổ, ghi biên bản" \
+  --category "Kỹ thuật/Xây dựng" --tags "coc-khoan-nhoi" | jq_ 'd["id"]')"
+check "gõ không dấu vẫn ra (đủ mọi từ)" 'BR search "tham dinh mong coc" | jq_ "[n[\"id\"] for n in d[\"notes\"]]==[\"$KD_ID\"]"' "True"
+check "chữ đ gõ thành d vẫn ra" 'BR search "kiem dinh do sut" | jq_ "d[\"count\"]"' "1"
+check "đoạn trích giữ nguyên dấu, tô chỗ khớp" 'BR search "be tong tuoi" | jq_ "\"«bê» «tông» «tươi»\" in d[\"notes\"][0][\"snippet\"]"' "True"
+check "gõ lẫn có dấu/không dấu: báo khong_dau" 'BR search "bê tông truoc khi do" | jq_ "d[\"che_do\"]"' "khong_dau"
+check "có dấu đúng vẫn tìm chính xác như cũ" 'BR search "khoan nhồi" | jq_ "d[\"che_do\"]"' "chinh_xac"
+BR edit --id "$KD_ID" --title "Nghiệm thu móng cọc khoan nhồi" >/dev/null
+check "sửa tiêu đề: chỉ mục không dấu cập nhật" 'BR search "nghiem thu mong" | jq_ "d[\"count\"]"' "1"
+python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"UPDATE notes SET content='Đo độ lún cọc thử tĩnh' WHERE id=?\",(sys.argv[2],));c.commit()" "$SECOND_BRAIN_DB" "$KD_ID"
+check "sửa kho bằng công cụ khác: doctor phát hiện" 'BR doctor | jq_ "any(\"không dấu\" in x for x in d[\"loi\"])"' "True"
+check "doctor --fix dựng lại, tìm ra nội dung mới" 'BR doctor --fix >/dev/null; BR search "do lun coc thu tinh" | jq_ "d[\"count\"]"' "1"
+python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute('DROP TABLE notes_kd');c.commit()" "$SECOND_BRAIN_DB"
+check "kho tạo bằng bản cũ: tự dựng chỉ mục" 'BR search "nghiem thu mong" | jq_ "d[\"count\"]"' "1"
+check "ghi bằng giọng nói: --source voice" \
+  'BR add --title "Gọi chị Lan thứ sáu" --content "Hỏi lịch thay lõi lọc" --kind viec --source voice --tags giong-noi >/dev/null; BR list --source voice | jq_ "d[\"count\"]"' "1"
+check "rà ghi chú giọng nói theo thẻ" 'BR list --tag giong-noi | jq_ "d[\"notes\"][0][\"title\"]"' "Gọi chị Lan thứ sáu"
+
+echo
 echo "======================================================================"
 printf " ĐẠT: %-5s HỎNG: %s\n" "$OK" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo " Tất cả test đều qua." || echo " CÓ TEST HỎNG — xem các dòng HỎNG ở trên."

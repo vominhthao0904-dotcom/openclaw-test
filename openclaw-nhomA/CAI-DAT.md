@@ -329,11 +329,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 100 trường hợp: sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 111 trường hợp: tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 67 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 68 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```

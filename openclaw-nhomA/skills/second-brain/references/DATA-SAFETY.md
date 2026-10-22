@@ -19,6 +19,12 @@ không máy chủ ngoài. (Bản cũ dùng Netlify Blobs và nhúng khoá — n�
 - Mặc định `archive`, không `delete`. `delete --yes` chỉ khi người dùng nói rõ muốn xoá hẳn.
 - Không gửi kho hay bản xuất (`export`) ra dịch vụ ngoài khi người dùng chưa yêu cầu rõ.
 
+## Giọng nói
+- Tin nhắn thoại được chép thành chữ ở **chỗ OpenClaw cấu hình** (dịch vụ đám mây hay chạy ngay trên VPS) — skill này
+  không xử lý âm thanh, không gửi âm thanh đi đâu. Dùng dịch vụ đám mây thì bản ghi âm rời khỏi VPS: người dùng nên biết.
+- Bản ghi âm còn nằm trong lịch sử Telegram: không đọc mật khẩu, số thẻ, CCCD bằng giọng.
+- Nội dung từ giọng nói chỉ lưu sau khi người dùng xác nhận bản đọc lại (SKILL.md mục 2b).
+
 ## Trang web
 - Chỉ nghe `127.0.0.1`. Xem từ máy khác bằng đường hầm SSH: `ssh -N -L 8787:127.0.0.1:8787 user@IP_VPS`.
 - Mọi yêu cầu (cả GET) phải gửi tới `127.0.0.1`/`localhost` — chặn DNS rebinding đọc trộm kho.

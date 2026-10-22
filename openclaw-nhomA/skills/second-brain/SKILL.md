@@ -1,6 +1,6 @@
 ---
 name: second-brain
-description: Bộ não thứ hai của người dùng — kho kiến thức, công việc, tài liệu học thuật chạy hoàn toàn trên máy (SQLite, tìm toàn văn tiếng Việt, không ra mạng). Lưu có phân loại 3 trục (vùng/nhóm phân cấp, loại kiến thức, thẻ), chống trùng, nạp hàng loạt từ Markdown/TXT/PDF/CSV/HTML, tra cứu có dẫn nguồn, quản lý việc cần làm theo hạn, ôn lại, sao lưu. Kèm giao diện web cục bộ (Toàn cảnh, Thư viện, Việc). Dùng khi người dùng muốn ghi lại điều vừa học/rút ra/khách vừa nói, nhắc việc, nạp tài liệu vào kho, hỏi "anh từng ghi gì về…", ôn lại, hoặc viết bài/báo cáo dựa trên kho của họ.
+description: Bộ não thứ hai của người dùng — kho kiến thức, công việc, tài liệu học thuật chạy hoàn toàn trên máy (SQLite, tìm toàn văn tiếng Việt, không ra mạng). Lưu có phân loại 3 trục (vùng/nhóm phân cấp, loại kiến thức, thẻ), chống trùng, nạp hàng loạt từ Markdown/TXT/PDF/CSV/HTML, tra cứu có dẫn nguồn, quản lý việc cần làm theo hạn, ôn lại, sao lưu; nhận ghi chép bằng giọng nói (đọc lại cho người dùng xác nhận rồi mới lưu). Kèm giao diện web cục bộ (Toàn cảnh, Thư viện, Việc). Dùng khi người dùng muốn ghi lại điều vừa học/rút ra/khách vừa nói, nhắc việc, nạp tài liệu vào kho, hỏi "anh từng ghi gì về…", ôn lại, hoặc viết bài/báo cáo dựa trên kho của họ.
 metadata: {"openclaw":{"emoji":"🧩","requires":{"bins":["python3"]}}}
 ---
 
@@ -70,6 +70,34 @@ Xác nhận với người dùng **ngắn gọn**: tiêu đề, nhóm (`Vùng �
 
 **Khi nào chủ động đề nghị lưu** (tóm tắt 2-3 câu rồi hỏi "ghi lại nhé?", hỏi một lần): người dùng vừa rút ra quy tắc từ việc đã làm; vừa sửa xong lỗi mất thời gian; nói ra con số/tiêu chí quyết định của riêng họ; khách hàng nói điều cần nhớ; vừa học xong và nói lại ý chính; hẹn làm một việc ("mai nhớ gọi chị Lan" → `--kind viec --due`). Không đề nghị lưu: việc vặt một lần, thứ tra lại được trong 10 giây, nội dung chép nguyên từ web chưa đọc.
 
+## 2b. Ghi chép, hỏi, ra lệnh bằng GIỌNG NÓI — đọc lại, được xác nhận mới làm
+
+Giọng nói chuyển thành chữ hay nghe sai (dấu, tên riêng, con số), và ghi chú sai đã vào kho thì rất khó phát hiện.
+**Nhận biết:** tin nhắn thoại được OpenClaw chép thành chữ (thường có nhãn kiểu audio / voice / transcript), người dùng
+nói đang đọc bằng giọng, hoặc chữ có dấu hiệu chép từ giọng (không chấm phẩy, từ đồng âm sai nghĩa, số viết bằng chữ).
+Không chắc thì coi như giọng nói — đọc lại một lần không tốn bao nhiêu.
+
+1. **Không lưu ngay.** Sửa câu chữ cho gọn (giữ đúng ý, **không thêm ý mới**), rồi đọc lại trong MỘT tin ngắn và hỏi "Lưu nhé?":
+   ```
+   📝 <Chủ đề>
+   Nhóm: Vùng › Nhóm · Loại: <loại> · Thẻ: <thẻ> · Hạn: <ngày nếu có>
+   <nội dung đã sửa>
+   ```
+   Chỉ chạy `add` khi người dùng xác nhận ("ok", "lưu", "đúng rồi"). Họ sửa → sửa theo, đọc lại **phần vừa đổi**, hỏi lại.
+2. **Bắt buộc hỏi lại** khi có: tên người / khách / công ty, số tiền, số đo, số điện thoại, ngày giờ. Đọc lại **bằng số**
+   ("15/11/2026", "2.500.000 đ", "chị Lan — Lan hay Lành?"). Chỗ nghe không rõ: ghi `[?]` ngay trong bản đọc lại và hỏi.
+3. Khi lưu: `--source voice` và thêm thẻ `giong-noi` (cùng các thẻ khác) — sau này rà lại bằng `list --tag giong-noi`.
+4. **Một tin thoại nhiều ý** → tách mỗi ý một ghi chú, liệt kê đánh số để xác nhận cả lô (một lần "ok" cho cả lô được;
+   "bỏ số 2" thì bỏ). Việc có hạn ("thứ sáu gọi chị Lan") → `--kind viec`, đổi ra ngày cụ thể và đọc lại ngày.
+5. **Lệnh có hậu quả** bằng giọng (xoá, gộp, đổi thẻ hàng loạt, cất kho, đánh dấu xong việc): nhắc lại đúng ghi chú
+   (tiêu đề + mã) và đúng hành động, chờ xác nhận. Nghe "xoá" → đề nghị **cất kho** (`archive`), chỉ `delete` khi họ nói rõ "xoá hẳn".
+6. **Hỏi bằng giọng:** rút 2-4 từ khoá từ câu nói để `search` (chỉ mục không dấu đỡ được lỗi sai dấu; kết quả
+   `che_do: "khong_dau"` → kiểm đúng ý trước khi dẫn). Trả lời câu ngắn, nói được thành lời, không bảng; dẫn mã ghi chú
+   ở cuối. Nếu câu trả lời sẽ được đọc thành tiếng: không đọc mã dài — "chi tiết em gửi kèm bên dưới".
+7. **Xuất/trích bằng giọng** ("xuất nhóm Kỹ thuật tháng này"): nhắc lại phạm vi (nhóm, loại, khoảng ngày) rồi mới `export`.
+8. Người dùng đọc lên mật khẩu, số thẻ, CCCD: **không** đưa vào ghi chú (mục 11), nhắc họ — và nhắc rằng tin thoại có thể
+   còn lưu trong lịch sử chat.
+
 ## 3. Nạp hàng loạt (tài liệu, khoá học, ghi chép cũ)
 
 ```bash
@@ -100,6 +128,7 @@ $BR show --id <id>                               # nội dung đủ + nguồn + 
 ```
 1. `search` bằng **từ khoá ngắn** 2-4 từ, giữ dấu — không dán nguyên câu hỏi. Biết dạng cần tìm thì lọc `--kind` (cần cách làm → `quy-trinh`; cần trích dẫn → `tai-lieu`; hỏi về một khách → `nguoi` hoặc `--tag`). Khớp ở tiêu đề/thẻ được xếp trên khớp giữa bài.
 2. Ít kết quả: thử 1-2 cách diễn đạt khác, hoặc `list --category`. Kết quả `che_do: "mo_rong"` chỉ khớp một phần — đọc kỹ trước khi dẫn.
+   Gõ không dấu ("loc nuoc", "duong ong") vẫn tìm được; `che_do: "khong_dau"` = chỉ khớp khi bỏ dấu ("ban" có thể là "bán"/"bàn") — kiểm đúng ý.
 3. Trả lời **chỉ dựa trên ghi chú tìm được**, dẫn `[id] tiêu đề` cho từng ý; có `url`/`cite` thì dẫn luôn nguồn gốc.
 4. Thiếu dữ liệu thì nói thẳng "trong kho chưa có ghi chú về việc này" — **không bịa**. Kiến thức chung đáng bổ sung thì tách bạch: "Trong kho anh ghi X. Ngoài ra thường người ta làm Y — chưa có trong kho, muốn ghi lại không?"
 5. Soạn bài/báo cáo: `export --category … --kind …` hoặc `digest`, giữ giọng người dùng, nêu ghi chú nguồn.
@@ -149,7 +178,7 @@ $BR stats                    # kèm suc_khoe_kho, theo_loai, viec_dang_mo
 $BR doctor [--fix]           # khám kho: file hỏng, chỉ mục lệch, sao lưu ngừng, quyền, đĩa
 $BR snapshot                 # sao lưu chủ động (cron hằng ngày)
 ```
-`--source`: `book`, `course`, `experiment`, `chat`, `web`, `meeting`, `other`.
+`--source`: `book`, `course`, `experiment`, `chat`, `web`, `meeting`, `voice` (đọc bằng giọng), `other`.
 
 ## 8. Nhịp duy trì kho
 Làm khi người dùng mở lời, hoặc khi `stats` cho thấy kho lệch — **đừng tự nhắc mỗi ngày**:

@@ -148,6 +148,35 @@ Markdown có tiêu đề `##` → mỗi mục một ghi chú; có frontmatter (`
 
 Mây lưu thành ghi chú loại *Việc*, đổi "thứ sáu" ra ngày cụ thể và đọc lại cho anh xác nhận. Hỏi *"hôm nay có việc gì?"* là Mây liệt kê việc quá hạn trước. Trên web: chế độ **Việc**, tích là xong.
 
+### Dùng bằng giọng nói
+
+Anh nói thay vì gõ được, bằng 2 cách:
+
+| Cách | Làm thế nào | Cần cài gì |
+|---|---|---|
+| **Đọc chính tả bằng bàn phím** | Trong ô nhắn Telegram, bấm micro **trên bàn phím** (Gboard, bàn phím iPhone), nói, xem lại chữ rồi gửi | Không — dùng được ngay |
+| **Tin nhắn thoại** | Giữ nút micro **của Telegram** để ghi âm, gửi cho Mây | OpenClaw phải bật chức năng chép giọng nói thành chữ — thử gửi một tin thoại ngắn là biết |
+
+Giọng nói chép thành chữ hay sai dấu, sai tên riêng, sai con số. Vì vậy Mây **không lưu ngay** mà đọc lại trước:
+
+> 📝 Gọi chị Lan về bảo trì hệ lọc tổng\
+> Nhóm: Kinh doanh › Khách hàng · Loại: Việc · Thẻ: khach-lan, giong-noi · Hạn: 07/11/2026\
+> Hỏi tình trạng lõi lọc, hẹn ngày thay.\
+> Lưu nhé?
+
+- Đúng thì trả lời **"ok"**. Sai chỗ nào thì nói chỗ đó ("hạn là thứ bảy", "tên là Lành"), Mây sửa rồi đọc lại.
+- Có **tên người, số tiền, số đo, số điện thoại, ngày giờ** thì Mây luôn hỏi lại, đọc bằng số cho dễ soát.
+- Một tin thoại nói nhiều ý → Mây tách mỗi ý một ghi chú, đánh số, anh "ok" một lần cho cả lô hoặc "bỏ số 2".
+- Lệnh xoá, gộp, cất kho, đánh dấu xong bằng giọng nói → Mây nhắc lại đúng ghi chú và hành động, chờ anh xác nhận.
+  Nói "xoá" thì Mây đề nghị **cất kho** (lấy lại được), chỉ xoá hẳn khi anh nói rõ "xoá hẳn".
+- Ghi chú từ giọng nói được gắn thẻ **giong-noi**. Thỉnh thoảng rà lại: *"liệt kê các ghi chú giọng nói tuần này"*,
+  hoặc trên web: Thư viện → bấm thẻ *giong-noi*.
+- Hỏi bằng giọng: *"anh từng ghi gì về phụ đề không hiện?"* — Mây trả lời câu ngắn, dẫn mã ghi chú ở cuối.
+- **Đừng đọc mật khẩu, số thẻ, số CCCD** — Mây sẽ không ghi, và tin thoại có thể còn nằm trong lịch sử Telegram.
+
+**Tìm không dấu:** gõ *"loc nuoc"*, *"duong ong"* vẫn ra "lọc nước", "đường ống" — cả khi nhắn Mây lẫn ô **Tìm** trên web.
+Kết quả chỉ khớp khi bỏ dấu ("ban" có thể là "bán" hay "bàn") được ghi chú rõ để anh kiểm lại.
+
 ### Ghi cái gì
 
 Ghi **kết luận**, đừng ghi tài liệu. Thứ đáng ghi là thứ anh phải *trả giá* mới biết:

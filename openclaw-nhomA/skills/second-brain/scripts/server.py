@@ -357,6 +357,11 @@ def relevant_notes(conn, question, limit=12):
         rows = conn.execute("SELECT n.id,n.title,n.category,n.content FROM notes_fts f "
                             f"JOIN notes n ON n.rowid=f.rowid WHERE notes_fts MATCH ? AND n.{brain.CON} "
                             "ORDER BY bm25(notes_fts) LIMIT ?", (q, limit)).fetchall()
+        if not rows:   # câu hỏi gõ không dấu ("phu de khong hien") -> chỉ mục bỏ dấu
+            qkd = " OR ".join(f'"{w}"' for w in dict.fromkeys(brain.bo_dau(w) for w in words))
+            rows = conn.execute("SELECT n.id,n.title,n.category,n.content FROM notes_kd k "
+                                f"JOIN notes n ON n.rowid=k.rowid WHERE notes_kd MATCH ? AND n.{brain.CON} "
+                                "ORDER BY bm25(notes_kd) LIMIT ?", (qkd, limit)).fetchall()
     except Exception:
         return []
     return [dict(r) for r in rows]

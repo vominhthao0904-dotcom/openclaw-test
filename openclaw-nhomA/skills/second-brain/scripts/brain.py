@@ -25,7 +25,7 @@ DB_PATH = Path(os.environ.get("SECOND_BRAIN_DB", WORKSPACE / "second-brain" / "n
 BACKUP_DIR = DB_PATH.parent / "backups"
 DELETED_DIR = DB_PATH.parent / "deleted"      # bản sao vĩnh viễn, KHÔNG bao giờ tự dọn
 KEEP_BACKUPS = so_env("SECOND_BRAIN_KEEP_BACKUPS", 60, 1)   # luôn giữ ít nhất 1 bản
-SOURCES = ("book", "course", "experiment", "chat", "web", "meeting", "other")
+SOURCES = ("book", "course", "experiment", "chat", "web", "meeting", "voice", "other")
 # Loại kiến thức — trục phân loại thứ hai, độc lập với nhóm (chủ đề) và thẻ.
 # Một ghi chú "Landing page" có thể là kết luận, quy trình, hay tài liệu tham khảo: biết loại thì
 # lấy ra đúng thứ cần (cần cách làm -> quy-trinh; cần trích dẫn -> tai-lieu; cần việc -> viec).
@@ -113,8 +113,68 @@ def connect():
         INSERT INTO notes_fts(rowid,title,content,tags,category) VALUES (new.rowid,new.title,new.content,new.tags,new.category); END;
     """)
     nang_cap(db)
+    chi_muc_khong_dau(db)
     bao_ve_quyen()
     return db
+
+
+# Chỉ mục thứ hai, bỏ hết dấu: gõ "lap dat", "duong ong" (bàn phím không dấu, gõ vội) vẫn ra "Lắp đặt",
+# "đường ống". unicode61 của SQLite không bỏ được dấu chồng (ắ, ợ) và không coi "đ" là "d", nên tự bỏ dấu
+# bằng bo_dau(). Trigger là TEMP (chỉ sống trong kết nối của brain.py/server.py) để kho vẫn mở/ghi được bằng
+# công cụ khác hay bản brain.py cũ; lệch thì tự dựng lại khi mở kho (đếm khác) hoặc bằng doctor --fix.
+KD_BODY = "coalesce({p}.content,'') || ' ' || coalesce({p}.tags,'') || ' ' || coalesce({p}.category,'')"
+
+
+def chi_muc_khong_dau(db):
+    db.create_function("bo_dau", 1, bo_dau, deterministic=True)
+    nb, ob = KD_BODY.format(p="new"), KD_BODY.format(p="old")
+    db.executescript(f"""
+      CREATE VIRTUAL TABLE IF NOT EXISTS notes_kd USING fts5(title, body, tokenize='unicode61');
+      CREATE TEMP TRIGGER IF NOT EXISTS kd_ai AFTER INSERT ON main.notes BEGIN
+        INSERT INTO notes_kd(rowid,title,body) VALUES (new.rowid, bo_dau(new.title), bo_dau({nb})); END;
+      CREATE TEMP TRIGGER IF NOT EXISTS kd_ad AFTER DELETE ON main.notes BEGIN
+        DELETE FROM notes_kd WHERE rowid=old.rowid; END;
+      CREATE TEMP TRIGGER IF NOT EXISTS kd_au AFTER UPDATE OF title,content,tags,category ON main.notes BEGIN
+        DELETE FROM notes_kd WHERE rowid=old.rowid;
+        INSERT INTO notes_kd(rowid,title,body) VALUES (new.rowid, bo_dau(new.title), bo_dau({nb})); END;
+    """)
+    if db.execute("SELECT count(*) FROM notes").fetchone()[0] != db.execute("SELECT count(*) FROM notes_kd").fetchone()[0]:
+        dung_lai_khong_dau(db)
+
+
+def dung_lai_khong_dau(db):
+    db.execute("DELETE FROM notes_kd")
+    db.execute("INSERT INTO notes_kd(rowid,title,body) SELECT rowid, bo_dau(title), bo_dau(" +
+               KD_BODY.format(p="notes") + ") FROM notes")
+    db.commit()
+
+
+def khong_dau_lech(db):
+    return db.execute("SELECT count(*) FROM notes n LEFT JOIN notes_kd k ON k.rowid=n.rowid "
+                      "WHERE k.title IS NOT bo_dau(n.title) OR k.body IS NOT bo_dau(" + KD_BODY.format(p="n") + ")"
+                      ).fetchone()[0] + db.execute(
+                      "SELECT count(*) FROM notes_kd WHERE rowid NOT IN (SELECT rowid FROM notes)").fetchone()[0]
+
+
+def trich_khong_dau(content, tu, rong=90):
+    """Đoạn trích có «» quanh chỗ khớp, cho kết quả tìm không dấu (snippet của FTS sẽ là chữ đã mất dấu).
+    bo_dau giữ nguyên số ký tự với chữ Việt dựng sẵn (NFC), nên vị trí khớp trên bản không dấu dùng được cho bản gốc."""
+    goc = gon(content)
+    kd = bo_dau(goc)
+    if not tu or len(kd) != len(goc):
+        return rut_gon(goc, 160)
+    mau = re.compile(r"\b(?:" + "|".join(re.escape(w) for w in sorted(tu, key=len, reverse=True)) + r")\w*")
+    dau_tien = mau.search(kd)
+    if not dau_tien:
+        return rut_gon(goc, 160)
+    dau = kd.rfind(" ", 0, dau_tien.start() - 40) + 1 if dau_tien.start() > 40 else 0   # không cắt giữa chữ
+    cuoi = min(len(goc), dau_tien.end() + rong)
+    ra, i = [], dau
+    for m in mau.finditer(kd, dau, cuoi):
+        ra += [goc[i:m.start()], "«", goc[m.start():m.end()], "»"]
+        i = m.end()
+    ra.append(goc[i:cuoi])
+    return ("…" if dau else "") + "".join(ra) + ("…" if cuoi < len(goc) else "")
 
 
 def nang_cap(db):
@@ -536,16 +596,38 @@ def _tim(db, q, limit, ca_kho=False, category=None, kind=None):
            "JOIN notes n ON n.rowid = f.rowid WHERE notes_fts MATCH ?" +
            ("" if ca_kho else f" AND n.{CON}") + "".join(" AND " + w for w in them) +
            " ORDER BY bm25(notes_fts, 4.0, 1.0, 3.0, 2.0) LIMIT ?")
-    try:
-        rows = db.execute(sql, (q, *tham, limit)).fetchall()
-    except sqlite3.OperationalError:   # user typed FTS operators wrongly -> fall back to a plain phrase
-        rows = db.execute(sql, ('"' + q.replace('"', " ") + '"', *tham, limit)).fetchall()
-    if rows:
-        return rows, "chinh_xac"
+    sql_kd = ("SELECT n.*, NULL AS snip FROM notes_kd k JOIN notes n ON n.rowid = k.rowid WHERE notes_kd MATCH ?" +
+              ("" if ca_kho else f" AND n.{CON}") + "".join(" AND " + w for w in them) +
+              " ORDER BY bm25(notes_kd, 4.0, 1.0) LIMIT ?")
+
+    def chay(cau, qq):
+        try:
+            return db.execute(cau, (qq, *tham, limit)).fetchall()
+        except sqlite3.OperationalError:   # gõ nhầm cú pháp FTS -> tìm nguyên cụm
+            return db.execute(cau, ('"' + qq.replace('"', " ") + '"', *tham, limit)).fetchall()
+
+    def kem_trich(rows, tu):   # kết quả từ chỉ mục không dấu: tự cắt đoạn trích từ chữ gốc còn dấu
+        return [dict(r, snip=trich_khong_dau(r["content"], tu)) for r in rows]
+
+    qkd = bo_dau(q)
+    co_dau = qkd != q.lower()
     tu = [w for w in dict.fromkeys(_tu(q)) if w not in STOP]
+    tu_kd = list(dict.fromkeys(bo_dau(w) for w in tu))
+    if co_dau:                                          # 1. đúng từng chữ, đúng dấu
+        rows = chay(sql, q)
+        if rows:
+            return rows, "chinh_xac"
+    rows = chay(sql_kd, qkd)                            # 2. đủ mọi từ, bỏ qua dấu ("lap dat" ra "Lắp đặt")
+    if rows:
+        return kem_trich(rows, tu_kd or _tu(qkd)), ("khong_dau" if co_dau else "chinh_xac")
     if len(tu) < 2:
-        return rows, "chinh_xac"
-    return db.execute(sql, (" OR ".join(f'"{w}"' for w in tu[:16]), *tham, limit)).fetchall(), "mo_rong"
+        return [], "chinh_xac"
+    if co_dau:                                          # 3. câu dài: ghi chú khớp NHIỀU từ nhất
+        rows = db.execute(sql, (" OR ".join(f'"{w}"' for w in tu[:16]), *tham, limit)).fetchall()
+        if rows:
+            return rows, "mo_rong"
+    rows = db.execute(sql_kd, (" OR ".join(f'"{w}"' for w in tu_kd[:16]), *tham, limit)).fetchall()
+    return kem_trich(rows, tu_kd), "mo_rong"
 
 
 def cmd_search(a, db):
@@ -563,6 +645,8 @@ def cmd_search(a, db):
     if che_do == "mo_rong" and notes:
         kq["note"] = ("Không ghi chú nào chứa đủ mọi từ; đây là các ghi chú khớp NHIỀU từ nhất. "
                       "Đọc kỹ trước khi dẫn — có thể chỉ liên quan một phần.")
+    elif che_do == "khong_dau" and notes:
+        kq["note"] = "Không có kết quả đúng dấu; đây là ghi chú khớp khi bỏ dấu — kiểm lại đúng ý trước khi dẫn."
     out(kq)
 
 
@@ -974,6 +1058,13 @@ def cmd_doctor(a, db):
             da_sua.append("Đã dựng lại chỉ mục tìm kiếm")
         else:
             loi.append("Chỉ mục tìm kiếm lệch với ghi chú (tìm sẽ thiếu kết quả). Sửa: doctor --fix")
+    lech = khong_dau_lech(db)
+    if lech:
+        if a.fix:
+            dung_lai_khong_dau(db)
+            da_sua.append("Đã dựng lại chỉ mục tìm không dấu")
+        else:
+            loi.append(f"Chỉ mục tìm không dấu lệch {lech} ghi chú (kho bị sửa bằng công cụ khác?). Sửa: doctor --fix")
     mo_coi = db.execute("SELECT count(*) FROM links l WHERE NOT EXISTS(SELECT 1 FROM notes WHERE id=l.a) "
                         "OR NOT EXISTS(SELECT 1 FROM notes WHERE id=l.b)").fetchone()[0]
     if mo_coi:

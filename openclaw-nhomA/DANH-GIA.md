@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **123** |
-| Test `test-web.sh` | 30 | **79** |
+| Test `test-web.sh` | 30 | **82** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -379,6 +379,23 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 - Thêm 6 test brain (gộp trang: xem trước, thứ tự + thẻ, trang vào kho lưu, lần 2 không gộp; PDF mặc định 1 ghi chú, tên có
   dấu từ thông tin file) và 7 test web (chọn phiên + gửi qua file, đoạn liên quan của ghi chú dài, báo đúng lý do lỗi, Thư viện
   mời gộp, gộp qua web, gộp lần 2, tên sai kiểu).
+
+## Sau PR #16: ô Hỏi vẫn lỗi "Gateway agent from agent exec would lose inter-session attribution…"
+- Lỗi khác hẳn lỗi cũ: lệnh đã chọn phiên đúng, nhưng OpenClaw chặn. Mã nguồn 2026.9.6: `openclaw agent` chạy với biến
+  `OPENCLAW_SHELL=exec` thì từ chối gọi Gateway — chốt an toàn để lệnh trong exec của agent không tạo lượt hội thoại mới
+  mất dấu người gửi thật; thông báo dặn rõ *không gỡ dấu, không thử đường CLI khác*. Trang web được **Mây** bật lại lúc cập
+  nhật (bước `web.sh restart` trong hướng dẫn gửi Mây), nên tiến trình web và lệnh `openclaw agent` con mang dấu đó.
+- Cách sửa đúng: chủ kho tự bật trang web trong Termius. Không gỡ dấu trong code. Thêm: ô Hỏi gặp dấu này thì không chạy
+  lệnh vô ích mà báo tiếng Việt kèm đúng lệnh `web.sh restart`, vẫn liệt kê ghi chú liên quan; `web.sh start` (bật từ exec)
+  nhắc trước ô Hỏi sẽ bị chặn; `web.sh status` có dòng **Ô Hỏi: không bị chặn / BỊ CHẶN** (đọc biến môi trường của tiến trình
+  web). SKILL.md dặn Mây: cần ô Hỏi thì đưa lệnh cho người dùng tự chạy. Từ nay hướng dẫn cập nhật: Mây cài, **anh** khởi
+  động lại web.
+- `openclaw` giả trong test-web.sh thêm đúng chốt chặn này. Thêm 3 test (ô Hỏi báo cách sửa; `web.sh start` nhắc; `web.sh
+  status` chỉ ra bị chặn). Mây chạy bộ test trong exec thì 3 test gọi Mây tự bỏ qua (79), chạy từ terminal thì đủ 82.
+- **Thẻ chi tiết chỉ đóng bằng ×** (anh báo: bấm ra chỗ trống không tắt). Nay bấm chỗ trống ngoài thẻ — ở Thư viện, Việc, cột
+  trái hay nền Toàn cảnh (trừ lõi Bát Quái) — là đóng. Bấm nút, ô nhập, thẻ ghi chú khác thì vẫn làm việc của nó (mở ghi chú
+  khác, không đóng rồi mở lại). Đang Sửa thì không tự đóng. Thử bằng trình duyệt thật 10 tình huống (mở, đổi ghi chú, bấm trong
+  thẻ, chỗ trống, đang sửa, ×, Esc, chấm và chỗ trống trên đồ thị): đạt cả.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

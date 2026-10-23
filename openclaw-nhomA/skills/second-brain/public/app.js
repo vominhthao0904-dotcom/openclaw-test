@@ -1831,6 +1831,8 @@ cv.addEventListener('click', (e) => {
   }
   const nd = timGan(x, y);
   if (nd) { moChiTiet(nd.note.id); noi(nd.note.title); }   // mặt A.I: đọc tên ghi chú vừa bấm
+  // bấm chỗ trống của đồ thị (không phải lõi Bát Quái): đóng thẻ chi tiết đang mở
+  else if (Math.hypot(x - LX, y - LY) >= rkHienTai + 6) dongNeuTrong();
 });
 
 function capNhatToc(luu) {
@@ -2103,6 +2105,15 @@ $('#ctSua').addEventListener('submit', async (e) => {
 });
 function dongChiTiet() { $('#chiTiet').hidden = true; chon = null; datLech(); }
 $('#dong').addEventListener('click', dongChiTiet);
+// Bấm ra chỗ trống ngoài thẻ chi tiết thì đóng thẻ, như bấm ×. Bấm nút / thẻ ghi chú khác / ô nhập thì làm việc của nó
+// (mở ghi chú khác…). Đang sửa ghi chú thì không tự đóng — khỏi mất chữ đang gõ.
+function dongNeuTrong() { if (!$('#chiTiet').hidden && $('#ctSua').hidden) dongChiTiet(); }
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  if (!(t instanceof Element) || t === cv || $('#chiTiet').contains(t)) return;   // đồ thị tự xử lý ở trên
+  if (t.closest('button, a, input, select, textarea, label, summary, [role="button"], [contenteditable="true"]')) return;
+  dongNeuTrong();
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('#chiTiet').hidden) dongChiTiet();
 });

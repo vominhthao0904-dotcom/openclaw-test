@@ -231,9 +231,13 @@ Làm khi người dùng mở lời, hoặc khi `stats` cho thấy kho lệch —
 ```bash
 bash {baseDir}/scripts/web.sh start      # bật chạy nền (chỉ nghe 127.0.0.1), in đường link có mã
 bash {baseDir}/scripts/web.sh link       # in lại đường link có mã
-bash {baseDir}/scripts/web.sh status     # đang chạy không, tốn bao nhiêu RAM
+bash {baseDir}/scripts/web.sh status     # đang chạy không, RAM, ô Hỏi có bị chặn không
 bash {baseDir}/scripts/web.sh stop       # tắt
 ```
+**Ô Hỏi cần trang web do chủ kho tự bật trong terminal của họ.** Web bật từ exec của agent mang `OPENCLAW_SHELL=exec`, và
+OpenClaw từ chối `openclaw agent` từ exec (chốt an toàn: lượt hỏi mất dấu người gửi thật) — ô Hỏi báo bị chặn, phần khác vẫn
+chạy. Không gỡ biến đó, không lách bằng đường CLI khác. Người dùng cần ô Hỏi, hoặc sau khi cập nhật skill cần khởi động lại web:
+gửi họ lệnh `bash {baseDir}/scripts/web.sh restart` để **tự chạy** trong Termius, thay vì tự chạy hộ.
 Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi Thái Cực – Tiên Thiên Bát Quái, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
 loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (quá hạn / hôm nay / sắp tới, tích xong).
 Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt/Word .docx/PDF hoặc dán, xem trước; mặc định mỗi file 1 ghi chú) ·

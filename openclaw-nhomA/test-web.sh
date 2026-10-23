@@ -46,6 +46,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --to|--session-key|--session-id|--agent) phien="$phien$1=$2;"; shift 2;;
   --message-file) tep="$2"; shift 2;; *) shift;; esac; done
 loi() { printf '%s\n' "[openclaw] Agent failed" "[openclaw] Reason: $1" "[openclaw] Try: openclaw doctor" "[openclaw] Help: openclaw --help" >&2; exit 1; }
+[ "${OPENCLAW_SHELL:-}" = exec ] && loi "Gateway agent from agent exec would lose inter-session attribution. Use the attributed session-messaging tool available to this run, or return the result through normal subagent completion. Do not retry through another CLI route or remove the exec marker."
 [ -n "$phien" ] || loi "Pass --to <E.164>, --session-key, --session-id, or --agent to choose a session"
 [ -r "$tep" ] || loi "no message"
 grep -q "GIA-LOI" "$tep" && loi "Gateway not reachable"
@@ -221,13 +222,26 @@ check "thông tin chi tiết có ghi chú liên kết kèm tên" \
 
 echo
 echo "7b2. Ô HỎI (openclaw agent) VÀ GỘP TRANG"
-check "Hỏi: có chọn phiên riêng, câu hỏi qua file" \
-  'post /api/ask "{\"question\":\"móng nhà phố\"}" | jq_ "(d[\"answer\"].split(\" moc\")[0], \"lo-dong-lenh=khong\" in d[\"answer\"])"' "('--session-key=second-brain;', True)"
-check "Hỏi ghi chú dài: gửi đúng đoạn liên quan" \
-  'post /api/ask "{\"question\":\"Thuỷ điện Hoà Bình công suất bao nhiêu\"}" | jq_ "\"moc=co\" in d[\"answer\"]"' "True"
-python3 "$SB/scripts/brain.py" add --title "Ghi chú gây lỗi" --content "Hồ chứa GIA-LOI thử báo lỗi." >/dev/null
-check "Hỏi lỗi: báo đúng lý do, không phải dòng Help" \
-  'post /api/ask "{\"question\":\"hồ chứa thử báo lỗi\"}" | jq_ "(d[\"ok\"], d[\"error\"].endswith(\"Gateway not reachable\"), len(d[\"used\"]) > 0)"' "(False, True, True)"
+if [ "${OPENCLAW_SHELL:-}" = exec ]; then
+  # bộ test đang chạy trong lệnh exec của agent: OpenClaw chặn openclaw agent (chốt an toàn) — 3 test gọi Mây bỏ qua
+  echo "  (đang chạy trong exec của agent — bỏ qua 3 test gọi Mây; ô Hỏi phải báo bị chặn, xem test ngay dưới)"
+else
+  check "Hỏi: có chọn phiên riêng, câu hỏi qua file" \
+    'post /api/ask "{\"question\":\"móng nhà phố\"}" | jq_ "(d[\"answer\"].split(\" moc\")[0], \"lo-dong-lenh=khong\" in d[\"answer\"])"' "('--session-key=second-brain;', True)"
+  check "Hỏi ghi chú dài: gửi đúng đoạn liên quan" \
+    'post /api/ask "{\"question\":\"Thuỷ điện Hoà Bình công suất bao nhiêu\"}" | jq_ "\"moc=co\" in d[\"answer\"]"' "True"
+  python3 "$SB/scripts/brain.py" add --title "Ghi chú gây lỗi" --content "Hồ chứa GIA-LOI thử báo lỗi." >/dev/null
+  check "Hỏi lỗi: báo đúng lý do, không phải dòng Help" \
+    'post /api/ask "{\"question\":\"hồ chứa thử báo lỗi\"}" | jq_ "(d[\"ok\"], d[\"error\"].endswith(\"Gateway not reachable\"), len(d[\"used\"]) > 0)"' "(False, True, True)"
+fi
+# web bật từ exec của agent (OPENCLAW_SHELL=exec): ô Hỏi không gọi openclaw, báo rõ cách sửa, vẫn đưa ghi chú liên quan
+check "Hỏi khi web bật từ lệnh của agent: báo cách sửa" \
+  'OPENCLAW_SHELL=exec python3 -B -c "import sys;sys.path.insert(0,sys.argv[1]);import server,brain;r=server.api_ask(brain.connect(),{},{\"question\":\"móng nhà phố\"});print(r[\"ok\"],\"web.sh restart\" in r[\"error\"],len(r[\"used\"])>0)" "$SB/scripts"' "False True True"
+P2=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
+check "web.sh bật từ lệnh của agent: nhắc ô Hỏi bị chặn" \
+  'OPENCLAW_SHELL=exec BRAIN_PORT=$P2 bash "$SB/scripts/web.sh" start | grep -c "CHẶN ô Hỏi"' "1"
+check "web.sh status: chỉ ra ô Hỏi đang bị chặn" 'BRAIN_PORT=$P2 bash "$SB/scripts/web.sh" status | grep -c "Ô Hỏi: BỊ CHẶN"' "1"
+BRAIN_PORT=$P2 bash "$SB/scripts/web.sh" stop >/dev/null
 for i in 1 2; do python3 "$SB/scripts/brain.py" add --title "Tài liệu thử — trang $i" --content "Trang $i của tài liệu thử gộp qua web." >/dev/null; done
 check "Thư viện mời gộp bộ trang" 'curl -sS "$U/api/library" | jq_ "d[\"bo_trang\"]"' "[{'ten': 'Tài liệu thử', 'so_trang': 2}]"
 check "gộp trang qua web" 'post /api/gop-trang "{\"ten\":\"Tài liệu thử\"}" | jq_ "(d[\"ok\"], d[\"da_gop\"])"' "(True, 1)"

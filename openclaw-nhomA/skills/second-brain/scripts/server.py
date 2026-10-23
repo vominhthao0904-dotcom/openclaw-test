@@ -423,6 +423,15 @@ def doan_lien_quan(content, words, toi_da=1500):
     return "\n…\n".join(khuc[i] for i in sorted(chon))
 
 
+def hoi_bi_chan():
+    """OpenClaw không cho `openclaw agent` chạy từ lệnh exec của agent (biến OPENCLAW_SHELL=exec): lượt hỏi sẽ mất dấu
+    người gửi thật. Trang web do Mây bật (web.sh trong exec) mang dấu đó → ô Hỏi bị chặn. Đây là chốt an toàn có chủ
+    đích — không gỡ dấu, không lách đường khác; chỉ báo rõ để chủ máy tự bật lại trang web từ terminal của mình."""
+    web = str(HERE / "web.sh").replace(str(Path.home()), "~", 1)
+    return ("Trang web đang chạy từ lệnh của Mây, nên OpenClaw chặn ô Hỏi gọi Mây — đây là chốt an toàn của "
+            f"OpenClaw, không phải lỗi kho. Cách sửa: anh tự chạy trong Termius:  bash {web} restart")
+
+
 def loi_openclaw(r):
     """Lý do thật khi `openclaw agent` lỗi. Dòng cuối thường chỉ là "[openclaw] Help: openclaw --help" —
     lý do nằm ở dòng "Reason:" (hoặc trong JSON khi có --json)."""
@@ -489,6 +498,8 @@ def api_ask(conn, _q, body):
     # openclaw agent bắt buộc chọn phiên (--to / --session-key / --session-id / --agent), thiếu thì từ chối.
     # Dùng phiên riêng "second-brain" của agent mặc định (hoặc BRAIN_AGENT) — câu hỏi từ web không lẫn vào
     # cuộc trò chuyện chính của Mây.
+    if os.environ.get("OPENCLAW_SHELL") == "exec":     # chạy thì chắc chắn bị từ chối — báo luôn cách sửa
+        return {"ok": False, "used": used, "error": hoi_bi_chan()}
     agent = (os.environ.get("BRAIN_AGENT") or "").strip()
     chon = ["--agent", agent, "--session-key", f"agent:{agent}:second-brain"] if agent else ["--session-key", "second-brain"]
     import tempfile
@@ -508,6 +519,8 @@ def api_ask(conn, _q, body):
         return {"ok": False, "error": f"Không chạy được lệnh openclaw: {e}", "used": used}
     if r.returncode != 0:
         ly_do = loi_openclaw(r)
+        if "from agent exec" in ly_do:
+            return {"ok": False, "used": used, "error": hoi_bi_chan()}
         return {"ok": False, "used": used,
                 "error": f"openclaw agent lỗi (mã {r.returncode})" + (f": {ly_do[:300]}" if ly_do else "")}
     return {"ok": True, "answer": extract_reply(r.stdout) or "(Mây không trả về nội dung)", "used": used}

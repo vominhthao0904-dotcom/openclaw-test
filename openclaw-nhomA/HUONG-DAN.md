@@ -45,11 +45,13 @@ Muốn xem trang web mà không cần SSH (ví dụ trên điện thoại): các
 
 Màu chủ đạo: **xanh dương** (nền, chiều sâu) · **vàng kim** (nhấn, liên kết, thẻ) · **cam** (nút hành động, quầng sáng quanh lõi). Bố cục giống bản cũ anh từng dùng: lõi ở giữa, ghi chú xoay quanh thành các vòng — mỗi vòng là một nhóm, mỗi nhóm một màu. Khác bản cũ ở chỗ **nó chạy trên VPS của anh, không gửi ghi chú nào ra ngoài** (thứ duy nhất trình duyệt tải từ Internet là font chữ).
 
-**Bước 1 — trên VPS**, bật trang (chạy nền):
+**Bước 1 — trên VPS**, bật trang (chạy nền) — **anh tự gõ lệnh này trong Termius**, đừng nhờ Mây bật:
 ```bash
 bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh start
 ```
 Nó in ra lệnh đường hầm và **đường link có mã**, dạng `http://127.0.0.1:8787/?t=Abc…`. Quên link thì chạy `web.sh link`.
+
+> **Vì sao tự bật:** trang web do Mây bật (lệnh chạy trong *exec* của agent) thì OpenClaw **chặn ô Hỏi** — chốt an toàn của OpenClaw: lệnh chạy từ exec của agent không được tạo lượt hỏi mới trên Gateway. Các phần khác vẫn dùng bình thường. Ô Hỏi báo *"Trang web đang chạy từ lệnh của Mây…"* thì anh chạy `web.sh restart` trong Termius là xong. Kiểm nhanh: `bash ~/.openclaw/workspace/skills/second-brain/scripts/web.sh status` → dòng **Ô Hỏi: không bị chặn**.
 
 **Bước 2 — trên máy cá nhân**, mở đường hầm SSH (Termius: mục Port Forwarding, Local, 8787 → 127.0.0.1:8787):
 ```bash
@@ -111,13 +113,13 @@ Trang nhớ tab anh dùng lần trước. Mở lần đầu trên **điện tho�
 - **Thêm** — lưu ghi chú mới: chủ đề, **loại**, **nhóm** (gõ vài chữ là hiện các nhóm đã có — chọn lại nhóm cũ thay vì gõ ra nhóm mới gần giống), thẻ, nội dung. Chọn loại *Việc* thì hiện ô **Hạn**; chọn *Tài liệu* hay *Khái niệm* thì hiện ô **Trích dẫn**. Lưu bản y hệt ghi chú đã có thì bị chặn kèm nút mở bản cũ; gần giống thì được lưu nhưng có cảnh báo; gõ nhóm/thẻ thiếu dấu hay sai chính tả thì có gợi ý.
 - **Nạp** — kéo thả file **.md / .txt / Word .docx / PDF** (nhiều file một lúc, mỗi file dưới 4 MB) hoặc dán văn bản. **Mỗi file thành một ghi chú** (một chủ đề, một chấm ở Toàn cảnh) — kể cả cuốn PDF dài: tìm vẫn ra, và ô Hỏi tự lấy đúng đoạn liên quan bên trong. Tên ghi chú PDF lấy từ tiêu đề ghi trong file (có dấu), không có mới lấy tên file. Muốn tách nhỏ thì chọn ở ô **Tách**: *Mỗi tiêu đề 1 ghi chú* (Markdown `#`/`##`, Word Heading 1/2) hoặc *Mỗi trang PDF 1 ghi chú*. File Word đời cũ (.doc): mở bằng Word, *Lưu thành* .docx. PDF dạng ảnh scan không có chữ — cần OCR trước. Đặt nhóm, loại, thẻ chung cho cả lô; bấm **Xem trước** để thấy sẽ thêm gì, rồi **Nạp vào kho**. Bản trùng tự bỏ qua.
 - **Tìm** — tìm toàn văn tiếng Việt, **có dấu hay không dấu đều được**, lọc thêm theo **loại** và **vùng**. Khớp ở tiêu đề/thẻ được xếp trên. Gõ cả câu dài cũng được. Trên máy tính bấm phím **/** là nhảy ngay vào ô Tìm.
-- **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho; câu trả lời kèm danh sách ghi chú nguồn bấm được. Ghi chú dài (cả một file) thì Mây nhận các đoạn có từ khoá của câu hỏi chứ không phải mấy trang đầu. Câu hỏi đi vào **phiên riêng "second-brain"** của Mây — không lẫn vào cuộc trò chuyện Telegram. Mây lỗi (Gateway tắt…) thì trang báo đúng lý do và vẫn liệt kê các ghi chú liên quan để anh tự mở đọc.
+- **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho; câu trả lời kèm danh sách ghi chú nguồn bấm được. Ghi chú dài (cả một file) thì Mây nhận các đoạn có từ khoá của câu hỏi chứ không phải mấy trang đầu. Câu hỏi đi vào **phiên riêng "second-brain"** của Mây — không lẫn vào cuộc trò chuyện Telegram. Mây lỗi (Gateway tắt…) thì trang báo đúng lý do và vẫn liệt kê các ghi chú liên quan để anh tự mở đọc. Trang web do Mây bật thì ô Hỏi bị OpenClaw chặn — tự bật lại trong Termius (xem *Mở giao diện web*, Bước 1).
 - **Nhập bằng giọng nói** — ô Chủ đề, Nội dung, ô dán ở Nạp, ô Tìm và ô Hỏi có nút **micro** ở góc phải: bấm rồi nói, chữ hiện vào ô; bấm lại để dừng. Ghi chú nhập bằng giọng tự gắn thẻ `giong-noi` (để sau rà lại); anh xem lại rồi mới bấm Lưu. Ô Hỏi: nói xong là hỏi luôn. Lưu ý riêng tư: bộ nhận giọng của **Chrome gửi âm thanh lên máy chủ Google**, **Edge lên Microsoft** để chuyển thành chữ — nên lần đầu bấm micro mỗi khi mở trình duyệt, trang sẽ hỏi anh đồng ý. Firefox không có bộ nhận giọng nên không hiện nút micro.
 - **Ôn** — *Chưa xếp chỗ*, *Kho lưu* (ghi chú đã cất, lấy lại được), và hàng chờ ôn lại (không gồm việc).
 
 ### Thẻ chi tiết (bấm vào bất kỳ ghi chú nào)
 
-Trên cùng là **đường dẫn nhóm** — bấm từng tầng để mở đúng nhóm đó trong Thư viện. Rồi tới nhãn **loại**, các **thẻ** (bấm để lọc Thư viện theo thẻ), tiêu đề, ngày ghi/sửa/ôn, mã ghi chú. Khối **Nguồn · Trích dẫn · Hạn** cho biết kiến thức này lấy từ đâu — để kiểm lại khi cần. Cuối là **Ghi chú liên kết** (bấm để chuyển sang). Nút: **Sửa** (đổi được mọi trường), **Nhớ rồi**, **Đánh dấu xong** (với việc), **Cất vào kho lưu**.
+Trên cùng là **đường dẫn nhóm** — bấm từng tầng để mở đúng nhóm đó trong Thư viện. Rồi tới nhãn **loại**, các **thẻ** (bấm để lọc Thư viện theo thẻ), tiêu đề, ngày ghi/sửa/ôn, mã ghi chú. Khối **Nguồn · Trích dẫn · Hạn** cho biết kiến thức này lấy từ đâu — để kiểm lại khi cần. Cuối là **Ghi chú liên kết** (bấm để chuyển sang). Nút: **Sửa** (đổi được mọi trường), **Nhớ rồi**, **Đánh dấu xong** (với việc), **Cất vào kho lưu**. **Đóng thẻ**: bấm ×, phím Esc, hoặc **bấm vào chỗ trống bên ngoài thẻ** (bấm ghi chú khác thì thẻ chuyển sang ghi chú đó; đang Sửa thì thẻ không tự đóng, khỏi mất chữ đang gõ).
 
 Đổi cổng khi 8787 đã bận: `BRAIN_PORT=9090 bash .../web.sh start` (nhớ đổi cả hai số trong lệnh `ssh -L`).
 

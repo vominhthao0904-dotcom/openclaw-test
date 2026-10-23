@@ -249,6 +249,19 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - **Thư viện lọc theo loại mà tiêu đề vẫn "Tất cả ghi chú · 1"** — dễ tưởng kho chỉ có 1 ghi chú. Nay "Tất cả ghi chú · Ý tưởng · 1".
 - **Tab Nạp, ô Loại bị cắt chữ** "Theo file (mặc…": nay "Theo file", rê chuột hiện giải thích (file không ghi loại thì là Kiến thức).
 
+## Chế độ mặt A.I (anh yêu cầu)
+- Nút ẩn: bấm lõi Bát Quái (hoặc phím M); bấm lại / M / Esc để về. Chấm bay từ quỹ đạo về (~1,25 giây, lệch nhịp từng chấm),
+  xếp đều theo chiều dài các nét khuôn mặt, mỗi vùng một đoạn liền mạch, giữ màu vùng; vòng quỹ đạo và nan hoa mờ dần.
+- Mặt nạ hologram 3D: khung lưới vàng kim (viền) / xanh (mặt nạ), mắt khe sáng, nền mờ, vòng HUD xoay ngược chiều, vệt quét
+  ngang. Chiều sâu lấy theo mặt elip của đầu, có phối cảnh — đầu quay (yaw ±0,42) và gật (pitch ±0,2) nhìn theo con trỏ;
+  điện thoại lắc nhẹ. Chớp mắt mỗi 2,5–5,5 giây. Lõi Bát Quái thành lò phản ứng trên ngực (thân đứng yên, chỉ đầu quay).
+- Nhép miệng theo âm tiết giả lập + phụ đề chạy chữ khi: vào chế độ (chào, số ghi chú/vùng), bấm một chấm (đọc tên), trả
+  lời ở tab Hỏi (câu đầu). Không phát âm thanh, không gửi gì ra ngoài.
+- Bố cục tự co theo khung (máy tính, toàn màn hình, điện thoại); phụ đề canh giữa theo mặt, không bị thẻ chi tiết che; dải tên
+  vùng ẩn trong chế độ này. Máy bật "giảm chuyển động": chuyển ngay, không lắc đầu / quét / nhép miệng, phụ đề hiện đủ.
+- Kiểm trên trình duyệt: vào/ra bằng bấm lõi, phím M, chạm lõi trên điện thoại; đầu nhìn theo chuột (yaw +0,36 / −0,36);
+  miệng mở khi nói; bấm chấm mở đúng ghi chú và đọc tên; toàn màn hình; ~61 khung hình/giây; không lỗi JS.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

@@ -1008,6 +1008,64 @@ def cmd_merge(a, db):
          "note": "Ghi chú nguồn nằm ở kho lưu, không mất. Lấy lại: unarchive --id " + a.from_id})
 
 
+TRANG_RE = re.compile(r"^(.+?) — trang (\d+)$")
+
+
+def bo_trang(db):
+    """Các bộ ghi chú là từng trang của cùng một file (nạp kiểu "mỗi trang PDF 1 ghi chú", tên "<file> — trang N")."""
+    bo = {}
+    for r in db.execute(f"SELECT * FROM notes WHERE {CON} AND title LIKE '% — trang %'"):
+        m = TRANG_RE.match(r["title"])
+        if m:
+            bo.setdefault(m.group(1), []).append((int(m.group(2)), r))
+    return {k: [r for _, r in sorted(v, key=lambda x: x[0])] for k, v in sorted(bo.items()) if len(v) >= 2}
+
+
+def gop_trang(db, ten=None, dry_run=True):
+    """Gộp mỗi bộ trang thành MỘT ghi chú (nội dung nối theo thứ tự trang, dồn thẻ và liên kết), các ghi chú trang
+    cất vào kho lưu — không xoá. Dùng chung cho dòng lệnh (gop-trang) và nút "Gộp" ở Thư viện."""
+    bo = bo_trang(db)
+    if ten is not None:
+        bo = {k: v for k, v in bo.items() if k == ten}
+    ds = [{"ten": k, "so_trang": len(v), "category": v[0]["category"] or ""} for k, v in bo.items()]
+    if dry_run or not bo:
+        return {"ok": True, "xem_truoc": dry_run, "bo": ds, "da_gop": 0}
+    b = backup(db, "before-gop-trang")
+    moi = []
+    try:
+        for k, rows in bo.items():
+            dau, ids = rows[0], [r["id"] for r in rows]
+            nid = uuid.uuid4().hex[:12]
+            the = ",".join(dict.fromkeys(t for r in rows for t in (r["tags"] or "").split(",") if t))
+            them_note(db, nid, k, "\n\n".join(r["content"].strip() for r in rows), dau["category"] or "", the,
+                      dau["source"] or "other", dau["url"] or "", kind=dau["kind"], cite=k,
+                      created=min(r["created_at"] for r in rows))
+            dau_hoi = ",".join("?" * len(ids))
+            for r in db.execute(f"SELECT a,b FROM links WHERE a IN ({dau_hoi}) OR b IN ({dau_hoi})", ids + ids).fetchall():
+                kia = r["b"] if r["a"] in ids else r["a"]
+                if kia not in ids:
+                    x, y = sorted([nid, kia])
+                    db.execute("INSERT OR IGNORE INTO links VALUES(?,?)", (x, y))
+            db.execute(f"DELETE FROM links WHERE a IN ({dau_hoi}) OR b IN ({dau_hoi})", ids + ids)
+            db.execute(f"UPDATE notes SET status='archived', updated_at=? WHERE id IN ({dau_hoi})", [now()] + ids)
+            moi.append({"id": nid, "title": k, "tu_so_trang": len(ids)})
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {"ok": True, "xem_truoc": False, "bo": ds, "da_gop": len(moi), "ghi_chu": moi, "backup": str(b),
+            "note": "Các ghi chú trang nằm ở kho lưu, không mất — lấy lại bằng unarchive --id."}
+
+
+def cmd_gop_trang(a, db):
+    kq = gop_trang(db, a.ten, dry_run=not a.yes)
+    if not a.yes and kq["bo"]:
+        kq["note"] = "Chỉ xem trước — thêm --yes để gộp."
+    elif not kq["bo"]:
+        kq["note"] = "Không có bộ ghi chú trang nào cần gộp."
+    out(kq)
+
+
 def ban_sao_sqlite(db):
     """Bản sao .sqlite NHẤT QUÁN của cả kho, dùng API backup của SQLite.
 
@@ -1430,6 +1488,26 @@ def _doc_pdf(f):
         raise ValueError(f"không đọc được PDF ({type(e).__name__})")
 
 
+def _tieu_de_pdf(f):
+    """Tiêu đề ghi trong thông tin PDF (thường có dấu — tên file hay bị bỏ dấu). Bỏ tên rác kiểu "Microsoft Word - x.docx"."""
+    import shutil, subprocess
+    t = ""
+    try:
+        if shutil.which("pdfinfo"):
+            r = subprocess.run(["pdfinfo", "-enc", "UTF-8", str(Path(f).resolve())], capture_output=True, text=True)
+            m = re.search(r"^Title:\s*(.+)$", r.stdout or "", re.M)
+            t = m.group(1) if m else ""
+        else:
+            from pypdf import PdfReader
+            t = (PdfReader(str(f)).metadata or {}).get("/Title") or ""
+    except Exception:                            # không đọc được thông tin thì dùng tên file, không làm hỏng việc nạp
+        t = ""
+    t = gon(unicodedata.normalize("NFC", str(t)))
+    if not 3 <= len(t) <= 150 or re.search(r"(?i)^(microsoft \w+ - |untitled)|\.(docx?|pdf|pptx?|odt|txt)$", t):
+        return ""
+    return t
+
+
 def doc_nguon(path, tach):
     """Đọc một file thành danh sách mục {title, content, ...}. Ném ValueError khi không đọc được."""
     f = Path(path)
@@ -1459,6 +1537,7 @@ def doc_nguon(path, tach):
         trang = _doc_pdf(f)
         if not any(trang):
             raise ValueError("PDF không có lớp chữ (PDF scan) — cần OCR trước")
+        ten = _tieu_de_pdf(f) or ten
         if tach == "trang":
             return [{"title": f"{ten} — trang {i}", "content": t, "cite": f"{ten}, tr. {i}"}
                     for i, t in enumerate(trang, 1) if len(t) > 40]
@@ -1683,6 +1762,9 @@ def main():
     s = sub.add_parser("merge"); s.add_argument("--from", dest="from_id", required=True)
     s.add_argument("--into", dest="into_id", required=True); s.add_argument("--yes", action="store_true")
     s.set_defaults(fn=cmd_merge)
+    s = sub.add_parser("gop-trang", help="gộp các ghi chú '<file> — trang N' thành một ghi chú mỗi file")
+    s.add_argument("--ten", help="chỉ gộp bộ trang của file này (tên trước ' — trang')")
+    s.add_argument("--yes", action="store_true"); s.set_defaults(fn=cmd_gop_trang)
     s = sub.add_parser("snapshot"); s.add_argument("--reason", default="dinh-ky"); s.set_defaults(fn=cmd_snapshot)
     s = sub.add_parser("export"); s.add_argument("--out", required=True)
     s.add_argument("--format", choices=["markdown", "json"], default="markdown")

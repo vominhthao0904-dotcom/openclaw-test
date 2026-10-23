@@ -36,6 +36,30 @@ python3 "$SB/scripts/brain.py" add --title "Hero mobile contain" \
 python3 "$SB/scripts/brain.py" add --title "Ghi chú chưa xếp chỗ" --content "Bắt vội, chưa phân loại." >/dev/null
 
 export BRAIN_TOKEN_FILE="$TMP/.web-token"
+export OPENCLAW_BIN="$TMP/openclaw-gia"
+cat > "$OPENCLAW_BIN" <<'SH'
+#!/usr/bin/env bash
+# openclaw giả cho ô Hỏi: như bản thật — thiếu --to/--session-key/--session-id/--agent thì từ chối, lỗi in nhiều dòng [openclaw]
+phien=""; tep=""; lo=khong
+for x in "$@"; do case "$x" in *"=== CÂU HỎI ==="*) lo=co;; esac; done
+while [ $# -gt 0 ]; do case "$1" in
+  --to|--session-key|--session-id|--agent) phien="$phien$1=$2;"; shift 2;;
+  --message-file) tep="$2"; shift 2;; *) shift;; esac; done
+loi() { printf '%s\n' "[openclaw] Agent failed" "[openclaw] Reason: $1" "[openclaw] Try: openclaw doctor" "[openclaw] Help: openclaw --help" >&2; exit 1; }
+[ -n "$phien" ] || loi "Pass --to <E.164>, --session-key, --session-id, or --agent to choose a session"
+[ -r "$tep" ] || loi "no message"
+grep -q "GIA-LOI" "$tep" && loi "Gateway not reachable"
+moc=khong; grep -q "MOC-THUY-DIEN" "$tep" && moc=co
+printf '{"payloads":[{"text":"%s moc=%s lo-dong-lenh=%s"}]}\n' "$phien" "$moc" "$lo"
+SH
+chmod +x "$OPENCLAW_BIN"
+python3 - "$TMP/dai.txt" <<'PY'
+import sys
+d = [f"Đoạn {i}: nội dung chung về móng nhà phố, phần {i}, viết dài thêm cho đủ một đoạn văn." for i in range(1, 80)]
+d.insert(70, "Thuỷ điện Hoà Bình: MOC-THUY-DIEN công suất 1920 MW, khởi công năm 1979.")
+open(sys.argv[1], "w", encoding="utf-8").write("\n\n".join(d))
+PY
+python3 "$SB/scripts/brain.py" add --title "Tài liệu dài một file" --content-file "$TMP/dai.txt" --category "Học tập" >/dev/null
 BRAIN_PORT=$PORT python3 "$SB/scripts/server.py" >"$TMP/log" 2>&1 &
 PID=$!
 for i in $(seq 25); do [ -s "$BRAIN_TOKEN_FILE" ] && command curl -sS -o /dev/null "$U/app.js" 2>/dev/null && break; sleep 0.2; done
@@ -194,6 +218,21 @@ check "nạp: phần tử file sai kiểu bị bỏ, không lỗi 500" \
   'post /api/ingest "{\"files\":[\"chuoi\",5,{\"name\":5,\"text\":[\"a\"]}]}" | jq_ "d[\"ok\"]"' "False"
 check "thông tin chi tiết có ghi chú liên kết kèm tên" \
   'curl -sS "$U/api/note?id='"$VID"'" | jq_ "type(d[\"note\"][\"linked\"]).__name__"' "list"
+
+echo
+echo "7b2. Ô HỎI (openclaw agent) VÀ GỘP TRANG"
+check "Hỏi: có chọn phiên riêng, câu hỏi qua file" \
+  'post /api/ask "{\"question\":\"móng nhà phố\"}" | jq_ "(d[\"answer\"].split(\" moc\")[0], \"lo-dong-lenh=khong\" in d[\"answer\"])"' "('--session-key=second-brain;', True)"
+check "Hỏi ghi chú dài: gửi đúng đoạn liên quan" \
+  'post /api/ask "{\"question\":\"Thuỷ điện Hoà Bình công suất bao nhiêu\"}" | jq_ "\"moc=co\" in d[\"answer\"]"' "True"
+python3 "$SB/scripts/brain.py" add --title "Ghi chú gây lỗi" --content "Hồ chứa GIA-LOI thử báo lỗi." >/dev/null
+check "Hỏi lỗi: báo đúng lý do, không phải dòng Help" \
+  'post /api/ask "{\"question\":\"hồ chứa thử báo lỗi\"}" | jq_ "(d[\"ok\"], d[\"error\"].endswith(\"Gateway not reachable\"), len(d[\"used\"]) > 0)"' "(False, True, True)"
+for i in 1 2; do python3 "$SB/scripts/brain.py" add --title "Tài liệu thử — trang $i" --content "Trang $i của tài liệu thử gộp qua web." >/dev/null; done
+check "Thư viện mời gộp bộ trang" 'curl -sS "$U/api/library" | jq_ "d[\"bo_trang\"]"' "[{'ten': 'Tài liệu thử', 'so_trang': 2}]"
+check "gộp trang qua web" 'post /api/gop-trang "{\"ten\":\"Tài liệu thử\"}" | jq_ "(d[\"ok\"], d[\"da_gop\"])"' "(True, 1)"
+check "gộp lại lần 2: báo rõ, không lỗi 500" 'post /api/gop-trang "{\"ten\":\"Tài liệu thử\"}" | jq_ "d[\"ok\"]"' "False"
+check "gộp trang: tên sai kiểu bị từ chối" 'post /api/gop-trang "{\"ten\":5}" | jq_ "d[\"ok\"]"' "False"
 
 echo
 echo "7c. LÕI THÁI CỰC – TIÊN THIÊN BÁT QUÁI ĐÚNG KINH DỊCH"

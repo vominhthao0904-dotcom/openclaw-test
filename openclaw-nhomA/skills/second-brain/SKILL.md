@@ -138,7 +138,7 @@ cat ghi-chep.md | $BR nap - --title "Ghi chép buổi họp"
 |---|---|
 | `.md` | Có ≥ 2 tiêu đề `#`/`##` → mỗi mục một ghi chú (`--tach heading/khong` để ép). Frontmatter `title/category/tags/kind/url/cite/due` được dùng |
 | `.txt` | Dòng đầu ngắn làm tiêu đề, phần còn lại làm nội dung |
-| `.pdf` | Cả file một ghi chú; `--tach trang` → mỗi trang một ghi chú kèm trích dẫn trang. PDF scan (ảnh) không đọc được |
+| `.pdf` | Cả file một ghi chú (tên = tiêu đề trong file PDF nếu có); `--tach trang` → mỗi trang một ghi chú kèm trích dẫn trang — chỉ khi người dùng yêu cầu, vì 1 file thành hàng chục chấm. PDF scan (ảnh) không đọc được |
 | `.csv` | Cột `title/tieu_de, content/noi_dung, category/nhom, tags/the, kind/loai, url/nguon, cite, due/han` |
 | `.html` | Lấy tiêu đề + chữ, bỏ script/menu |
 | `.json` | Định dạng `export --format json` / bản sao lưu |
@@ -203,6 +203,7 @@ $BR inbox                    # thiếu nhóm/thẻ
 $BR review [--category] [--kind] [--tag]   |   $BR review --done <id1,id2>
 $BR digest --days 7          # đã ghi gì trong tuần, gom theo nhóm
 $BR duplicates [--nguong 0.5]   |   $BR merge --from <id bỏ> --into <id giữ> --yes
+$BR gop-trang [--ten "<tên file>"] [--yes]   # các ghi chú "<file> — trang N" → 1 ghi chú/file; trang vào kho lưu
 $BR stats                    # kèm suc_khoe_kho, theo_loai, viec_dang_mo
 $BR doctor [--fix]           # khám kho: file hỏng, chỉ mục lệch, sao lưu ngừng, quyền, đĩa
 $BR snapshot                 # sao lưu chủ động (cron hằng ngày)
@@ -235,7 +236,7 @@ bash {baseDir}/scripts/web.sh stop       # tắt
 ```
 Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi Thái Cực – Tiên Thiên Bát Quái, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
 loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (quá hạn / hôm nay / sắp tới, tích xong).
-Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt/Word .docx/PDF hoặc dán, xem trước) ·
+Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt/Word .docx/PDF hoặc dán, xem trước; mặc định mỗi file 1 ghi chú) ·
 **Tìm** (lọc loại/vùng) · **Hỏi** (Mây trả lời từ kho, dẫn nguồn) · **Ôn**. Thẻ chi tiết hiện đường dẫn nhóm bấm được,
 nguồn, trích dẫn, hạn, ghi chú liên kết.
 
@@ -248,7 +249,7 @@ ssh -N -L 8787:127.0.0.1:8787 user@IP_VPS      # trên máy cá nhân, rồi m�
 Không đổi `BRAIN_HOST` sang `0.0.0.0` (`web.sh` từ chối). `web.sh` chỉ là vỏ của `scripts/server.py`
 (gỡ lỗi: `python3 {baseDir}/scripts/server.py`, Ctrl+C để dừng). Tắt trang web thì kho vẫn dùng bình thường qua chat.
 Biến môi trường: `BRAIN_PORT` (8787), `BRAIN_AGENT` (agent cho ô Hỏi, ví dụ `may`), `BRAIN_ASK_TIMEOUT` (180),
-`SECOND_BRAIN_DB`, `SECOND_BRAIN_KEEP_BACKUPS` (60). Ô **Hỏi** gọi `openclaw agent` ngay trên máy, chỉ kèm ~12 ghi chú liên quan.
+`SECOND_BRAIN_DB`, `SECOND_BRAIN_KEEP_BACKUPS` (60). Ô **Hỏi** gọi `openclaw agent --session-key second-brain --message-file …` ngay trên máy (phiên riêng, không lẫn vào chat chính; có `BRAIN_AGENT` thì `--agent <id> --session-key agent:<id>:second-brain`), chỉ kèm ~12 ghi chú liên quan — ghi chú dài thì chỉ các đoạn khớp câu hỏi.
 
 ## 10. Giữ kho lâu dài
 - `notes.sqlite` — kho thật · `deleted/` — ghi chú xoá hẳn, không tự dọn · `backups/*.json.gz` — 60 bản gần nhất ·

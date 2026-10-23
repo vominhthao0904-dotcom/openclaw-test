@@ -329,6 +329,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .loc-the{margin:-6px 0 14px;font-size:13px;color:var(--vang)}
 .loc-the[hidden]{display:none}
 .loc-the button{background:none;border:0;color:var(--trung-mo);cursor:pointer;font:inherit;text-decoration:underline}
+.gop-trang{margin:0 0 14px;padding:10px 12px;border:1px solid rgba(212,175,55,.35);border-radius:10px;
+  background:rgba(212,175,55,.08);font-size:13.5px;line-height:1.5}
+.gop-trang[hidden]{display:none}
+.gop-trang p{margin:0}
+.gop-trang p+p{margin-top:8px}
+.gop-trang b{color:var(--vang);font-weight:600}
+.gop-trang .go{width:auto;margin:6px 0 0;padding:6px 12px;font-size:13px;display:inline-block}
 .luoi{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
 .the-gc{
   display:flex;flex-direction:column;text-align:left;background:var(--son-2);border:1px solid var(--son-3);

@@ -161,6 +161,15 @@ BR merge --from "$B" --into "$A" --yes >/dev/null
 check "gộp xong thẻ dồn lại" 'BR show --id '"$A"' | jq_ "sorted(d[\"note\"][\"tags\"])"' "['landing', 'mobile']"
 check "ghi chú nguồn vào kho lưu chứ không mất" \
   'BR show --id '"$B"' | jq_ "d[\"note\"][\"status\"]"' "archived"
+# file nạp kiểu "mỗi trang 1 ghi chú" → gop-trang nối lại thành 1 (thêm lệch thứ tự để kiểm sắp theo số trang)
+for i in 2 3 1; do BR add --title "Sách thử — trang $i" --content "Nội dung trang $i của sách thử nghiệm gộp trang." --category "Học tập" --tags "trang$i" >/dev/null; done
+check "gop-trang: xem trước thấy 1 bộ 3 trang" 'BR gop-trang | jq_ "[(b[\"ten\"], b[\"so_trang\"]) for b in d[\"bo\"]]"' "[('Sách thử', 3)]"
+G=$(BR gop-trang --yes | jq_ 'd["ghi_chu"][0]["id"]')
+check "gop-trang: nội dung theo thứ tự trang, dồn thẻ" \
+  'BR show --id '"$G"' | jq_ "([x.split()[3] for x in d[\"note\"][\"content\"].split(chr(10)*2)], sorted(d[\"note\"][\"tags\"]))"' \
+  "(['1', '2', '3'], ['trang1', 'trang2', 'trang3'])"
+check "gop-trang: các trang vào kho lưu, tìm ra 1" 'BR search "thử nghiệm gộp trang" | jq_ "[n[\"title\"] for n in d[\"notes\"]]"' "['Sách thử']"
+check "gop-trang lần 2: không còn gì để gộp" 'BR gop-trang --yes | jq_ "(d[\"da_gop\"], len(d[\"bo\"]))"' "(0, 0)"
 
 echo
 echo "12. retag"
@@ -288,16 +297,19 @@ for i, t in enumerate(trang):
     luong = f"BT /F1 10 Tf 20 100 Td ({t}) Tj ET"
     obj.append(f"<< /Length {len(luong)} >>\nstream\n{luong}\nendstream")
 obj.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+obj.append("<< /Title <FEFF" + "Sổ tay thử PDF".encode("utf-16-be").hex().upper() + "> >>")   # tiêu đề có dấu, như Word xuất PDF
 ra, vt = "%PDF-1.4\n", []
 for i, o in enumerate(obj, 1):
     vt.append(len(ra))
     ra += f"{i} 0 obj\n{o}\nendobj\n"
 x = len(ra)
 ra += f"xref\n0 {len(obj) + 1}\n0000000000 65535 f \n" + "".join(f"{v:010d} 00000 n \n" for v in vt)
-ra += f"trailer\n<< /Size {len(obj) + 1} /Root 1 0 R >>\nstartxref\n{x}\n%%EOF\n"
+ra += f"trailer\n<< /Size {len(obj) + 1} /Root 1 0 R /Info {len(obj)} 0 R >>\nstartxref\n{x}\n%%EOF\n"
 open(sys.argv[1], "w").write(ra)
 PDF
   check "nạp PDF: mỗi trang 1 ghi chú" 'BR nap "$TMP/hai-trang.pdf" --tach trang --dry-run | jq_ "len(d[\"ghi_chu\"])"' "2"
+  check "nạp PDF: mặc định cả file 1 ghi chú" 'BR nap "$TMP/hai-trang.pdf" --dry-run | jq_ "len(d[\"ghi_chu\"])"' "1"
+  check "PDF: tên lấy từ thông tin file (có dấu)" 'BR nap "$TMP/hai-trang.pdf" --dry-run | jq_ "d[\"ghi_chu\"][0][\"title\"]"' "Sổ tay thử PDF"
 else
   echo "  (máy này chưa có pdftotext / pypdf — bỏ qua test PDF)"
 fi

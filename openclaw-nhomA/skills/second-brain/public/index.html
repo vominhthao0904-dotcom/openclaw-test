@@ -68,8 +68,8 @@
     </section>
 
     <section class="tab" data-pane="nap" hidden>
-      <p class="hint dau">Dán văn bản hoặc chọn file <b>.md / .txt / Word .docx / PDF</b>. Markdown có nhiều tiêu đề
-        <code>#</code>/<code>##</code>, Word có Heading 1/2 thì tách mỗi mục một ghi chú; PDF dài tách mỗi trang một ghi chú.
+      <p class="hint dau">Dán văn bản hoặc chọn file <b>.md / .txt / Word .docx / PDF</b>. Mỗi file thành <b>một ghi chú</b>
+        (một chủ đề, một chấm) — tìm và hỏi Mây vẫn ra đúng đoạn bên trong. Muốn tách nhỏ thì chọn ở ô <i>Tách</i>.
         Bản trùng y hệt tự bỏ qua. CSV, cả thư mục: nhờ Mây hoặc chạy <code>brain.py nap</code>.</p>
       <label class="tha" id="vungTha">
         <input id="chonTep" type="file" accept=".md,.markdown,.txt,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
@@ -77,7 +77,7 @@
         <em id="dsTep"></em>
       </label>
       <label>Hoặc dán nội dung
-        <textarea id="napChu" rows="6" placeholder="# Tiêu đề mục 1&#10;Nội dung…&#10;&#10;# Tiêu đề mục 2&#10;Nội dung…"></textarea>
+        <textarea id="napChu" rows="6" placeholder="Tiêu đề (dòng đầu)&#10;Nội dung…"></textarea>
       </label>
       <div class="hai">
         <label>Nhóm cho tất cả
@@ -92,10 +92,9 @@
           <input id="napThe" maxlength="200" placeholder="khoa-hoc">
         </label>
         <label>Tách
-          <select id="napTach">
-            <option value="tu-dong">Tự động</option>
-            <option value="heading">Mỗi tiêu đề 1 ghi chú</option>
+          <select id="napTach" title="Một file thường là một chủ đề — để cả file 1 ghi chú cho kho gọn; Mây vẫn tìm và hỏi đúng đoạn bên trong">
             <option value="khong">Cả file 1 ghi chú</option>
+            <option value="heading">Mỗi tiêu đề 1 ghi chú</option>
             <option value="trang">Mỗi trang PDF 1 ghi chú</option>
           </select>
         </label>
@@ -199,6 +198,7 @@
         </header>
         <div class="chip-loai" id="kLoai" role="group" aria-label="Lọc theo loại"></div>
         <p class="loc-the" id="kThe" hidden></p>
+        <div class="gop-trang" id="kGop" hidden></div>
         <div class="luoi" id="kDs"></div>
         <button class="nhe them-nua" id="kThem" type="button" hidden>Xem thêm</button>
       </div>

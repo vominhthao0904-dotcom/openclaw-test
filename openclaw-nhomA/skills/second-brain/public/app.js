@@ -209,12 +209,14 @@ function dungQuyDao() {
     // Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn), vòng âm (2, 4, 6…) xoay ngược.
     const toc = (vi % 2 ? -1 : 1) * 0.03 * Math.pow(bk, -1.5);
     tocVong.push(toc);
+    // vùng đông (> 12 chấm): trải thành dải 3 làn so le quanh vòng — không thành chuỗi hạt dày đặc
+    const lan = ds.length > 12 ? 0.035 : 0;
     ds.forEach((note, i) => {
       nodes.push({
-        note, nhom: k, vong: vi, mau,
-        bk, pha: lech + (i / ds.length) * Math.PI * 2,
+        note, nhom: k, vong: vi, mau, thu: i,
+        bk: bk + lan * ((i % 3) - 1), pha: lech + (i / ds.length) * Math.PI * 2,
         toc,
-        r: 3.4 + Math.min(3.2, (note.tags?.length || 0) * 0.7),
+        r: 2.6 + Math.min(1.6, (note.tags?.length || 0) * 0.4),
       });
     });
   });
@@ -434,7 +436,9 @@ function ve() {
   if (tapTrung) coChu *= 1.12;
   if (W - lechDich < 520) coChu = Math.min(coChu, 13.5);          // điện thoại: chừa chỗ ngang cho tên
   const tranTen = Math.round(Math.max(26, Math.min(46, 54 - 6 * lnN)));
-  const toCham = Math.max(1, Math.min(1.5, 2.2 - 0.3 * lnN));
+  const toCham = Math.max(0.9, Math.min(1.35, 2 - 0.25 * lnN));
+  // nhiều chấm thì không ghi tên hết: tối đa ~18 nhãn, chia đều các vùng (chấm thứ nhất của mỗi vùng, rồi thứ hai…)
+  const tranNhan = soHien > 24 ? 18 : Infinity;
 
   // các ghi chú — vẽ chấm trước, nhãn sau (node đang chọn được ưu tiên chỗ)
   nodes.forEach((nd) => {
@@ -471,12 +475,16 @@ function ve() {
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
   const daVe = [{ x0: LX - RK - 6, x1: LX + RK + 6, y0: LY - RK - 6, y1: LY + RK + 6 }];
   const uuTien = nodes.slice().sort((a, b) =>
-    (b === hover || b === chon) - (a === hover || a === chon));
+    (b === hover || b === chon) - (a === hover || a === chon) || a.thu - b.thu || a.vong - b.vong);
+  const daGhi = new Set();          // tên đã ghi — các trang của cùng một file chỉ ghi tên một lần
+  let soNhan = 0;
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
     // chế độ "chỉ chấm" và mặt A.I: rê chuột mới hiện tên
     if (!nb && (toi || (tapTrung && !hienTen) || kMat > 0.12)) return;
+    const khoa = nd.note.title.replace(/\s+—\s+trang\s+\d+$/u, '').toLowerCase();
+    if (!nb && (daGhi.has(khoa) || soNhan >= tranNhan)) return;
     const p = diem.get(nd.note.id);
     const tran = nb ? 90 : tranTen;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
@@ -502,6 +510,8 @@ function ve() {
     const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - nua, y1: p.y + nua };
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
+    daGhi.add(khoa);
+    soNhan++;
     cx.textAlign = 'left';
     // viền tối quanh chữ: chấm và nan hoa đang quay chạy ngang qua nhãn thì chữ vẫn đọc rõ
     cx.lineJoin = 'round';
@@ -2370,13 +2380,18 @@ $('#nutHoi').addEventListener('click', async () => {
   const r = await api('/api/ask', { question: q });
   $('#nutHoi').disabled = false;
   out.textContent = '';
-  if (!r.ok) { out.textContent = r.error || 'Không hỏi được'; return; }
-  out.appendChild(document.createTextNode(r.answer || r.note || ''));
-  noi(cauDau(r.answer || r.note || ''));
+  if (!r.ok) {
+    // Mây lỗi vẫn đưa ra các ghi chú liên quan đã tìm được — anh tự mở đọc được
+    out.textContent = r.error || 'Không hỏi được';
+    noi('Em chưa hỏi được, anh xem dòng báo lỗi nhé.', "Sorry, I couldn't get an answer. Please see the error message.");
+  } else {
+    out.appendChild(document.createTextNode(r.answer || r.note || ''));
+    noi(cauDau(r.answer || r.note || ''));
+  }
   if (r.used?.length) {
     const d = document.createElement('div');
     d.className = 'src';
-    d.appendChild(document.createTextNode('Dựa trên:'));
+    d.appendChild(document.createTextNode(r.ok ? 'Dựa trên:' : 'Ghi chú liên quan:'));
     r.used.forEach((u) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -2495,6 +2510,8 @@ async function napThuVien(themNua = false) {
   tao('', 'Mọi loại', r.tong_khong_loc_loai ?? '', null);
   Object.keys(LOAI).filter((k) => dem[k] || LOAI_DANG === k).forEach((k) => tao(k, tenLoai(k), dem[k] || 0, LOAI[k].mau));
 
+  veGopTrang(r.bo_trang || []);
+
   if (!r.notes.length && !themNua) {
     ds.appendChild(el('p', 'none', 'Không có ghi chú nào ở đây.'));
   }
@@ -2503,6 +2520,30 @@ async function napThuVien(themNua = false) {
   const them = $('#kThem');
   them.hidden = LOC.offset >= r.tong;
   them.textContent = `Xem thêm (${r.tong - LOC.offset} ghi chú)`;
+}
+
+/* File nạp kiểu "mỗi trang 1 ghi chú" thành cả chục ghi chú trùng tên, chục chấm ở Toàn cảnh — mời gộp lại thành 1.
+   Các ghi chú trang vào kho lưu (lấy lại được), máy chủ sao lưu trước khi gộp. */
+function veGopTrang(bo) {
+  const box = $('#kGop');
+  box.innerHTML = '';
+  box.hidden = !bo.length;
+  bo.forEach(({ ten, so_trang: so }) => {
+    const dong = el('p');
+    const nut = el('button', 'go', 'Gộp thành 1 ghi chú');
+    nut.type = 'button';
+    nut.addEventListener('click', async () => {
+      if (!confirm(`Gộp ${so} ghi chú trang của «${ten}» thành một ghi chú?\n\nNội dung nối theo thứ tự trang, giữ thẻ và liên kết. `
+        + 'Các ghi chú trang chuyển vào kho lưu — không mất, lấy lại được.')) return;
+      nut.disabled = true;
+      const r = await api('/api/gop-trang', { ten });
+      if (!r.ok) { nut.disabled = false; alert(r.error || 'Không gộp được'); return; }
+      await nap();
+      veCay(); napThuVien();
+    });
+    dong.append(el('b', null, `«${ten}»`), document.createTextNode(` đang là ${so} ghi chú — mỗi trang một chấm. `), nut);
+    box.appendChild(dong);
+  });
 }
 
 function theGhiChu(n) {

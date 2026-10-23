@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **117** |
-| Test `test-web.sh` | 30 | **72** |
+| Test `test-brain.sh` | 50 | **123** |
+| Test `test-web.sh` | 30 | **79** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -356,6 +356,30 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   Cấn → Khôn, theo kim đồng hồ) với đốm khí chạy trước (vàng nửa dương trưởng, lam nửa âm trưởng). Rồi sợi gỡ thành đường vân,
   đầu hai luồng bay vào làm mắt, vòng quẻ mờ đi. Vào ~3,2 giây, ra ~1,6 giây chạy ngược.
 
+## Sau PR #15: ô Hỏi báo lỗi, nạp PDF ra 25 chấm (anh báo kèm ảnh chụp)
+- **Ô Hỏi lỗi "openclaw agent lỗi (mã 1): [openclaw] Help: openclaw --help"** — gõ chữ hay nói đều lỗi. Nguyên nhân: OpenClaw
+  (đã đối chiếu mã nguồn bản 2026.9.6 anh đang dùng và 2026.10.6) bắt buộc `openclaw agent` có một tham số chọn phiên
+  (`--to` / `--session-key` / `--session-id` / `--agent`); server chỉ thêm khi có `BRAIN_AGENT`, máy anh không đặt nên bị từ chối.
+  Lý do thật nằm ở dòng `Reason:`, nhưng trang lại in dòng cuối (`Help: …`) nên không ai đoán ra. Sửa: luôn chọn phiên riêng
+  `--session-key second-brain` (thuộc agent mặc định — không lẫn vào cuộc trò chuyện Telegram của Mây; có `BRAIN_AGENT` thì
+  `agent:<id>:second-brain`); báo lỗi lấy đúng dòng lý do; Mây lỗi vẫn liệt kê ghi chú liên quan. Câu hỏi + ghi chú gửi qua
+  `--message-file` (file tạm trong thư mục quyền riêng) thay vì tham số dòng lệnh — hết chuyện user khác trên VPS thấy qua `ps`
+  (mục "Chưa làm" cũ). Ghi chú dài: gửi các đoạn có từ khoá của câu hỏi (kèm đoạn kế), tối đa ~3.000 chữ, thay vì 1.500 chữ
+  đầu — thử cuốn hướng dẫn 56.000 chữ, hỏi "sao lưu Google Drive" thì Mây nhận đúng mục Bước 6. Test web dùng một `openclaw`
+  giả xử sự như bản thật (thiếu chọn phiên thì từ chối, lỗi in nhiều dòng `[openclaw]`); bản cũ tái hiện đúng lỗi anh gặp.
+- **Nạp PDF ra 25 ghi chú, Toàn cảnh rối** — "file có chung 1 chủ đề mà ra rất nhiều mục nhiều chấm". Bỏ việc tự tách mỗi trang
+  một ghi chú (PDF > 6.000 chữ): nay **mỗi file một ghi chú**, tách chỉ khi anh chọn ở ô Tách (bỏ lựa chọn "Tự động" trên web cho
+  khỏi khó hiểu). Tên ghi chú PDF lấy tiêu đề trong file (có dấu: "Bộ 4 Skill nhóm A cho OpenClaw — Cài đặt & Sử dụng") thay vì
+  tên file bỏ dấu. **Gộp trang**: `brain.py gop-trang` (xem trước, `--yes` để gộp) và dòng vàng *Gộp thành 1 ghi chú* đầu Thư
+  viện — nối các ghi chú "<file> — trang N" theo thứ tự trang, dồn thẻ và liên kết, sao lưu trước, các trang vào kho lưu.
+- **Toàn cảnh "chấm to, không cân đối, rối"**: chấm nhỏ lại khoảng một phần ba (to nhất ~6 px thay vì ~10 px); vùng đông (> 12 chấm) trải
+  thành dải 3 làn so le thay vì chuỗi hạt dày đặc; tên trùng nhau chỉ ghi một lần; nhiều hơn 24 chấm thì ghi tối đa ~18 tên,
+  chia đều các vùng (chấm thứ nhất mỗi vùng, rồi thứ hai…). Thử kho giống kho anh (25 trang + 15 ghi chú, màn 1366×768):
+  trước — 13 nhãn "OpenClaw NhomA Cai dat va Su du…" lặp; sau — mỗi vùng có tên, không lặp; bấm Gộp → 14 chấm, đủ tên.
+- Thêm 6 test brain (gộp trang: xem trước, thứ tự + thẻ, trang vào kho lưu, lần 2 không gộp; PDF mặc định 1 ghi chú, tên có
+  dấu từ thông tin file) và 7 test web (chọn phiên + gửi qua file, đoạn liên quan của ghi chú dài, báo đúng lý do lỗi, Thư viện
+  mời gộp, gộp qua web, gộp lần 2, tên sai kiểu).
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục
@@ -368,6 +392,5 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.
-- Ô **Hỏi** truyền câu hỏi + ghi chú liên quan cho `openclaw agent` qua tham số dòng lệnh; trên VPS nhiều người dùng, user khác có thể thấy trong `ps` lúc lệnh đang chạy. VPS một người dùng thì không ảnh hưởng. (Chưa đổi vì chưa xác minh được `openclaw agent` có nhận nội dung qua stdin hay không.)
 - Font Google trên trang web giữ nguyên cho đẹp; muốn hoàn toàn offline thì xoá 3 dòng `<link … fonts.googleapis …>` trong `public/index.html` (trang tự dùng font hệ thống).
 - Trường `install` trong metadata (`kind: apt`/`shell`) giữ nguyên như bản gốc; công cụ vẫn cài tay theo `CAI-DAT.md`.

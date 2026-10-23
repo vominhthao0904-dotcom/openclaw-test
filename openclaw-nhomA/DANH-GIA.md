@@ -178,7 +178,7 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
   nhãn để chữ luôn nổi trên nền.
 
-- **Chỉnh tốc độ xoay** (anh yêu cầu): **−** / **+** đổi 5 mức (Rất chậm 0,25× · Chậm 0,5× · Vừa 1× · Nhanh 1,75× · Rất nhanh 3×)
+- **Chỉnh tốc độ xoay** (anh yêu cầu): **−** / **+** đổi 5 mức (dải tốc độ đã nới sau — xem mục "Góp ý sau khi dùng thật")
   và nút dừng. Theo ý anh, các nút **không bày ra màn hình**: chỉ còn một biểu tượng đồng hồ nhỏ, mờ ở góc; bấm mới hiện bảng,
   bảng tự ẩn sau 5 giây / bấm ra ngoài / Esc; biểu tượng chuyển vàng khi đang dừng. Chỉnh tốc độ khi đang dừng thì xoay lại luôn;
   trình duyệt nhớ lựa chọn (không lưu được thì dùng mặc định).
@@ -204,6 +204,14 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
   một chấm vẫn là mở ghi chú; thoát bằng nhấp đúp, Esc hoặc phím thoát toàn màn hình của trình duyệt. Tự đo nhấp đúp bằng
   pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy). Kiểm trên trình duyệt: máy tính vào toàn màn hình
   thật 1366×768, thoát bằng nhấp đúp và Esc đều được; điện thoại chạm đúp vào được.
+
+## Góp ý sau khi dùng thật (ảnh chụp màn hình của anh)
+- **"Rất nhanh" vẫn chậm**: đo lại thì vòng trong cùng mất ~6 phút một vòng ở tốc độ gốc, ~2 phút ở "Rất nhanh" cũ. Nới dải tốc độ:
+  Rất chậm = tốc độ gốc (~6 phút) · Chậm 2,5× · **Vừa 5× (mặc định, ~75 giây)** · Nhanh 10× · Rất nhanh 20× (~18 giây); vòng ngoài
+  chậm hơn vòng trong. Đo trên trình duyệt: Vừa 73 giây, Rất nhanh 18 giây, Rất chậm 367 giây một vòng.
+- **Toàn màn hình không hiện tên ghi chú**: nay hiện đủ tên (chữ 14px, to hơn thường), ẩn hết nút; đồ thị to hơn ~25% vì không còn
+  thanh trên/dưới chiếm chỗ.
+- Màn hình dựng đứng (điện thoại): quỹ đạo tròn đều thay vì dẹt, chấm trải theo chiều cao, đỡ chen nhau.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

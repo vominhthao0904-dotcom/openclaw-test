@@ -72,7 +72,7 @@ let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
-let tapTrung = false;    // nhấp đúp: toàn màn hình, chỉ lõi và chấm
+let tapTrung = false;    // nhấp đúp: toàn màn hình — lõi, chấm và tên, ẩn mọi nút
 let goc = 0;
 let hover = null;
 let chon = null;
@@ -80,9 +80,10 @@ let chon = null;
 const itMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (itMotion) quay = false;
 
-// tốc độ xoay — 5 mức, "Vừa" là tốc độ mặc định. Trình duyệt này nhớ lựa chọn cho lần mở sau
+// tốc độ xoay — 5 mức, "Vừa" là mặc định. Hệ số nhân với tốc độ gốc (bản đầu: vòng trong cùng ~6 phút một vòng —
+// quá chậm, nay là mức "Rất chậm"). Vòng trong cùng hết một vòng: Vừa ≈ 75 giây, Rất nhanh ≈ 20 giây; vòng ngoài chậm hơn. Trình duyệt này nhớ lựa chọn cho lần mở sau
 // (chặn lưu trữ, cửa sổ ẩn danh… thì dùng mặc định, trang vẫn chạy bình thường).
-const MUC_TOC = [['Rất chậm', 0.25], ['Chậm', 0.5], ['Vừa', 1], ['Nhanh', 1.75], ['Rất nhanh', 3]];
+const MUC_TOC = [['Rất chậm', 1], ['Chậm', 2.5], ['Vừa', 5], ['Nhanh', 10], ['Rất nhanh', 20]];
 let mucToc = 2;
 try {
   const m = localStorage.getItem('sb.mucToc');
@@ -279,13 +280,16 @@ const rgba = (hex, a) => {
 };
 const mo = (nd) => !!noiBat && nd.nhom !== noiBat;   // nhóm bị làm mờ
 
-const banKinh = () => Math.min((W - lechDich) * 0.40, H * 0.46);
+// toàn màn hình: không còn thanh chuyển và dải vùng chiếm chỗ trên/dưới → đồ thị to hơn ~25%, dùng hết chiều cao
+const banKinh = () => Math.min((W - lechDich) * 0.40, H * (tapTrung ? 0.58 : 0.46));
+// độ dẹt của quỹ đạo: màn ngang dẹt cho vừa khung; màn dựng đứng (điện thoại) tròn đều để chấm trải theo chiều cao
+const det = () => (H > (W - lechDich) * 1.2 ? 1 : 0.74);
 
 /* Vòng quỹ đạo trong cùng luôn nằm NGOÀI lõi Bát Quái (màn hình hẹp thì lõi chiếm tỉ lệ lớn hơn):
    dồn dải bán kính 0.26–0.96 vào khoảng [mép lõi + khoảng thở, 0.96]. */
 function bkThat(bk) {
   const R = banKinh();
-  const dau = Math.min(0.6, Math.max(0.26, (banKinhLoi() + 14) / (R * 0.74)));
+  const dau = Math.min(0.6, Math.max(0.26, (banKinhLoi() + 14) / (R * det())));
   return dau + (bk - 0.26) * (0.96 - dau) / 0.70;
 }
 
@@ -293,7 +297,7 @@ function viTri(nd) {
   const R = banKinh();
   const a = nd.pha + goc * nd.toc;
   const b = bkThat(nd.bk);
-  return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * 0.74 };
+  return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * det() };
 }
 
 function ve() {
@@ -308,7 +312,7 @@ function ve() {
     const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70);
     const sang = noiBat ? (tenVong[i] === noiBat ? 0.3 : 0.04) : 0.11;
     cx.beginPath();
-    cx.ellipse(CX, CY, R * bk, R * bk * 0.74, 0, 0, Math.PI * 2);
+    cx.ellipse(CX, CY, R * bk, R * bk * det(), 0, 0, Math.PI * 2);
     cx.strokeStyle = rgba(vongMau[i], sang);
     cx.lineWidth = 1;
     cx.stroke();
@@ -367,7 +371,7 @@ function ve() {
     cx.globalAlpha = 1;
   });
 
-  cx.font = '500 12.5px "Be Vietnam Pro",sans-serif';
+  cx.font = `500 ${tapTrung ? 14 : 12.5}px "Be Vietnam Pro",sans-serif`;   // toàn màn hình: chữ to hơn
   cx.textBaseline = 'middle';
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
   const daVe = [{ x0: CX - RK - 6, x1: CX + RK + 6, y0: CY - RK - 6, y1: CY + RK + 6 }];
@@ -376,7 +380,7 @@ function ve() {
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
-    if (!nb && (toi || tapTrung)) return;   // toàn màn hình: chỉ lõi và chấm, rê chuột mới hiện tên
+    if (!nb && toi) return;
     const p = diem.get(nd.note.id);
     const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
@@ -620,7 +624,7 @@ function hienDuoi() {
   window.addEventListener(ev, hienDuoi, { passive: true, capture: true }));
 hienDuoi();
 
-/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình, chỉ còn lõi và các chấm.
+/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình: lõi, các chấm và tên, ẩn mọi nút.
    Tự đo nhấp đúp bằng pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy).
    Toàn màn hình thật (Fullscreen API) nếu trình duyệt cho; không cho (iPhone) thì phủ kín cửa sổ bằng CSS — vẫn dùng được. */
 let lanCham = { t: 0, x: 0, y: 0 };

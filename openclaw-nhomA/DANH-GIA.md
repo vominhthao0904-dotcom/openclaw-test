@@ -175,6 +175,8 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   Kỹ thuật 4/4). Khi xem một vùng, các vùng khác cố ý chỉ vẽ 2 chấm mờ làm nền, nhưng số "còn lại" lại tính trên cả kho nên
   cộng nhầm phần của vùng khác. Sửa: chỉ đếm ghi chú của vùng đang xem. Tái hiện bằng kho cùng phân bố: bản cũ báo "3 ghi chú
   khác" ở cả Kỹ thuật lẫn Học tập; bản sửa không báo; vùng 65 ghi chú báo đúng "5 ghi chú khác" (vẽ 60).
+- **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
+  nhãn để chữ luôn nổi trên nền.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

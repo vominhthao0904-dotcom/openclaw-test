@@ -356,6 +356,11 @@ function ve() {
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     cx.textAlign = 'left';
+    // viền tối quanh chữ: chấm và nan hoa đang quay chạy ngang qua nhãn thì chữ vẫn đọc rõ
+    cx.lineJoin = 'round';
+    cx.lineWidth = 4;
+    cx.strokeStyle = 'rgba(10,20,36,.85)';
+    cx.strokeText(t, x0, p.y);
     cx.fillStyle = nb ? TRUNG : 'rgba(238,243,250,.62)';
     cx.fillText(t, x0, p.y);
   });

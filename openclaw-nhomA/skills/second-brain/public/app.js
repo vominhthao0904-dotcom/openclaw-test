@@ -23,7 +23,27 @@ const api = async (path, body) => {
 };
 
 /* màu vùng — họ xanh dương / vàng kim / cam, xen kẽ để hai vòng cạnh nhau luôn khác tông */
-const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#8EC1F5', '#F2C46D', '#F5A65B'];
+// 8 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 5 màu phân biệt.
+// Bản cũ chỉ có 3 tông lặp lại (vàng/vàng nhạt, xanh/xanh nhạt, cam/cam nhạt) nên từ vùng thứ 4 là trùng màu.
+const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5'];
+const MAU_CHUA = '#8A9BB5';   // "Chưa xếp chỗ" không phải một vùng — màu trung tính, nằm vòng ngoài cùng
+const CHUA = 'Chưa xếp chỗ';
+let mauVung = {};
+/* Màu GẮN VỚI TÊN vùng, không theo thứ tự đông/vắng: vùng tăng giảm ghi chú vẫn giữ màu của nó.
+   Băm tên ra một ô màu; ô đã có vùng khác thì lấy ô trống kế tiếp (không trùng khi ≤ 8 vùng). */
+function ganMau(dsTen) {
+  const ra = {}, dung = new Set();
+  [...dsTen].sort((a, b) => a.localeCompare(b, 'vi')).forEach((t) => {
+    let h = 0;
+    for (const ch of t.normalize('NFC')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    let i = h % MAU.length;
+    for (let k = 0; k < MAU.length && dung.has(i); k++) i = (i + 1) % MAU.length;
+    dung.add(i);
+    ra[t] = MAU[i];
+  });
+  return ra;
+}
+const mauCua = (vung) => (vung === CHUA ? MAU_CHUA : mauVung[vung] || MAU_CHUA);
 
 /* Loại kiến thức — trục phân loại thứ hai (nhóm = chủ đề, loại = dạng kiến thức). */
 const LOAI = {
@@ -89,6 +109,7 @@ async function nap() {
   nut.hidden = !cho;
   vungSo = {};
   (DATA.cay || []).forEach((v) => { vungSo[v.ten] = v.so; });
+  mauVung = ganMau((DATA.cay || []).map((v) => v.ten).filter((t) => t && t !== CHUA));
   // gợi ý nhóm = mọi đường dẫn đã có, để chọn lại đúng nhóm cũ thay vì gõ ra nhóm mới gần giống
   const dl = $('#dsNhom');
   dl.innerHTML = '';
@@ -140,7 +161,8 @@ function dungQuyDao() {
   });
   // sắp theo số THẬT của vùng, không phải số đang có trong tay
   const soThat = (k) => vungSo[k] ?? nhom[k].length;
-  const tenDay = Object.keys(nhom).sort((a, b) => soThat(b) - soThat(a));
+  // vùng đông nằm vòng trong; "Chưa xếp chỗ" luôn ở vòng ngoài cùng
+  const tenDay = Object.keys(nhom).sort((a, b) => (a === CHUA) - (b === CHUA) || soThat(b) - soThat(a));
   const tongThat = DATA.notes.length;
 
   // cắt bớt cho vừa mắt — DATA.notes đã sắp theo updated_at giảm dần
@@ -170,7 +192,7 @@ function dungQuyDao() {
     // mỗi nhóm một vòng; nhóm đông nằm vòng trong
     const bk = 0.26 + (vi + 1) / (ten.length + 1) * 0.70;
     const lech = vi * 0.9;
-    const mau = MAU[vi % MAU.length];
+    const mau = mauCua(k);
     vongMau.push(mau);
     ds.forEach((note, i) => {
       nodes.push({
@@ -206,7 +228,7 @@ function veChuGiai(ten, nhom) {
     b.className = 'cg' + (noiBat === k ? ' on' : '');
     b.setAttribute('aria-pressed', String(noiBat === k));
     const d = document.createElement('i');
-    d.style.background = MAU[vi % MAU.length];
+    d.style.background = mauCua(k);
     const t = document.createElement('span');
     t.textContent = k;
     const s = document.createElement('u');
@@ -355,7 +377,8 @@ function ve() {
     const toi = mo(nd);
     if (!nb && toi) return;
     const p = diem.get(nd.note.id);
-    let t = nd.note.title.length > 32 ? nd.note.title.slice(0, 31) + '…' : nd.note.title;
+    const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
+    let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
     let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
     // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
@@ -786,12 +809,30 @@ function ngayTu(iso) {
   return `${Math.floor(d / 365)} năm trước`;
 }
 
-function moTab(ten) {
+function moTab(ten, luu = true) {
   document.querySelectorAll('.tabs button').forEach((x) =>
     x.setAttribute('aria-selected', String(x.dataset.tab === ten)));
   document.querySelectorAll('.tab').forEach((p) => { p.hidden = p.dataset.pane !== ten; });
   if (ten === 'on') napHangOn();
+  if (luu) try { localStorage.setItem('sb.tab', ten); } catch (_) { /* không lưu được thì thôi */ }
 }
+// Mở lại đúng tab lần trước. Lần đầu trên điện thoại/máy tính bảng: mở tab Tìm (gọn) thay vì form Thêm dài
+// cả màn hình — ghi chú trên điện thoại thường nhắn qua Telegram, còn trang web dùng để tra và xem.
+{
+  let t = null;
+  try { t = localStorage.getItem('sb.tab'); } catch (_) { /* bỏ qua */ }
+  if (!t || !document.querySelector(`.tabs [data-tab="${t}"]`)) t = matchMedia('(max-width:900px)').matches ? 'tim' : null;
+  if (t && t !== 'them') moTab(t, false);
+}
+// phím / (khi không đang gõ chữ): nhảy tới ô Tìm
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  e.preventDefault();
+  moTab('tim');
+  $('#oTim').focus();
+});
 $('#choPhanLoai').addEventListener('click', () => moTab('on'));
 
 /* Ghi chú bắt vội, chưa có nhóm hoặc thẻ — xếp chỗ thì sau mới tìm lại được. */
@@ -1053,7 +1094,13 @@ function veCay() {
     mui.addEventListener('click', () => { if (mo) moRong.delete(duong); else moRong.add(duong); veCay(); });
     const b = el('button', 'nut-cay' + (LOC.category === duong ? ' on' : '') + (c.ten === 'Chưa xếp chỗ' ? ' chua' : ''));
     b.type = 'button';
-    b.append(el('span', null, c.ten), el('u', null, String(c.so)));
+    const ten = el('span', null, c.ten);
+    if (sau === 0 && c.ten !== CHUA) {   // chấm màu của vùng — cùng màu với vòng ở Toàn cảnh
+      const i = el('i', 'cham-vung');
+      i.style.background = mauCua(c.ten);
+      ten.prepend(i);
+    }
+    b.append(ten, el('u', null, String(c.so)));
     b.addEventListener('click', () => {
       LOC.category = duong; LOC.offset = 0;
       if (coCon) moRong.add(duong);

@@ -424,8 +424,9 @@ body.tap-trung .xem[data-xem="do"]{position:absolute;inset:0;height:auto}
 body.tap-trung .che-do,body.tap-trung .duoi,body.tap-trung .toc-do,body.tap-trung .empty{display:none}
 .goi-y-thoat{
   position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:4;margin:0;pointer-events:none;
-  background:rgba(16,32,58,.86);border:1px solid var(--son-3);border-radius:999px;padding:6px 14px;
-  font:500 12px var(--ui);color:var(--trung-mo);white-space:nowrap
+  background:rgba(16,32,58,.86);border:1px solid var(--son-3);border-radius:16px;padding:6px 14px;
+  font:500 12px/1.45 var(--ui);color:var(--trung-mo);text-align:center;
+  width:max-content;max-width:calc(100% - 32px)   /* câu dài (vd báo thiếu giọng đọc) xuống dòng, không tràn màn hình điện thoại */
 }
 
 /* nút Aa: chỉ có ở toàn màn hình — bật/tắt tên ghi chú; tự ẩn như các nút khác */
@@ -441,9 +442,10 @@ body.tap-trung .bat-ten{display:grid}
   font:500 15px/1.5 var(--ui);color:#CFEFFF;text-shadow:0 0 10px rgba(120,220,255,.6)
 }
 body.tap-trung .loi-may{font-size:17px}
-/* mặt A.I: ẩn dải tên vùng cho thoáng; gợi ý thoát toàn màn hình lên trên để không đè phụ đề */
+/* mặt A.I: ẩn dải tên vùng cho thoáng */
 body.mat-ai .duoi{display:none}
-body.mat-ai .goi-y-thoat{top:20px;bottom:auto}
+body.mat-ai .goi-y-thoat{bottom:78px}            /* trên phụ đề — không che các vòng vùng ở trên đầu */
+body.mat-ai .empty{display:none}                  /* kho trống: Mây nói câu đó, không để chữ đè lên mặt */
 
 /* nút loa: chỉ có ở chế độ mặt A.I, góc trên bên phải; vàng khi đang tắt tiếng */
 .bat-tieng{position:absolute;top:16px;right:16px;z-index:3;display:none;transition:opacity .45s ease}

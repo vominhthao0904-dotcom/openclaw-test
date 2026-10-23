@@ -279,6 +279,34 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - Kiểm trên trình duyệt: vào/ra bằng bấm lõi, phím M, chạm lõi trên điện thoại; đầu nhìn theo chuột (yaw +0,36 / −0,36);
   miệng mở khi nói; bấm chấm mở đúng ghi chú và đọc tên; toàn màn hình; ~61 khung hình/giây; không lỗi JS.
 
+## Mặt A.I làm lại theo ảnh mẫu (anh yêu cầu: bản đầu "xấu quá")
+Bản đầu là khung lưới thưa kiểu "người sắt": kho 14 ghi chú chỉ có 14 chấm lưa thưa, nét đa giác thô, đường nối ghi chú
+cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
+- **Đầu và thân (ảnh 2)**: mô hình 3D (bề rộng, độ nhô theo từng tầng mặt + hốc mắt, cung mày, sống mũi, cánh mũi, gò má, môi,
+  cằm, thái dương; cổ, dốc vai, cơ vai, xương quai xanh, ngực) vẽ bằng **đường đồng mức độ sâu** (marching squares, dựng một
+  lần khi bật) — vân ôm theo khối như bản đồ địa hình. Thêm tai, lông mày, mí mắt (khép khi chớp), khe miệng. Nhép miệng: môi
+  dưới và cằm hạ xuống theo tiếng. Đầu quay có phối cảnh; cổ xoay theo một phần; thân đứng yên, nhìn hơi từ trên xuống.
+- **Não và mạng (ảnh 3)**: hộp sọ trong suốt (vân mờ dần lên đỉnh), bên trong hai bán cầu não — nếp cuộn là đường đồng mức của
+  tổng vài sóng phẳng (ra hoa văn mê cung như vỏ não), sáng theo sóng chạy ngang, đang nói thì sáng hơn. Mỗi ghi chú là một
+  nơ-ron phát sáng, chỗ cố định theo mã ghi chú, vùng nào nằm ở thuỳ hướng về vòng của vùng đó. Mỗi vùng một vòng tròn quanh
+  đầu (trái → phải theo thứ tự vòng quỹ đạo; 7 vùng trở lên thì vòng lan xuống hai bên), nối tới từng nơ-ron, có xung sáng chạy
+  vào não. Bấm vòng: Mây đọc tên vùng và số ghi chú.
+- **Chuyển cảnh (ảnh 1 + ý anh "hai luồng âm dương")**: Thái Cực tách hai quả cầu Dương (vàng, bên trái — phía Đông) và Âm
+  (xanh tím), xoay đúng một vòng quanh nhau; mỗi đường vân của đầu lúc đầu là một sợi năng lượng nối hai quả cầu (~90 sợi, có
+  hạt sáng trôi dọc), rồi gỡ dần thành đường vân (viền đầu trước, chóp mũi sau); hai quả cầu bay vào làm hai mắt, lõi Bát Quái
+  xuống giữa ngực (theo góp ý: hạ xuống qua khỏi cổ, không sát đầu). Vào ~2,6 giây, ra ~1,5 giây chạy ngược lại.
+- Theo góp ý sau bản thử: mặt mềm hơn (vân viền thưa, dịu hơn; trán dốc nhẹ nên không còn mảng trống hình chữ T), vai mềm và
+  thật hơn (vai dốc dài, tròn, rộng; cổ rõ).
+- Nhẹ máy: tọa độ chiếu ghi thẳng vào mảng có sẵn (không tạo đối tượng mỗi điểm), đã thành hình thì gom nét theo độ sáng và vẽ
+  một lớp, quầng nơ-ron vẽ sẵn mỗi màu một lần. Trình duyệt không card đồ hoạ (máy thử): ~60 khung hình/giây ở kho 14 và kho
+  200 ghi chú, máy tính và điện thoại.
+- Sửa kèm: thông báo dài (vd "chưa có giọng đọc tiếng Việt") trên điện thoại tràn khỏi màn hình — nay xuống dòng; ở chế độ mặt
+  A.I thông báo nằm trên phụ đề, không che các vòng vùng. Kho trống: ẩn chữ "Kho đang trống" (Mây đã nói câu đó) để không đè mặt.
+- Kiểm trên trình duyệt (kho 14 ghi chú, kho 200 ghi chú / 9 vùng, kho trống; 1366×768, toàn màn hình, điện thoại 390×844):
+  vào/ra bằng bấm lõi và phím M, giữa chừng chuyển cảnh; đầu nhìn theo chuột; miệng mở khi nói; rê vòng vùng ra con trỏ bàn tay,
+  bấm vòng đọc đúng "Vùng Kỹ thuật: 4 ghi chú", không mở thẻ, không phóng to; bấm nơ-ron mở đúng ghi chú và đọc tên; mở thẻ chi
+  tiết thì mặt dịch trái vừa khung; "giảm chuyển động" vào/ra ngay; không lỗi JS.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

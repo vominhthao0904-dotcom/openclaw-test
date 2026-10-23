@@ -255,8 +255,13 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - Mặt nạ hologram 3D: khung lưới vàng kim (viền) / xanh (mặt nạ), mắt khe sáng, nền mờ, vòng HUD xoay ngược chiều, vệt quét
   ngang. Chiều sâu lấy theo mặt elip của đầu, có phối cảnh — đầu quay (yaw ±0,42) và gật (pitch ±0,2) nhìn theo con trỏ;
   điện thoại lắc nhẹ. Chớp mắt mỗi 2,5–5,5 giây. Lõi Bát Quái thành lò phản ứng trên ngực (thân đứng yên, chỉ đầu quay).
-- Nhép miệng theo âm tiết giả lập + phụ đề chạy chữ khi: vào chế độ (chào, số ghi chú/vùng), bấm một chấm (đọc tên), trả
-  lời ở tab Hỏi (câu đầu). Không phát âm thanh, không gửi gì ra ngoài.
+- Nhép miệng + phụ đề chạy chữ khi: vào chế độ (chào, số ghi chú/vùng), bấm một chấm (đọc tên), trả lời ở tab Hỏi (câu đầu).
+- **Tiếng nói** (anh yêu cầu): Web Speech API, **chỉ giọng tiếng Việt cài sẵn trong máy** (`localService`) — giọng đọc qua mạng
+  như "Google Tiếng Việt" trên Chrome máy tính bị loại vì gửi nội dung lên máy chủ. Miệng mở từ lúc bắt đầu phát tới lúc đọc
+  xong, phụ đề theo chữ đang đọc (sự kiện `boundary`). Nút loa bật/tắt (nhớ trong trình duyệt), thoát chế độ thì dừng đọc.
+  Không có giọng tiếng Việt trong máy: báo một lần, chỉ phụ đề. Kiểm bằng giọng giả lập (máy thử không có loa): chọn đúng
+  giọng trong máy, bỏ giọng mạng và giọng tiếng Anh; tắt tiếng thì không phát nhưng vẫn phụ đề; tải lại vẫn nhớ; Esc dừng đọc.
+  **Chưa nghe thử bằng loa thật** — giọng thật tuỳ máy (Windows "Microsoft An", Android Google, iPhone "Linh").
 - Bố cục tự co theo khung (máy tính, toàn màn hình, điện thoại); phụ đề canh giữa theo mặt, không bị thẻ chi tiết che; dải tên
   vùng ẩn trong chế độ này. Máy bật "giảm chuyển động": chuyển ngay, không lắc đầu / quét / nhép miệng, phụ đề hiện đủ.
 - Kiểm trên trình duyệt: vào/ra bằng bấm lõi, phím M, chạm lõi trên điện thoại; đầu nhìn theo chuột (yaw +0,36 / −0,36);

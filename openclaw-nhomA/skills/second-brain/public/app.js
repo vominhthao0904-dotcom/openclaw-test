@@ -605,22 +605,71 @@ function capNhatMat(tg) {
   // phụ đề chạy chữ, tắt sau khi nói xong 1,8 giây
   const pd = $('#loiMay');
   if (loiNoi && t - loiNoi.t0 < loiNoi.dai + 1.8 && eMat > 0.5) {
-    const n = itMotion ? loiNoi.chu.length : Math.ceil(loiNoi.chu.length * keo((t - loiNoi.t0) / (loiNoi.dai * 0.9), 0, 1));
+    const dai = loiNoi.chu.length;
+    const n = itMotion || loiNoi.xong ? dai
+      : loiNoi.tieng ? Math.min(dai, Math.max(loiNoi.chiSo || 0, Math.ceil((t - loiNoi.t0) * 8)))   // theo chữ đang đọc
+        : Math.ceil(dai * keo((t - loiNoi.t0) / (loiNoi.dai * 0.9), 0, 1));
     if (pd.dataset.n !== String(n)) { pd.textContent = loiNoi.chu.slice(0, n); pd.dataset.n = String(n); }
     pd.style.left = `${CX}px`;                              // canh giữa theo khuôn mặt (thẻ chi tiết mở thì mặt dịch trái)
     pd.style.maxWidth = `${Math.round(rong * 0.9)}px`;
     pd.hidden = false;
   } else if (!pd.hidden) { pd.hidden = true; pd.dataset.n = ''; }
+  // nút loa luôn nằm trong phần còn nhìn thấy (thẻ chi tiết mở thì dịch sang trái theo)
+  if (matDich) $('#batTieng').style.right = `${16 + Math.round(lechDich)}px`;
   // lõi Bát Quái: giữa đồ thị ↔ lò phản ứng trên ngực
   const lo = chieuThan(LO_NGUC[0], LO_NGUC[1]);
   LX = CX + (lo.x - CX) * eMat;
   LY = CY + (lo.y - CY) * eMat;
 }
 
-function noi(chu) {              // "Mây nói": nhép miệng + phụ đề (chỉ khi đang ở chế độ mặt A.I)
+/* Tiếng nói: CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", giọng Google trên Android, iPhone "Linh").
+   Giọng đọc qua mạng (vd "Google Tiếng Việt" trên Chrome máy tính) gửi nội dung lên máy chủ — bị loại, đúng nguyên tắc
+   kho không gửi gì ra ngoài. Không có giọng tiếng Việt trong máy thì chỉ hiện phụ đề (báo một lần). */
+const coDocNoi = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let coTieng = true, giongViet = null, daBaoThieuGiong = false;
+try { if (localStorage.getItem('sb.tieng') === '0') coTieng = false; } catch (_) { /* mặc định có tiếng */ }
+function chonGiong() {
+  if (!coDocNoi) return;
+  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang) && v.localService);
+  giongViet = ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
+}
+if (coDocNoi) {
+  chonGiong();
+  speechSynthesis.addEventListener?.('voiceschanged', chonGiong);
+}
+function datTieng(bat) {
+  coTieng = bat;
+  const b = $('#batTieng');
+  b.setAttribute('aria-pressed', String(bat));
+  b.title = bat ? 'Đang có tiếng — bấm để tắt' : 'Đang tắt tiếng — bấm để bật';
+  try { localStorage.setItem('sb.tieng', bat ? '1' : '0'); } catch (_) { /* không lưu được thì thôi */ }
+  if (!bat && coDocNoi) speechSynthesis.cancel();
+}
+
+function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + tiếng (chỉ khi đang ở chế độ mặt A.I)
   if (!matDich || !chu) return;
   chu = String(chu).replace(/\s+/g, ' ').trim();
-  loiNoi = { chu, t0: giay(), dai: keo(chu.length * 0.065, 1.4, 7) };
+  const ln = { chu, t0: giay(), dai: keo(chu.length * 0.065, 1.4, 7) };
+  loiNoi = ln;
+  if (!coTieng || !coDocNoi) return;
+  speechSynthesis.cancel();
+  if (!giongViet) chonGiong();
+  if (!giongViet) {
+    if (!daBaoThieuGiong) {
+      daBaoThieuGiong = true;
+      baoNhanh('Máy chưa có giọng đọc tiếng Việt cài sẵn — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).', 6000);
+    }
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(chu);
+  u.voice = giongViet;
+  u.lang = giongViet.lang;
+  u.rate = 1;
+  // miệng và phụ đề bám theo tiếng thật: bắt đầu khi phát, tới đâu hiện chữ tới đó, dừng khi đọc xong
+  u.onstart = () => { ln.t0 = giay(); ln.dai = 60; ln.tieng = true; };
+  u.onboundary = (e) => { ln.chiSo = e.charIndex + (e.charLength || 0); };
+  u.onend = u.onerror = () => { if (ln.tieng) ln.dai = giay() - ln.t0; ln.xong = true; };
+  speechSynthesis.speak(u);
 }
 const cauDau = (s) => {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
@@ -637,8 +686,13 @@ function datMat(bat) {
     const v = (DATA.cay || []).filter((c) => c.duong_dan).length;
     setTimeout(() => noi(n ? `Xin chào anh. Kho đang có ${n} ghi chú trong ${v} vùng kiến thức.`
       : 'Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?'), itMotion ? 0 : 1000);
-  } else loiNoi = null;
+  } else {
+    loiNoi = null;
+    if (coDocNoi) speechSynthesis.cancel();
+  }
 }
+$('#batTieng').addEventListener('click', () => datTieng(!coTieng));
+datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
   const a = document.activeElement;
   if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;

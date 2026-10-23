@@ -162,6 +162,10 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   HOME thật (`~/.local`), nên Python không thấy; `install.sh` gọi `deepcheck.py` nên cũng dừng oan. Máy thử trước đây cài
   python-pptx cho toàn hệ thống nên không lộ lỗi. Sửa: giữ đường dẫn thư viện của user (`PYTHONUSERBASE`) khi đổi HOME.
   Đã tái hiện lỗi bằng một skill thử chỉ có thư viện trong `~/.local`: bản cũ báo LỖI, bản sửa 0 lỗi.
+- **`kiemtra.sh` Phần 2 báo "OpenClaw chưa thấy" cả 4 skill dù đã ready** (Mây phát hiện và tự xác minh bằng catalog JSON).
+  Nguyên nhân: `printf "$DS" | grep -q` dưới `set -o pipefail` — danh sách skill của OpenClaw thật dài hơn bộ đệm ống (~64 KB),
+  grep thấy tên thì thoát sớm, printf dính SIGPIPE, cả ống bị coi là lỗi. Sửa: so khớp ngay trong bash, không qua ống.
+  Tái hiện bằng `openclaw` giả in 310 KB: bản cũ 4 dòng CHƯA ĐẠT, bản sửa 4 ĐẠT; thiếu skill thật vẫn báo đúng CHƯA ĐẠT.
 
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.

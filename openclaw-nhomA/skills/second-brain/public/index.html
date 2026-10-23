@@ -60,6 +60,7 @@
         <label>Nguồn <span class="phu">(link bài viết, khoá học… để sau còn kiểm lại)</span>
           <input name="url" type="url" maxlength="500" placeholder="https://…">
         </label>
+        <input type="hidden" name="source" value="">
         <button class="go" type="submit">Lưu ghi chú</button>
         <p class="say" id="sayThem" role="status" aria-live="polite"></p>
         <div id="trungLap" class="trung" hidden></div>
@@ -67,10 +68,11 @@
     </section>
 
     <section class="tab" data-pane="nap" hidden>
-      <p class="hint dau">Dán văn bản hoặc chọn file <b>.md / .txt</b>. Markdown có nhiều tiêu đề <code>#</code>/<code>##</code>
-        được tách mỗi mục một ghi chú. Bản trùng y hệt tự bỏ qua. PDF, CSV, cả thư mục: nhờ Mây hoặc chạy <code>brain.py nap</code>.</p>
+      <p class="hint dau">Dán văn bản hoặc chọn file <b>.md / .txt / Word .docx / PDF</b>. Markdown có nhiều tiêu đề
+        <code>#</code>/<code>##</code>, Word có Heading 1/2 thì tách mỗi mục một ghi chú; PDF dài tách mỗi trang một ghi chú.
+        Bản trùng y hệt tự bỏ qua. CSV, cả thư mục: nhờ Mây hoặc chạy <code>brain.py nap</code>.</p>
       <label class="tha" id="vungTha">
-        <input id="chonTep" type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" multiple>
+        <input id="chonTep" type="file" accept=".md,.markdown,.txt,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
         <span>Kéo thả file vào đây, hoặc <u>chọn file</u></span>
         <em id="dsTep"></em>
       </label>
@@ -94,6 +96,7 @@
             <option value="tu-dong">Tự động</option>
             <option value="heading">Mỗi tiêu đề 1 ghi chú</option>
             <option value="khong">Cả file 1 ghi chú</option>
+            <option value="trang">Mỗi trang PDF 1 ghi chú</option>
           </select>
         </label>
       </div>
@@ -148,10 +151,14 @@
         <p class="con-lai" id="conLai" hidden></p>
       </div>
       <p class="goi-y-thoat" id="goiYThoat" hidden></p>
-      <p class="loi-may" id="loiMay" hidden aria-live="polite"></p>
+      <p class="loi-may" id="loiMay" hidden aria-live="polite"><span></span><span class="con" aria-hidden="true"></span></p>
       <button type="button" id="batTieng" class="mo-toc bat-tieng" aria-pressed="true" aria-label="Bật/tắt tiếng Mây">
         <svg class="i-co" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <svg class="i-tat" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" id="noiMay" class="mo-toc noi-may" aria-label="Nói với Mây" hidden
+        title="Nói với Mây — bấm rồi nói: tìm …, mở …, ghi chú …, thoát, hoặc hỏi một câu">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
       <button type="button" id="batTen" class="mo-toc bat-ten" aria-pressed="true" aria-label="Bật/tắt tên ghi chú">Aa</button>
       <div class="toc-do" id="tocDo">

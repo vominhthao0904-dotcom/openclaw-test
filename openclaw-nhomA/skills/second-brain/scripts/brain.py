@@ -1279,7 +1279,7 @@ def ds_viec(db, category=None, tat_ca=False):
 
 
 # ---------------- nạp kiến thức từ nhiều nguồn ----------------
-NAP_DUOI = {".md", ".markdown", ".txt", ".pdf", ".csv", ".json", ".gz", ".html", ".htm"}
+NAP_DUOI = {".md", ".markdown", ".txt", ".pdf", ".docx", ".csv", ".json", ".gz", ".html", ".htm"}
 NAP_MAX_FILE = 5 * 1024 * 1024
 NAP_MAX_SO_FILE = 2000
 
@@ -1364,6 +1364,72 @@ def _doc_html(text):
     return gon(p.title), noi_dung
 
 
+def _doc_docx(path):
+    """Word (.docx) → (tên trong thuộc tính file, chữ dạng Markdown). Chỉ dùng thư viện có sẵn (zip + XML): tiêu đề
+    Heading 1/2 (hoặc Title) thành # / ## để tách mục như Markdown; dòng danh sách thành "- "; bảng: mỗi ô một dòng."""
+    import zipfile
+    from xml.etree import ElementTree as ET
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    try:
+        z = zipfile.ZipFile(path)
+        tt = z.getinfo("word/document.xml")
+    except (zipfile.BadZipFile, KeyError):
+        raise ValueError("không phải file Word .docx hợp lệ (file .doc đời cũ: mở bằng Word rồi Lưu thành .docx)")
+    if tt.file_size > 40 * 1024 * 1024:           # chặn file nén "bom" (nhỏ khi nén, khổng lồ khi bung)
+        raise ValueError("nội dung Word quá lớn")
+    goc = ET.fromstring(z.read(tt))
+    ten = ""
+    try:
+        core = ET.fromstring(z.read("docProps/core.xml"))
+        ten = gon(core.findtext("{http://purl.org/dc/elements/1.1/}title") or "")
+    except (KeyError, ET.ParseError):
+        pass
+    dong = []
+    for para in goc.iter(W + "p"):
+        chu = []
+        for n in para.iter():
+            if n.tag == W + "t" and n.text:
+                chu.append(n.text)
+            elif n.tag == W + "tab":
+                chu.append("\t")
+            elif n.tag in (W + "br", W + "cr"):
+                chu.append("\n")
+        text = "".join(chu).strip()
+        if not text:
+            dong.append("")
+            continue
+        kieu = para.find(f"{W}pPr/{W}pStyle")
+        kieu = kieu.get(W + "val", "") if kieu is not None else ""
+        cap = para.find(f"{W}pPr/{W}outlineLvl")
+        m = re.match(r"(?i)^(?:heading|tieude|tiêuđề|title)\s*(\d?)$", kieu.replace(" ", ""))
+        muc = int(cap.get(W + "val", "9")) + 1 if cap is not None else (int(m.group(1) or 1) if m else 0)
+        if 1 <= muc <= 2:
+            dong.append("#" * muc + " " + text)
+        elif para.find(f"{W}pPr/{W}numPr") is not None:
+            dong.append("- " + text)
+        else:   # dòng thường mở đầu bằng "#" (vd chú thích trong lệnh mẫu) không phải tiêu đề: thêm khoảng trắng để khỏi bị tách
+            dong.append(" " + text if text.startswith("#") else text)
+    return ten, unicodedata.normalize("NFC", re.sub(r"\n{3,}", "\n\n", "\n".join(dong)).strip())
+
+
+def _doc_pdf(f):
+    """Chữ từng trang của PDF: pdftotext (poppler) nếu có, không thì pypdf."""
+    import shutil, subprocess
+    if shutil.which("pdftotext"):
+        r = subprocess.run(["pdftotext", "-enc", "UTF-8", str(Path(f).resolve()), "-"], capture_output=True, text=True)
+        if r.returncode:
+            raise ValueError("pdftotext lỗi: " + (r.stderr or "").strip()[:150])
+        return [unicodedata.normalize("NFC", x).strip() for x in r.stdout.split("\f")]
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        raise ValueError("cần pdftotext (sudo apt install -y poppler-utils) hoặc pypdf")
+    try:
+        return [unicodedata.normalize("NFC", (pg.extract_text() or "")).strip() for pg in PdfReader(str(f)).pages]
+    except Exception as e:                       # pypdf ném nhiều kiểu lỗi khi file hỏng/mã hoá
+        raise ValueError(f"không đọc được PDF ({type(e).__name__})")
+
+
 def doc_nguon(path, tach):
     """Đọc một file thành danh sách mục {title, content, ...}. Ném ValueError khi không đọc được."""
     f = Path(path)
@@ -1384,14 +1450,13 @@ def doc_nguon(path, tach):
                  "url": meta.get("url") or meta.get("source") or meta.get("nguon") or "",
                  "cite": meta.get("cite") or meta.get("trich_dan") or "", "due": meta.get("due") or meta.get("han")}
         return [{"title": t, "content": c, **chung} for t, c in muc]
+    if duoi == ".docx":
+        tieu_de, text = _doc_docx(f)
+        if not text:
+            raise ValueError("file Word không có chữ")
+        return [{"title": t, "content": c} for t, c in _tach_markdown(text, tach, tieu_de or ten, dung_dong_dau=not tieu_de)]
     if duoi == ".pdf":
-        import shutil, subprocess
-        if not shutil.which("pdftotext"):
-            raise ValueError("cần pdftotext (sudo apt install -y poppler-utils)")
-        r = subprocess.run(["pdftotext", "-enc", "UTF-8", str(f.resolve()), "-"], capture_output=True, text=True)
-        if r.returncode:
-            raise ValueError("pdftotext lỗi: " + (r.stderr or "").strip()[:150])
-        trang = [unicodedata.normalize("NFC", x).strip() for x in r.stdout.split("\f")]
+        trang = _doc_pdf(f)
         if not any(trang):
             raise ValueError("PDF không có lớp chữ (PDF scan) — cần OCR trước")
         if tach == "trang":

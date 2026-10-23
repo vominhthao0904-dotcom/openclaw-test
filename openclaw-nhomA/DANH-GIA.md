@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **113** |
-| Test `test-web.sh` | 30 | **69** |
+| Test `test-brain.sh` | 50 | **117** |
+| Test `test-web.sh` | 30 | **72** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -319,6 +319,42 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 - Kiểm bằng giọng giả lập 5 tình huống: Chrome Windows (chỉ tiếng Anh) → nút vàng + chỉ mở bằng Edge, không hộp hỏi; Edge chưa cài
   giọng → hỏi; đồng ý thì đọc bằng HoaiMy, tải lại vẫn nhớ, tắt tiếng thì bỏ quyền; từ chối thì chỉ phụ đề; Edge có Microsoft An →
   đọc ngay, không hỏi; giọng nạp chậm → vẫn đọc. **Chưa nghe bằng loa thật** — cần anh thử trên Edge.
+
+## Góp ý sau PR #14 (ảnh mẫu đầu A.I, tiếng Anh, micro, nạp Word/PDF)
+- **Đầu – cổ – vai nối liền, vân như ảnh mẫu.** Thử kiểu vân mê cung (sọc + nhiễu): anh chê *rời rạc, xấu* — vân đứt vụn, có lỗ
+  đen. Làm lại bằng **đường dòng cách đều**: mỗi đường vân đi theo hướng khối (trên mặt dọc đường đồng mức độ nhô; cổ, vai theo
+  0,7·y − độ nhô), đường mới luôn cách đường cũ đúng một khoảng, sát quá thì dừng → đường dài, liền, đều, chỗ hai dòng gặp nhau
+  thì dừng gọn như vân tay. Tai nằm trong khối đầu nên cũng có vân. Cổ to ra, mọc từ dưới hàm, các vòng ngang chảy liền xuống vai.
+  Dựng sẵn lúc máy rảnh (~0,3 giây, ~20.000 điểm) để lần đầu bấm không khựng; ~60 khung hình/giây.
+  Lỗi gặp khi làm: lưới giá trị ra ngoài khung lại trả giá trị hàng mép → đường vân chạy tuột ra ngoài mãi, hàng chờ phình hết bộ
+  nhớ, trang treo; đã sửa (ngoài khung trả "ngoài vùng") và thêm điều kiện dừng khi đường giậm chân tại chỗ.
+- **Chrome không có giọng tiếng Việt → giọng nữ tiếng Anh trong máy** (Windows "Zira", trầm ấm hơn chút): câu của Mây nói tiếng
+  Anh, chữ của anh đọc không dấu, phụ đề vẫn đủ dấu. Bỏ dòng cảnh báo "Chrome trên Windows…". Edge chưa cài giọng Windows: đọc
+  tiếng Anh trước, bấm loa thì hỏi có dùng giọng Việt qua mạng (HoaiMy) không.
+- **Phụ đề không giật**: trước đây khung co giãn theo từng chữ (canh giữa nên nhảy qua lại) và chữ vọt theo từng từ. Nay khung
+  giữ đủ cỡ cả câu từ đầu (phần chưa đọc trong suốt), chữ hiện đều ~9–24 chữ/giây theo tiếng; tắt sau 3 giây.
+- **Vòng vùng + đường nối vào não tự mờ** sau ~6 giây để yên, rê chuột / chạm là hiện lại.
+- **Nhập bằng giọng nói + nói với Mây**: nút micro ở ô Chủ đề, Nội dung, Nạp, Tìm, Hỏi và ở mặt A.I (lệnh *tìm / mở / ghi chú /
+  thoát*, câu khác thì hỏi kho). Nhận giọng của trình duyệt chạy trên máy chủ Google / Microsoft → mỗi lần mở trình duyệt hỏi
+  đồng ý một lần. Ghi chú nhập bằng giọng: nguồn `voice` + thẻ `giong-noi`, không tự lưu (giống quy tắc xác nhận giọng nói).
+- **Nạp file Word / PDF trên web** (anh báo "không nạp file được" — anh chọn file Word/PDF, web chỉ nhận .md/.txt): trình duyệt
+  gửi nguyên file (base64), máy chủ đọc chữ. Word đọc bằng thư viện có sẵn của Python (zip + XML, không cần cài gì): Heading 1/2
+  thành mục để tách, danh sách giữ gạch đầu dòng, dòng lệnh mẫu mở đầu bằng "#" không bị tưởng là tiêu đề; chặn file nén "bom".
+  PDF: pdftotext, máy không có thì pypdf; PDF dài tự tách mỗi trang một ghi chú. Dòng lệnh `brain.py nap` cũng đọc được .docx.
+  Giới hạn thân yêu cầu nâng 4 → 8 MB (file ~4 MB gửi dạng base64). Thử file hướng dẫn thật: Word → 16 ghi chú theo tiêu đề,
+  PDF 27 trang → 27 ghi chú. Thêm 4 test brain (Word tách mục, giữ gạch đầu dòng, Word hỏng báo rõ, PDF tách trang) và 3 test web.
+
+- **Vẫn chưa đạt so với ảnh mẫu** (anh gửi lại ảnh): vân đường dòng liền nhưng chóp mũi / môi / cằm thành vòng tròn đồng tâm
+  như bia bắn. Nay chóp mũi đi dọc, môi và cằm đi ngang (trộn dần vào hướng đồng mức). Thử thêm chất mê cung (từng mảng rẽ vuông
+  góc): thành nhiều đoạn ngắn như nét gạch — anh chê *rời rạc, xấu* — đã bỏ, giữ đường vân dài liền. Thử thêm lớp quầng mờ quanh
+  vân: máy yếu tụt còn ~26 khung/giây — bỏ; nét giữ đúng 1px (1,1px làm trình duyệt bỏ đường vẽ nhanh, chậm gấp đôi).
+- **Mục 8 — chuyển cảnh chỉ còn 2 luồng Âm Dương** (anh yêu cầu): bỏ hai quả cầu và các sợi nhiều màu. Từ lõi tuôn ra luồng Dương
+  vàng kim và luồng Âm xanh lam — hai cánh xoắn ốc như Thái Cực, nhấp nhô ngược pha nên cắt đan qua nhau; mỗi luồng là một bó
+  60 sợi mảnh (mỗi đường vân của đầu nằm trên một đoạn luồng dài tương ứng — trải hết luồng thì thành nét thẳng cắt ngang).
+  Vẽ sợi thường, không cộng sáng (60 sợi cộng sáng thành trắng xoá, mất màu). **Hiệu ứng Tiên Thiên**: vòng 8 quẻ đúng phương vị,
+  hào sơ sát tâm, hào dương vàng / hào âm lam, sáng lần lượt theo chiều khí Tiên Thiên (Chấn → Ly → Đoài → Càn → Tốn → Khảm →
+  Cấn → Khôn, theo kim đồng hồ) với đốm khí chạy trước (vàng nửa dương trưởng, lam nửa âm trưởng). Rồi sợi gỡ thành đường vân,
+  đầu hai luồng bay vào làm mắt, vòng quẻ mờ đi. Vào ~3,2 giây, ra ~1,6 giây chạy ngược.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

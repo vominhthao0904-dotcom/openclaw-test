@@ -136,8 +136,8 @@ check "thân là mảng chứ không phải object" \
   'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -d "[1,2,3]"' "400"
 check "thiếu nội dung trả 400" 'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" -d "{\"title\":\"x\"}"' "400"
 check "id không tồn tại" 'curl -sS "$U/api/note?id=zzzzzzzzzzzz" | jq_ "d[\"ok\"]"' "False"
-check "thân quá 4 MB bị chặn" \
-  'python3 -c "print(\"{\\\"title\\\":\\\"\" + \"x\"*4300000 + \"\\\"}\")" > "$TMP/to.json"; curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" --data-binary @"$TMP/to.json"' "413"
+check "thân quá 8 MB bị chặn" \
+  'python3 -c "print(\"{\\\"title\\\":\\\"\" + \"x\"*8500000 + \"\\\"}\")" > "$TMP/to.json"; curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/add" -H "Content-Type: application/json" -H "Origin: $U" --data-binary @"$TMP/to.json"' "413"
 check "đường dẫn API không có trả 404" 'curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/api/khongco" -H "Content-Type: application/json" -H "Origin: $U" -d "{}"' "404"
 
 echo
@@ -167,6 +167,25 @@ check "nạp lại: bỏ trùng" \
   'post /api/ingest "{\"text\":\"# Mục một\\nNội dung một\\n# Mục hai\\nNội dung hai\"}" | jq_ "(d[\"da_them\"], d[\"bo_qua_trung\"])"' "(0, 2)"
 check "nạp file .md gửi từ trình duyệt" \
   'post /api/ingest "{\"files\":[{\"name\":\"bai-hoc.md\",\"text\":\"Nội dung bài học từ file\"}]}" | jq_ "d[\"ghi_chu\"][0][\"title\"]"' "Bai hoc"
+python3 - "$TMP/w.docx" <<'DOCX'
+import sys, zipfile
+W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+def p(t, kieu=None, ds=False):
+    pr = (f'<w:pStyle w:val="{kieu}"/>' if kieu else '') + ('<w:numPr><w:ilvl w:val="0"/></w:numPr>' if ds else '')
+    return f'<w:p>{"<w:pPr>" + pr + "</w:pPr>" if pr else ""}<w:r><w:t>{t}</w:t></w:r></w:p>'
+than = (p("Mục Word một", "Heading1") + p("Nội dung mục một của file Word.") + p("# chú thích trong lệnh mẫu")
+        + p("Mục Word hai", "Heading1") + p("Ý gạch đầu dòng", ds=True) + p("Nội dung mục hai."))
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
+    z.writestr("word/document.xml", f'<?xml version="1.0" encoding="UTF-8"?><w:document {W}><w:body>{than}</w:body></w:document>')
+DOCX
+W64="$(python3 -c 'import base64,sys;print(base64.b64encode(open(sys.argv[1],"rb").read()).decode())' "$TMP/w.docx")"
+check "nạp Word .docx gửi từ trình duyệt" \
+  'post /api/ingest "{\"files\":[{\"name\":\"tai-lieu.docx\",\"b64\":\"$W64\"}],\"dry_run\":true}" | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Mục Word một', 'Mục Word hai']"
+check "file nhị phân đuôi lạ bị từ chối" \
+  'post /api/ingest "{\"files\":[{\"name\":\"x.exe\",\"b64\":\"QUJD\"}]}" | jq_ "d[\"ok\"]"' "False"
+check "base64 hỏng: báo lỗi, không lỗi 500" \
+  'post /api/ingest "{\"files\":[{\"name\":\"a.pdf\",\"b64\":\"@@@\"}]}" | jq_ "(d[\"ok\"], \"hỏng\" in d[\"error\"])"' "(False, True)"
 check "nhóm sai kiểu (object) bị từ chối" \
   'post /api/add "{\"title\":\"x\",\"content\":\"y z\",\"category\":{\"a\":1}}" | jq_ "d[\"ok\"]"' "False"
 check "thẻ dạng danh sách được nhận" \

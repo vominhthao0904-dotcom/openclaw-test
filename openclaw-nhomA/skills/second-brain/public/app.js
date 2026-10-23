@@ -340,7 +340,7 @@ function ve() {
   cx.globalAlpha = 1;
   capNhatMat(tg);
 
-  // vòng quỹ đạo — mỗi nhóm một màu riêng (tắt dần khi hai quả cầu Âm Dương tách ra)
+  // vòng quỹ đạo — mỗi nhóm một màu riêng (tắt dần khi hai luồng Âm Dương tuôn ra)
   cx.globalAlpha = anQD;
   const soVong = anQD > 0.003 ? vongMau.length : 0;
   const tenVong = [];
@@ -452,6 +452,17 @@ function ve() {
     cx.globalAlpha = nb ? 1 : toi ? 0.2 : 0.85;
     cx.fill();
     if (nb) { cx.strokeStyle = TRUNG; cx.lineWidth = 1.2; cx.stroke(); }
+    if (nhayNoron && kMat > 0.5 && nhayNoron.ids.has(nd.note.id)) {   // vừa tìm thấy bằng giọng nói: sóng sáng lan ra
+      const tt = giay() - nhayNoron.t0, pha = (tt * 1.4) % 1;
+      if (tt < 6) {
+        cx.beginPath();
+        cx.arc(p.x, p.y, nd.r * toCham + 3 + 9 * pha, 0, Math.PI * 2);
+        cx.strokeStyle = TRUNG;
+        cx.globalAlpha = (1 - pha) * (1 - tt / 6);
+        cx.lineWidth = 1.5;
+        cx.stroke();
+      }
+    }
     cx.globalAlpha = 1;
   });
 
@@ -512,14 +523,14 @@ function ve() {
 }
 
 /* ---------------- Chế độ MẶT A.I — nút ẩn: bấm lõi Bát Quái (hoặc phím M) ----------------
-   Chuyển cảnh: Thái Cực tách ra hai quả cầu Dương (vàng) và Âm (xanh tím) xoay quanh nhau, nối bằng hàng chục sợi năng lượng
-   đan xen; các sợi gỡ dần thành đường vân của một cái đầu A.I trong suốt, hai quả cầu bay vào làm hai mắt, lõi Bát Quái xuống
-   ngực. Thoát thì chạy ngược lại. Đầu vẽ bằng các đường đồng mức độ sâu (như bản đồ địa hình) của một mô hình 3D — ôm theo trán,
-   hốc mắt, sống mũi, gò má, môi, cằm; cổ và vai cũng vậy. Trong hộp sọ là bộ não phát sáng: mỗi ghi chú là một nơ-ron mang màu
+   Chuyển cảnh: từ lõi tuôn ra hai luồng Dương (vàng kim) – Âm (xanh lam) xoáy đan nhau như Thái Cực, vòng Tiên Thiên Bát Quái
+   sáng dần theo chiều khí; rồi hai luồng gỡ thành đường vân của một cái đầu A.I trong suốt, đầu luồng bay vào làm mắt, lõi Bát Quái xuống
+   ngực. Thoát thì chạy ngược lại. Đầu vẽ bằng các đường vân dài, liền, cách đều (đường dòng) chạy theo khối của một mô hình 3D —
+   vòng quanh mắt, mũi, môi, tai, dọc má, ngang trán; cổ thành vòng ngang chảy xuống vai. Trong hộp sọ là bộ não phát sáng: mỗi ghi chú là một nơ-ron mang màu
    vùng, mỗi vùng là một vòng tròn quanh đầu nối mạng vào não. Đầu quay nhìn theo con trỏ, chớp mắt, nhép miệng khi "Mây nói".
    Toạ độ mô hình: đơn vị = bán kính đầu, gốc ở tâm đầu, x sang phải, y xuống dưới, z hướng về người xem. */
 let matDich = 0, kMat = 0, eMat = 0;     // đích (0/1), tiến độ chuyển cảnh, tiến độ đã làm mượt
-let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai quả cầu tách ra)
+let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai luồng Âm Dương tuôn ra)
 let LX = 0, LY = 0;                      // vị trí lõi Bát Quái: giữa đồ thị, hoặc trên ngực khi là mặt A.I
 let dtKhung = 16.7, chuot = null, loiNoi = null;
 const MAT = { yaw: 0, pitch: 0, u: 1, oy: 0, mieng: 0, chop: 1, henChop: 2.5, batDauChop: -9 };
@@ -547,7 +558,10 @@ function doSau(x, y) {                   // độ nhô (z) của mặt trước 
   const w = nuaRong(y);
   if (w <= 0) return -1;
   const s = 1 - (x / w) ** 2;
-  if (s <= 0) return s;
+  if (s <= 0) {                          // tai: hai cánh nhỏ hai bên, ngoài viền đầu
+    const ex = (Math.abs(x) - 0.95) / 0.13, ey = (y - 0.12) / 0.27, re = ex * ex + ey * ey;
+    return re < 1 ? 0.12 * Math.sqrt(1 - re) : s;
+  }
   const ax = Math.abs(x);
   let z = nhoGiua(y) * s ** 0.55
     - 0.13 * g2(ax, y, 0.34, 0.02, 0.17, 0.11)      // hốc mắt
@@ -570,16 +584,17 @@ function doSau(x, y) {                   // độ nhô (z) của mặt trước 
   return z;
 }
 // cổ → dốc vai → vai tròn → cánh tay: nửa bề rộng nhìn thẳng, và độ nhô ở giữa thân, theo y
-const RONG_THAN = [[1.1, 0.26], [1.45, 0.27], [1.57, 0.3], [1.64, 0.48], [1.72, 0.78], [1.82, 1.1], [1.92, 1.38], [2.02, 1.6],
-  [2.14, 1.76], [2.27, 1.84], [2.47, 1.85], [2.72, 1.8], [2.97, 1.75]];
-const NHO_THAN = [[1.1, 0.26], [1.57, 0.28], [1.67, 0.34], [1.87, 0.42], [2.12, 0.5], [2.42, 0.56], [2.97, 0.56]];
+// cổ mọc từ dưới hàm (sau tai), thon lại rồi loe mềm ra dốc vai, vai tròn, cánh tay
+const RONG_THAN = [[0.55, 0.6], [0.8, 0.5], [1.0, 0.45], [1.2, 0.43], [1.35, 0.45], [1.48, 0.56], [1.6, 0.84], [1.72, 1.14],
+  [1.85, 1.42], [2.0, 1.62], [2.15, 1.74], [2.35, 1.8], [2.6, 1.78], [2.97, 1.72]];
+const NHO_THAN = [[0.55, 0.42], [1.3, 0.4], [1.5, 0.42], [1.8, 0.5], [2.1, 0.56], [2.4, 0.6], [2.97, 0.6]];
 function doSauThan(x, y) {               // độ nhô của cổ, vai, ngực: thân tròn + xương quai xanh + cơ ngực + cơ vai
   const W = noiSuy(RONG_THAN, y), s = 1 - (x / W) ** 2;
   if (s <= 0) return s * 0.3;            // âm ngoài thân: đường đồng mức thấp nhất là viền thân
   const ax = Math.abs(x), r = Math.sqrt(s);
-  return (noiSuy(NHO_THAN, y) + 0.12 * g2(ax, y, 1.66, 2.22, 0.22, 0.28)) * r
-    + 0.04 * Math.exp(-(((y - 1.72 - 0.08 * ax) / 0.06) ** 2)) * em(0.1, 0.25, ax) * (1 - em(1.0, 1.25, ax))
-    + 0.035 * g2(ax, y, 0.5, 2.34, 0.45, 0.3) - 0.015 * g2(x, y, 0, 2.3, 0.08, 0.3);
+  return (noiSuy(NHO_THAN, y) + 0.12 * g2(ax, y, 1.6, 2.12, 0.22, 0.28)) * r
+    + 0.04 * Math.exp(-(((y - 1.62 - 0.08 * ax) / 0.06) ** 2)) * em(0.1, 0.25, ax) * (1 - em(1.0, 1.25, ax))
+    + 0.035 * g2(ax, y, 0.5, 2.3, 0.45, 0.3) - 0.015 * g2(x, y, 0, 2.25, 0.08, 0.3);
 }
 const LO_NGUC = 2.12;                    // lò phản ứng (lõi Bát Quái) giữa ngực — cách cằm, dưới cổ
 const NGHIENG = -0.3;                    // thân nhìn hơi từ trên xuống — vân trên vai, ngực cong theo khối
@@ -666,69 +681,179 @@ function chiaDeu(d, buoc) {              // chia lại đường thành các đi
   return { d: kq, tong };
 }
 
+/* Lưới giá trị dựng một lần + nội suy song tuyến: đọc giá trị và hướng nhanh thay vì tính lại hàm 3D mỗi bước vẽ.
+   Ra ngoài khung lưới thì trả `ngoai` (không kéo dài hàng mép — đường vân sẽ chạy tuột ra ngoài mãi). */
+function luoi(ham, x0, y0, x1, y1, h, ngoai = -1) {
+  const nx = Math.ceil((x1 - x0) / h) + 1, ny = Math.ceil((y1 - y0) / h) + 1, f = new Float32Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) f[j * nx + i] = ham(x0 + i * h, y0 + j * h);
+  return (x, y) => {
+    if (!(x >= x0 && x <= x1 && y >= y0 && y <= y1)) return ngoai;
+    const gx = keo((x - x0) / h, 0, nx - 1.001), gy = keo((y - y0) / h, 0, ny - 1.001);
+    const i = Math.floor(gx), j = Math.floor(gy), a = gx - i, b = gy - j, o = j * nx + i;
+    return (f[o] * (1 - a) + f[o + 1] * a) * (1 - b) + (f[o + nx] * (1 - a) + f[o + nx + 1] * a) * b;
+  };
+}
+const tiepTuyen = (v, e) => (x, y) => {   // hướng dọc đường đồng mức của v (vuông góc với độ dốc)
+  const gx = v(x + e, y) - v(x - e, y), gy = v(x, y + e) - v(x, y - e), n = Math.hypot(gx, gy);
+  return n < 1e-9 ? [1, 0] : [-gy / n, gx / n];
+};
+/* Đường dòng cách đều (kiểu Jobard–Lefer): từ một điểm gieo, đi theo hướng cả hai chiều cho tới khi ra ngoài vùng hoặc tới
+   sát (nửa khoảng cách) một đường đã có; rồi gieo tiếp các điểm cách đường vừa vẽ đúng dSep hai bên. Đường tự khép vòng
+   (quanh mắt, mũi) thì nối kín. Cuối cùng quét cả vùng để không sót chỗ trống. Trả về các đường [[x, y], …]. */
+function duongDong(trong, huong, dSep, buoc, [x0, y0, x1, y1], hat) {
+  const o = dSep, nx = Math.ceil((x1 - x0) / o) + 2, oLuoi = new Map();
+  const khoa = (ci, cj) => cj * nx + ci;
+  const them = (x, y, id, k) => {
+    const kk = khoa(Math.floor((x - x0) / o), Math.floor((y - y0) / o));
+    const l = oLuoi.get(kk);
+    if (l) l.push(x, y, id, k); else oLuoi.set(kk, [x, y, id, k]);
+  };
+  // điểm gần nhất trong bán kính r (bỏ qua các điểm vừa đi qua của chính đường id) → [id, k] hoặc null
+  const gan = (x, y, r, id, kNay) => {
+    const ci = Math.floor((x - x0) / o), cj = Math.floor((y - y0) / o), r2 = r * r;
+    for (let dj = -1; dj <= 1; dj++) {
+      for (let di = -1; di <= 1; di++) {
+        const l = oLuoi.get(khoa(ci + di, cj + dj));
+        if (!l) continue;
+        for (let q = 0; q < l.length; q += 4) {
+          if (l[q + 2] === id && Math.abs(l[q + 3] - kNay) < 3) continue;   // 2 điểm vừa đi qua (gần hơn bán kính)
+          const dx = l[q] - x, dy = l[q + 1] - y;
+          if (dx * dx + dy * dy < r2) return [l[q + 2], l[q + 3]];
+        }
+      }
+    }
+    return null;
+  };
+  const tich = (x, y, chieu, id) => {
+    const ds = [];
+    let [dx, dy] = huong(x, y);
+    dx *= chieu; dy *= chieu;
+    for (let k = 1; k < 1500; k++) {
+      let [hx, hy] = huong(x, y);
+      if (hx * dx + hy * dy < 0) { hx = -hx; hy = -hy; }
+      let [mx, my] = huong(x + hx * buoc / 2, y + hy * buoc / 2);
+      if (mx * hx + my * hy < 0) { mx = -mx; my = -my; }
+      const x2 = x + mx * buoc, y2 = y + my * buoc;
+      if (!trong(x2, y2)) break;
+      const chan = gan(x2, y2, dSep * 0.5, id, chieu * k);
+      if (chan) { if (chan[0] === id && Math.abs(chan[1]) < 3 && k > 20) ds.push(['kin']); break; }   // vòng kín: về lại điểm gieo
+      // giậm chân tại chỗ (hướng đổi chiều liên tục ở chỗ khối gãy gắt): dừng
+      if (k > 20 && Math.hypot(x2 - ds[k - 21][0], y2 - ds[k - 21][1]) < buoc * 6) break;
+      x = x2; y = y2; dx = mx; dy = my;
+      ds.push([x, y]);
+      them(x, y, id, chieu * k);
+    }
+    return ds;
+  };
+  const duong = [];
+  let id = 0;
+  const chay = (hangCho) => {
+    for (let qi = 0; qi < hangCho.length; qi++) {
+      const [sx, sy] = hangCho[qi];
+      if (!trong(sx, sy) || gan(sx, sy, dSep * 0.92, -1, 0)) continue;
+      const idd = id++;
+      them(sx, sy, idd, 0);
+      const toi = tich(sx, sy, 1, idd);
+      let d;
+      if (toi.length && toi[toi.length - 1][0] === 'kin') { toi.pop(); d = [[sx, sy], ...toi, [sx, sy]]; }
+      else {
+        const lui = tich(sx, sy, -1, idd).filter((q) => q[0] !== 'kin');
+        d = lui.reverse().concat([[sx, sy]], toi);
+      }
+      if (d.length < 6) continue;
+      duong.push(d);
+      for (let i = 0; i < d.length; i += 2) {      // gieo tiếp hai bên, cách đúng dSep
+        const a = d[Math.max(0, i - 1)], b = d[Math.min(d.length - 1, i + 1)];
+        const tx = b[0] - a[0], ty = b[1] - a[1], n = Math.hypot(tx, ty) || 1;
+        hangCho.push([d[i][0] - ty / n * dSep, d[i][1] + tx / n * dSep], [d[i][0] + ty / n * dSep, d[i][1] - tx / n * dSep]);
+      }
+    }
+  };
+  chay(hat.slice());
+  const quet = [];
+  for (let y = y0; y <= y1; y += dSep) for (let x = x0; x <= x1; x += dSep) quet.push([x, y]);
+  chay(quet);
+  return duong;
+}
+
 /* Dựng mô hình một lần (lần đầu bật mặt A.I): ~70 đường vân, não, mắt, hạt sáng của các sợi năng lượng. */
 let MH = null;
 function dungMoHinh() {
   let h = 20261024;
   const ngau = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
-  const MAU_SOI = [[120, 220, 255], [215, 232, 255], [176, 140, 255]];
-  const cha = [], manh = [];
-  // Mỗi đường vân là một sợi năng lượng lúc chuyển cảnh: tham số sợi riêng; bd = lúc bắt đầu gỡ thành đường vân.
-  const themDuong = (d, f, bd, sang, laDau, mi) => {
-    const { d: ds } = chiaDeu(d, 0.03);
-    const c = cha.length;
-    cha.push({ bd, a1: 0.05 + 0.2 * ngau(), f1: 0.5 + 1.1 * ngau(), w1: 1.2 + 2 * ngau(), p1: ngau() * 6.28,
-      a2: 0.03 + 0.1 * ngau(), f2: 1 + 1.5 * ngau(), w2: 1 + 2 * ngau(), p2: ngau() * 6.28, mau: MAU_SOI[c % 3] });
-    // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn để thấy não; còn lại theo độ nhô
+  // 120 sợi mảnh chia đều cho 2 luồng: sợi chẵn thuộc luồng Dương (vàng kim), sợi lẻ thuộc luồng Âm (xanh lam) — mỗi luồng là
+  // một bó sợi. Mỗi đường vân gắn vào một sợi theo thứ tự hiện (viền đầu trước, chóp mũi sau, rồi cổ, vai);
+  // bd = lúc sợi bắt đầu gỡ thành đường vân. Vẽ theo sợi: mỗi sợi một nét, đỡ nặng máy.
+  const SO_SOI = 120;
+  const cha = Array.from({ length: SO_SOI }, (_, c) => ({ bd: 0.5 + 0.26 * c / SO_SOI, j: c % 2,
+    lech: (ngau() - 0.5) * 0.12, f1: 1 + 2 * ngau(), w1: 1.5 + 2 * ngau(), p1: ngau() * 6.28,
+    mau: c % 2 ? [90, 150, 255] : [242, 206, 107] }));
+  const manh = [];
+  const soiTheo = (thuTu) => Math.min(SO_SOI - 1, Math.max(0, Math.floor((thuTu + (ngau() - 0.5) * 0.08) * SO_SOI)));
+  const themDuong = (d, thuTu, sang, laDau, mi, buoc = 0.012) => {
+    const { d: ds, tong } = chiaDeu(d, buoc);
+    const c = soiTheo(thuTu);
+    // lúc chuyển cảnh đường này nằm trên một đoạn của luồng dài tương ứng độ dài của nó (đường ngắn trải hết luồng thì thành
+    // các nét thẳng cắt ngang luồng)
+    const span = Math.min(1, tong / 4), s0 = ngau() * (1 - span);
+    // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn một chút để thấy não
     let ht = null, lop = -1;
     ds.forEach(([x, y, s]) => {
       const z = laDau ? Math.max(0, doSau(x, y)) : Math.max(0, doSauThan(x, y));
       const l = laDau ? Math.round(3 * em(-0.6, -0.1, y)) : 3;
       if (l !== lop) {
         if (ht) ht.pts.push([x, y, z, s]);
-        ht = { cha: c, laDau, f, mi, pts: [], sang: sang * (0.45 + 0.55 * l / 3) };
+        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.55 + 0.45 * l / 3), s0, span };
         manh.push(ht);
         lop = l;
       }
       ht.pts.push([x, y, z, s]);
     });
   };
-  // đầu: 16 mức cách đều theo bề ngang ở đường giữa (vân đều, thưa vừa từ viền vào), rồi cách đều theo độ nhô ở mặt trước
-  // (trán, sống mũi, môi, cằm đều có vân — không để mảng trống)
-  const mucDau = [];
-  for (let k = 0; k < 16; k++) { const q = 1 - k / 20; mucDau.push(Math.max(0.004, 0.88 * (1 - q * q) ** 0.55)); }
-  for (let z = 0.874; z < 1.1; z += 0.02) mucDau.push(z);
+  /* Vân như ảnh mẫu: các ĐƯỜNG DÒNG CÁCH ĐỀU chạy theo khối — trên đầu dọc theo đường đồng mức độ nhô (vòng quanh mắt,
+     mũi, môi, tai; dọc má; ngang trán), cách nhau đều ~0,034 bán kính đầu; đường dài, liền, chỗ hai dòng gặp nhau thì
+     đường dừng gọn — ra chất vân tay / mê cung liền mạch, không đứt vụn. */
+  const vDau = luoi(doSau, -1.14, -1.36, 1.14, 1.2, 0.01);
+  // Chóp mũi đi dọc, môi và cằm đi ngang (trộn dần vào hướng đồng mức) — không thành các vòng tròn đồng tâm như bia bắn.
+  // (Đã thử chất mê cung — từng mảng rẽ vuông góc: thành nhiều đoạn ngắn như nét gạch, anh chê rời rạc, nên bỏ.)
+  const tron = (h, gx, gy, w) => {         // trộn hướng h với hướng dẫn (gx, gy) theo trọng số w — hướng không dấu nên lật cho cùng chiều
+    if (h[0] * gx + h[1] * gy < 0) { gx = -gx; gy = -gy; }
+    const x = h[0] * (1 - w) + gx * w, y = h[1] * (1 - w) + gy * w, l = Math.hypot(x, y) || 1;
+    return [x / l, y / l];
+  };
+  const dongMucDau = tiepTuyen(vDau, 0.012);
+  const huongDau = (x, y) => {
+    const ax = Math.abs(x);
+    let h = dongMucDau(x, y);
+    h = tron(h, 0, 1, 0.85 * g2(ax, y, 0, 0.36, 0.11, 0.12));                  // chóp mũi: dọc
+    h = tron(h, 1, 0, 0.85 * Math.max(g2(ax, y, 0, 0.76, 0.2, 0.09), g2(ax, y, 0, 0.98, 0.18, 0.08)));   // môi, cằm: ngang
+    return h;
+  };
+  duongDong((x, y) => vDau(x, y) > 0.004, huongDau, 0.034, 0.007, [-1.14, -1.36, 1.14, 1.2],
+    [[0, -0.6], [0.4, 0.45], [-0.4, 0.45], [0.95, 0.12], [-0.95, 0.12]]).forEach((d) => {
+    const zt = d.reduce((t, [x, y]) => t + Math.max(0, vDau(x, y)), 0) / d.length;
+    themDuong(d, 0.62 * Math.min(1, zt), 0.64, true);
+  });
+  // viền đầu (kể cả tai) cho lớp kính trong suốt và vệt quét
   let vien = null;
-  dongMuc(doSau, -1.02, -1.34, 103, 127, 0.02, mucDau).forEach(({ d, chiSo }) => {
-    if (d.length < 5) return;
-    if (chiSo === 0 && (!vien || d.length > vien.length)) vien = d;
-    themDuong(d, 1, 0.44 + 0.3 * chiSo / mucDau.length, 0.26 + 0.46 * Math.min(1, mucDau[chiSo] / 1.1), true);
-  });
-  // tai: vành ngoài + vành trong, mỗi bên
-  [[[0.86, -0.14], [0.97, -0.12], [1.04, 0.0], [1.05, 0.16], [1.0, 0.3], [0.93, 0.4], [0.85, 0.42]],
-    [[0.88, -0.04], [0.96, -0.02], [0.99, 0.1], [0.96, 0.24], [0.9, 0.3]]].forEach((d, i) => {
-    for (const b of [-1, 1]) themDuong(d.map(([x, y]) => [b * x, y]), 1, 0.5 + 0.05 * i, 0.4 - 0.08 * i, true);
-  });
-  // nét mặt người: lông mày (hai nét), mí trên + mí dưới (chớp theo mắt), khe miệng
+  dongMuc(doSau, -1.12, -1.34, 113, 127, 0.02, [0.004]).forEach(({ d }) => { if (!vien || d.length > vien.length) vien = d; });
+  // mí mắt (chớp theo mắt) và khe miệng
   const cung = (n, ham) => Array.from({ length: n }, (_, i) => ham(i / (n - 1)));
   for (const b of [-1, 1]) {
-    for (const l of [0, 0.02]) {
-      themDuong(cung(16, (t) => [b * (0.13 + 0.42 * t), -0.15 + l - 0.055 * Math.sin(Math.PI * t ** 0.75) + 0.02 * t]), 1, 0.7, 0.5, true);
-    }
-    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 - 0.06 * Math.sin(Math.PI * t) * (1 - 0.25 * t)]), 1, 0.72, 0.62, true, true);
-    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 + 0.032 * Math.sin(Math.PI * t)]), 1, 0.72, 0.5, true, true);
+    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 - 0.06 * Math.sin(Math.PI * t) * (1 - 0.25 * t)]), 0.62, 0.7, true, true, 0.03);
+    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 + 0.032 * Math.sin(Math.PI * t)]), 0.62, 0.55, true, true, 0.03);
   }
-  themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 1, 0.74, 0.6, true);
-  // cổ + vai + ngực: đường đồng mức như mặt — ôm theo cơ vai tròn, xương quai xanh, ngực; thân đứng yên, cổ xoay theo đầu một phần
-  const mucThan = [];
-  for (let z = 0.03; z < 0.66; z += 0.04) mucThan.push(z);
-  dongMuc(doSauThan, -2.0, 1.1, 161, 76, 0.025, mucThan).forEach(({ d, chiSo }) => {
-    if (d.length < 5) return;
-    themDuong(d, null, 0.5 + 0.28 * chiSo / mucThan.length, 0.2 + 0.2 * chiSo / mucThan.length, false);
+  themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 0.62, 0.6, true, false, 0.03);
+  // cổ + vai + ngực liền một mạch với đầu: đường dòng theo (0,7·y − độ nhô) — trên cổ thành vòng ngang, xuống ngực loang
+  // rộng, tới mép uốn theo dốc vai. Chỉ trong thân và ngoài khuôn mặt (cổ khuất sau hàm). Thân đứng yên, cổ xoay theo đầu một phần.
+  const vThan = luoi((x, y) => 0.7 * y - doSauThan(x, y), -2.0, 0.55, 2.0, 3.0, 0.012);
+  const mThan = luoi((x, y) => (y > 0.6 && Math.abs(x) < noiSuy(RONG_THAN, y) - 0.012 && doSau(x, y) <= -0.002 ? 1 : 0),
+    -2.0, 0.55, 2.0, 3.0, 0.012);
+  duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
+    [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5]]).forEach((d) => {
+    const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
+    themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
   });
-  for (const b of [-1, 1]) {               // viền vai mềm: từ cổ xuống cánh tay
-    themDuong(cung(44, (t) => { const y = 1.12 + 1.85 * t; return [b * noiSuy(RONG_THAN, y), y]; }), null, 0.5, 0.42, false);
-  }
   manh.forEach((m) => {
     const n = m.pts.length;
     m.d = new Float32Array(n * 5);
@@ -765,10 +890,13 @@ function dungMoHinh() {
     g.ds.push({ d: a, b: new Float32Array(d.length * 2) });
     g.tx = -0.7 + (naoMH.indexOf(g) + 0.5) * 1.4 / 6;
   });
+  const theoCha = cha.map(() => []);
+  manh.forEach((m) => theoCha[m.cha].push(m));
+  cha.forEach((c, i) => { c.sang = theoCha[i].reduce((t, m) => t + m.sang, 0) / Math.max(1, theoCha[i].length); });
   const hat = Array.from({ length: 90 }, () => ({ cha: Math.floor(ngau() * cha.length), s0: ngau(), v: (ngau() - 0.5) * 0.5, r: 0.6 + ngau() * 1.2 }));
   const vienD = new Float32Array(vien.length * 3);
   vien.forEach(([x, y], i) => vienD.set([x, y, 0], i * 3));
-  return { cha, manh, nao: naoMH, hat, vien: vienD, vienB: new Float32Array(vien.length * 2),
+  return { cha, manh, theoCha, nao: naoMH, hat, vien: vienD, vienB: new Float32Array(vien.length * 2),
     mat: [-1, 1].map((b) => [b * 0.34, 0.0, doSau(b * 0.34, 0) + 0.05]), vungXY: [] };
 }
 
@@ -791,8 +919,8 @@ function viTriNao(nd) {
 }
 
 function capNhatMat(tg) {
-  // vào ~2,6 giây (đủ thấy hai luồng âm dương), ra ~1,5 giây
-  const buoc = itMotion ? 1 : dtKhung / 1000 / (matDich ? 2.6 : 1.5);
+  // vào ~3,2 giây (đủ thấy hai luồng Âm Dương và vòng Tiên Thiên), ra ~1,6 giây
+  const buoc = itMotion ? 1 : dtKhung / 1000 / (matDich ? 3.2 : 1.6);
   kMat = matDich ? Math.min(1, kMat + buoc) : Math.max(0, kMat - buoc);
   eMat = em(0, 1, kMat);
   anQD = 1 - em(0, 0.3, kMat);
@@ -824,68 +952,87 @@ function capNhatMat(tg) {
     const tt = t - loiNoi.t0, cuoi = Math.min(1, (loiNoi.dai - tt) / 0.3);
     MAT.mieng = 0.16 * Math.abs(Math.sin(tt * 13)) * (0.55 + 0.45 * Math.sin(tt * 3.7 + 1)) * cuoi;
   } else MAT.mieng = 0;
-  // phụ đề chạy chữ, tắt sau khi nói xong 1,8 giây
+  // Phụ đề chạy chữ, tắt sau khi nói xong 3 giây. Khung giữ đủ cỡ cả câu ngay từ đầu (phần chưa tới trong suốt) nên không
+  // co giãn, nhảy qua lại theo từng chữ; chữ hiện mượt, bám theo tiếng đang đọc nhưng không vọt (tối đa ~24 chữ/giây).
   const pd = $('#loiMay');
-  if (loiNoi && t - loiNoi.t0 < loiNoi.dai + 1.8 && eMat > 0.5) {
-    const dai = loiNoi.chu.length;
-    const n = itMotion || loiNoi.xong ? dai
-      : loiNoi.tieng ? Math.min(dai, Math.max(loiNoi.chiSo || 0, Math.ceil((t - loiNoi.t0) * 8)))   // theo chữ đang đọc
-        : Math.ceil(dai * keo((t - loiNoi.t0) / (loiNoi.dai * 0.9), 0, 1));
-    if (pd.dataset.n !== String(n)) { pd.textContent = loiNoi.chu.slice(0, n); pd.dataset.n = String(n); }
+  if (loiNoi && t - loiNoi.t0 < loiNoi.dai + 3 && eMat > 0.5) {
+    const ln = loiNoi, dai = ln.chu.length;
+    const dich = itMotion || ln.xong ? dai
+      : ln.tieng ? Math.max(ln.chiSo || 0, (t - ln.t0) * 9)
+        : dai * keo((t - ln.t0) / (ln.dai * 0.9), 0, 1);
+    ln.hienN = itMotion ? dai : Math.min(dai, ln.hienN + keo(dich - ln.hienN, 0, 24 * dtKhung / 1000));
+    const n = String(Math.ceil(ln.hienN)) + '|' + ln.t0;
+    if (pd.dataset.n !== n) {
+      pd.firstElementChild.textContent = ln.chu.slice(0, Math.ceil(ln.hienN));
+      pd.lastElementChild.textContent = ln.chu.slice(Math.ceil(ln.hienN));
+      pd.dataset.n = n;
+    }
     pd.style.left = `${CX}px`;                              // canh giữa theo khuôn mặt (thẻ chi tiết mở thì mặt dịch trái)
     pd.style.maxWidth = `${Math.round(rong * 0.9)}px`;
     pd.hidden = false;
   } else if (!pd.hidden) { pd.hidden = true; pd.dataset.n = ''; }
   // nút loa luôn nằm trong phần còn nhìn thấy (thẻ chi tiết mở thì dịch sang trái theo)
-  if (matDich) $('#batTieng').style.right = `${16 + Math.round(lechDich)}px`;
+  if (matDich) {
+    $('#batTieng').style.right = `${16 + Math.round(lechDich)}px`;
+    $('#noiMay').style.right = `${58 + Math.round(lechDich)}px`;
+  }
   // lõi Bát Quái: giữa đồ thị ↔ lò phản ứng trên ngực
   const lo = chieuDiem(0, LO_NGUC, doSauThan(0, LO_NGUC), 0), e = em(0.45, 0.95, kMat);
   LX = CX + (lo.x - CX) * e;
   LY = CY + (lo.y - CY) * e;
 }
 
-/* Tiếng nói. Mặc định CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", Android Google, iPhone "Linh") —
-   không gửi gì ra ngoài. Máy không có giọng trong máy mà trình duyệt có giọng tiếng Việt qua mạng (Edge: HoaiMy, NamMinh)
-   thì chỉ dùng khi anh đồng ý rõ ràng (hộp hỏi khi bấm nút loa): chữ Mây đọc sẽ gửi lên máy chủ của hãng đó; tắt tiếng là
-   bỏ quyền này. Chrome trên Windows không thấy giọng của Windows (chỉ có giọng tiếng Anh) — nút loa chỉ cách mở bằng Edge.
-   Không đọc được thì nút loa chuyển vàng, rê/bấm vào là thấy lý do và cách sửa; Mây vẫn hiện phụ đề. */
+/* Tiếng nói. Thứ tự chọn giọng:
+   1. Giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An" — Edge mới thấy; Android Google; iPhone "Linh") — không gửi gì ra ngoài.
+   2. Giọng tiếng Việt qua mạng (Edge: HoaiMy, NamMinh) — chỉ khi anh đồng ý rõ ràng (bấm nút loa → hộp hỏi): chữ Mây đọc gửi
+      lên máy chủ của hãng; tắt tiếng là bỏ quyền này.
+   3. Không có giọng tiếng Việt nào (vd Chrome trên Windows chỉ thấy giọng tiếng Anh): giọng NỮ tiếng Anh trong máy (Windows
+      "Zira", Mac "Samantha"…), chỉnh trầm ấm hơn chút. Câu của Mây (chào, báo vùng, trả lời lệnh) nói bằng tiếng Anh; chữ của anh
+      (tên ghi chú, câu trả lời từ kho) đọc không dấu cho giọng tiếng Anh đọc được.
+   Không có giọng nào: nút loa vàng, rê vào xem lý do; Mây vẫn hiện phụ đề. */
 const coDocNoi = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-const chromeWin = /Windows/.test(navigator.userAgent) && /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
-let coTieng = true, choMang = false, giongViet = null, giongMang = null, daBaoThieuGiong = false, cauDangDoc = null;
+let coTieng = true, choMang = false, daHoiMang = false, giongViet = null, giongMang = null, giongAnh = null, cauDangDoc = null;
 try {
-  if (localStorage.getItem('sb.tieng') === '0') coTieng = false;
+  coTieng = localStorage.getItem('sb.tieng') !== '0';
   choMang = localStorage.getItem('sb.giongMang') === '1';
+  daHoiMang = localStorage.getItem('sb.hoiGiongMang') === '1';
 } catch (_) { /* mặc định có tiếng, chỉ giọng trong máy */ }
 const giongVN = (ds) => ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
+const GIONG_NU = /zira|aria|jenny|samantha|karen|moira|tessa|serena|libby|sonia|hazel|susan|catherine|allison|ava|victoria|female/i;
 function chonGiong() {
   if (!coDocNoi) return;
-  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang));
-  giongViet = giongVN(ds.filter((v) => v.localService));
-  giongMang = giongVN(ds.filter((v) => !v.localService));
+  const ds = speechSynthesis.getVoices();
+  const vi = ds.filter((v) => /^vi([-_]|$)/i.test(v.lang));
+  giongViet = giongVN(vi.filter((v) => v.localService));
+  giongMang = giongVN(vi.filter((v) => !v.localService));
+  const en = ds.filter((v) => /^en([-_]|$)/i.test(v.lang) && v.localService);
+  giongAnh = en.find((v) => GIONG_NU.test(v.name) && /^en[-_](US|GB)$/i.test(v.lang)) || en.find((v) => GIONG_NU.test(v.name))
+    || en.find((v) => /^en[-_]US$/i.test(v.lang)) || en[0] || null;
   capNhatLoa();
 }
-const giongDung = () => giongViet || (choMang ? giongMang : null);
-function lyDoThieuGiong() {
-  if (!coDocNoi) return 'Trình duyệt này không đọc thành tiếng được — Mây chỉ hiện phụ đề.';
-  if (giongMang) return 'Máy chưa cài giọng tiếng Việt — bấm nút loa để chọn cách nghe.';
-  if (chromeWin) return 'Chrome trên Windows không dùng được giọng tiếng Việt của máy — mở trang này bằng Microsoft Edge để nghe Mây nói.';
-  return 'Máy chưa có giọng đọc tiếng Việt — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).';
-}
+const giongDung = () => giongViet || (choMang ? giongMang : null) || giongAnh;
+const laTiengAnh = (g) => !!g && !/^vi/i.test(g.lang);
+const boDau = (s) => String(s).normalize('NFC').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
 function capNhatLoa() {
   const b = $('#batTieng'), g = giongDung(), thieu = coTieng && !g;
   b.setAttribute('aria-pressed', String(coTieng));
   b.classList.toggle('thieu-giong', thieu);
   b.title = !coTieng ? 'Đang tắt tiếng — bấm để bật'
-    : thieu ? `Chưa nghe được: ${lyDoThieuGiong()}`
-      : `Đang có tiếng — ${g.name}${g.localService ? '' : ' (giọng qua mạng)'} — bấm để tắt`;
+    : thieu ? 'Máy chưa có giọng đọc nào — Mây chỉ hiện phụ đề (xem Hướng dẫn)'
+      : laTiengAnh(g) ? `Đang có tiếng — giọng tiếng Anh ${g.name} (máy chưa có giọng tiếng Việt) — bấm để tắt`
+        : `Đang có tiếng — ${g.name}${g.localService ? '' : ' (giọng qua mạng)'} — bấm để tắt`;
+}
+function luuGiong() {
+  try {
+    localStorage.setItem('sb.tieng', coTieng ? '1' : '0');
+    localStorage.setItem('sb.giongMang', choMang ? '1' : '0');
+    localStorage.setItem('sb.hoiGiongMang', daHoiMang ? '1' : '0');
+  } catch (_) { /* không lưu được thì thôi */ }
 }
 function datTieng(bat) {
   coTieng = bat;
-  if (!bat) choMang = false;               // tắt tiếng là bỏ quyền dùng giọng qua mạng — bật lại sẽ hỏi lại
-  try {
-    localStorage.setItem('sb.tieng', bat ? '1' : '0');
-    localStorage.setItem('sb.giongMang', choMang ? '1' : '0');
-  } catch (_) { /* không lưu được thì thôi */ }
+  if (!bat) { choMang = false; daHoiMang = false; }   // tắt tiếng là bỏ quyền dùng giọng qua mạng — bật lại, bấm loa sẽ hỏi lại
+  luuGiong();
   if (!bat && coDocNoi) speechSynthesis.cancel();
   capNhatLoa();
 }
@@ -893,38 +1040,33 @@ if (coDocNoi) {
   chonGiong();
   speechSynthesis.addEventListener?.('voiceschanged', chonGiong);   // Chrome nạp danh sách giọng sau khi mở trang
 }
-// Đang bật tiếng mà chưa có giọng: bấm nút loa thì hỏi / chỉ cách (không tắt). Có giọng thì đọc thử một câu.
-function chonCachNghe() {
-  chonGiong();
-  if (!giongDung() && giongMang && confirm('Máy chưa cài giọng tiếng Việt trong máy.\n\n'
-    + `Bấm OK để dùng giọng đọc qua mạng "${giongMang.name}": chữ Mây đọc (lời chào, tên ghi chú, câu trả lời) `
+// Edge chưa cài giọng Windows nhưng có giọng tiếng Việt qua mạng: lần đầu bấm loa thì hỏi (thay vì đọc tiếng Anh mãi)
+function hoiGiongMang() {
+  daHoiMang = true;
+  choMang = confirm('Máy chưa cài giọng tiếng Việt trong máy — Mây đang nói bằng giọng tiếng Anh.\n\n'
+    + `Bấm OK để dùng giọng tiếng Việt qua mạng "${giongMang.name}": chữ Mây đọc (lời chào, tên ghi chú, câu trả lời) `
     + 'sẽ được gửi lên máy chủ của hãng để đọc. Tắt tiếng là bỏ quyền này.\n\n'
-    + 'Bấm Huỷ để giữ riêng tư: Mây chỉ hiện phụ đề — cài giọng tiếng Việt cho máy theo Hướng dẫn.')) {
-    choMang = true;
-    try { localStorage.setItem('sb.giongMang', '1'); } catch (_) { /* chỉ trong lần mở trang này */ }
-    capNhatLoa();
-  }
-  if (giongDung()) noi('Mây đây. Anh nghe rõ không?');
-  else baoNhanh(lyDoThieuGiong(), 9000);
+    + 'Bấm Huỷ để giữ riêng tư: Mây tiếp tục nói tiếng Anh — cài giọng tiếng Việt cho máy theo Hướng dẫn.');
+  luuGiong();
+  capNhatLoa();
+  noi('Mây đây. Anh nghe rõ không?', 'Hi, this is May. Can you hear me clearly?');
 }
 
-function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + tiếng (chỉ khi đang ở chế độ mặt A.I)
+// "Mây nói": nhép miệng + phụ đề + tiếng (chỉ ở chế độ mặt A.I). chuAnh: câu tương đương khi phải dùng giọng tiếng Anh.
+function noi(chu, chuAnh) {
   if (!matDich || !chu) return;
-  chu = String(chu).replace(/\s+/g, ' ').trim();
-  const ln = { chu, t0: giay(), dai: keo(chu.length * 0.065, 1.4, 7) };
+  if (coTieng && coDocNoi && !giongDung()) chonGiong();
+  const g = coTieng && coDocNoi ? giongDung() : null, anh = laTiengAnh(g);
+  const hien = String(anh && chuAnh ? chuAnh : chu).replace(/\s+/g, ' ').trim();   // phụ đề = đúng câu đang đọc
+  const ln = { chu: hien, t0: giay(), dai: keo(hien.length * 0.075, 1.6, 9), hienN: 0 };
   loiNoi = ln;
-  if (!coTieng || !coDocNoi) return;
+  if (!g) return;
   speechSynthesis.cancel();
-  if (!giongDung()) chonGiong();
-  const g = giongDung();
-  if (!g) {
-    if (!daBaoThieuGiong) { daBaoThieuGiong = true; baoNhanh(lyDoThieuGiong(), 9000); }
-    return;
-  }
-  const u = new SpeechSynthesisUtterance(chu);
+  const u = new SpeechSynthesisUtterance(anh && !chuAnh ? boDau(hien) : hien);   // bỏ dấu: cùng độ dài, phụ đề vẫn khớp chữ
   u.voice = g;
   u.lang = g.lang;
-  u.rate = 1;
+  u.rate = anh ? 0.96 : 1;
+  u.pitch = anh ? 0.92 : 1;                // giọng nữ tiếng Anh trầm ấm hơn chút
   // miệng và phụ đề bám theo tiếng thật: bắt đầu khi phát, tới đâu hiện chữ tới đó, dừng khi đọc xong
   u.onstart = () => { ln.t0 = giay(); ln.dai = 60; ln.tieng = true; };
   u.onboundary = (e) => { ln.chiSo = e.charIndex + (e.charLength || 0); };
@@ -939,6 +1081,143 @@ const cauDau = (s) => {
   return m ? m[0].trim() : t.slice(0, 160) + (t.length > 160 ? '…' : '');
 };
 
+/* Nghe anh nói: nhập bằng giọng nói (ô Chủ đề, Nội dung, ô dán ở Nạp, Tìm, Hỏi) và nói với Mây ở chế độ mặt A.I.
+   Bộ nhận giọng của Chrome / Edge chạy trên máy chủ Google / Microsoft (âm thanh gửi đi để chuyển thành chữ), nên mỗi lần mở
+   trình duyệt, lần đầu bấm micro sẽ hỏi anh đồng ý. Chữ nhận được chỉ điền vào ô hoặc dùng để tìm trong kho của anh.
+   Ghi chú nhập bằng giọng: tự gắn nguồn "voice" + thẻ giong-noi để sau rà lại; không tự lưu — anh xem lại rồi bấm Lưu.
+   Trình duyệt không có bộ nhận giọng (vd Firefox) thì không hiện nút micro. */
+const NhanGiong = window.SpeechRecognition || window.webkitSpeechRecognition;
+const MIC_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" '
+  + 'fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="1.8" '
+  + 'stroke-linecap="round"/></svg>';
+const LOI_NGHE = {
+  'not-allowed': 'Trình duyệt chưa cho dùng micro — bấm biểu tượng ổ khoá cạnh địa chỉ trang, cho phép Micro rồi thử lại.',
+  'service-not-allowed': 'Trình duyệt chưa cho dùng bộ nhận giọng — bấm biểu tượng ổ khoá cạnh địa chỉ trang để cho phép.',
+  'no-speech': 'Chưa nghe thấy gì — bấm micro rồi nói nhé.',
+  'audio-capture': 'Không thấy micro trên máy.',
+  network: 'Không nhận được giọng — bộ nhận giọng của trình duyệt cần mạng.',
+};
+let dangNghe = null;
+function choPhepNghe() {
+  try { if (sessionStorage.getItem('sb.nghe') === '1') return true; } catch (_) { /* hỏi lại */ }
+  const ok = confirm('Nhập bằng giọng nói dùng bộ nhận giọng của trình duyệt: Chrome gửi âm thanh lên máy chủ Google, Edge lên '
+    + 'máy chủ Microsoft để chuyển thành chữ. Chữ nhận được chỉ điền vào ô hoặc dùng để tìm trong kho của anh.\n\n'
+    + 'Bấm OK để dùng micro (mở lại trình duyệt sẽ hỏi lại). Bấm Huỷ để không dùng.');
+  if (ok) try { sessionStorage.setItem('sb.nghe', '1'); } catch (_) { /* chỉ lần này */ }
+  return ok;
+}
+// Nghe một lượt: khiNghe(chữ nghe được tới giờ) gọi liên tục, khiXong(chữ đã chốt) khi dừng. Đang nghe mà bấm micro là dừng.
+function nghe(nut, { lienTuc = false, khiNghe, khiXong } = {}) {
+  if (dangNghe) { dangNghe.rec.stop(); return; }
+  if (!choPhepNghe()) return;
+  const rec = new NhanGiong();
+  rec.lang = 'vi-VN';
+  rec.interimResults = true;
+  rec.continuous = lienTuc;
+  let chot = '';
+  rec.onresult = (e) => {
+    let tam = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) chot += e.results[i][0].transcript; else tam += e.results[i][0].transcript;
+    }
+    khiNghe?.((chot + tam).trim());
+  };
+  rec.onerror = (e) => { if (LOI_NGHE[e.error]) baoNhanh(LOI_NGHE[e.error], 6000); };
+  rec.onend = () => {
+    nut.classList.remove('dang-nghe');
+    if (dangNghe?.rec === rec) dangNghe = null;
+    khiXong?.(chot.trim());
+  };
+  if (coDocNoi) speechSynthesis.cancel();      // Mây im khi anh nói — không tự nghe chính mình
+  try { rec.start(); } catch (_) { return; }
+  dangNghe = { rec, nut };
+  nut.classList.add('dang-nghe');
+}
+// nút micro trong ô nhập: chữ nghe được nối vào sau chữ đang có
+function ganMic(o, { lienTuc = false, khiXong } = {}) {
+  if (!NhanGiong || !o) return;
+  const boc = document.createElement('span');
+  boc.className = 'co-mic';
+  o.replaceWith(boc);
+  const nut = document.createElement('button');
+  nut.type = 'button';
+  nut.className = 'mic';
+  nut.title = 'Nói để nhập (bấm lại để dừng)';
+  nut.setAttribute('aria-label', 'Nhập bằng giọng nói');
+  nut.innerHTML = MIC_SVG;
+  boc.append(o, nut);
+  nut.addEventListener('click', () => {
+    const goc = o.value;
+    const dien = (chu) => {
+      o.value = goc + (goc && chu && !/\s$/.test(goc) ? ' ' : '') + chu;
+      o.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    nghe(nut, { lienTuc, khiNghe: dien, khiXong: (chu) => { if (chu) dien(chu); khiXong?.(chu); } });
+  });
+}
+const oThem = (ten) => $('#formThem').elements.namedItem(ten);
+function danhDauGiong() {                  // ghi chú nhập bằng giọng: nguồn voice + thẻ giong-noi (anh bỏ thẻ được)
+  oThem('source').value = 'voice';
+  const the = oThem('tags').value.split(',').map((x) => x.trim()).filter(Boolean);
+  if (!the.includes('giong-noi')) oThem('tags').value = [...the, 'giong-noi'].join(', ');
+}
+ganMic(oThem('title'), { khiXong: (c) => c && danhDauGiong() });
+ganMic(oThem('content'), { lienTuc: true, khiXong: (c) => c && danhDauGiong() });
+ganMic($('#napChu'), { lienTuc: true });
+ganMic($('#oTim'));
+ganMic($('#oHoi'), { khiXong: (c) => { if (c) $('#nutHoi').click(); } });
+
+/* Nói với Mây (chế độ mặt A.I, nút micro cạnh nút loa):
+   "tìm / tra cứu …" → tìm trong kho, đọc số kết quả + ghi chú đầu, các nơ-ron tìm thấy nháy sáng, danh sách ở tab Tìm;
+   "mở / xem …" → mở ghi chú khớp nhất; "ghi chú / ghi lại / ghi nhớ …" → chép vào ô Thêm để anh xem lại rồi bấm Lưu
+   (giống quy tắc xác nhận giọng nói của Mây); "thoát" → về quỹ đạo; câu khác → hỏi Mây như tab Hỏi, đọc câu đầu câu trả lời. */
+let nhayNoron = null;
+async function timBangGiong(q, mo) {
+  const r = await api('/api/search?' + new URLSearchParams({ q }));
+  const ds = r.ok && Array.isArray(r.notes) ? r.notes : [];
+  $('#oTim').value = q;
+  moTab('tim');
+  timNgay();
+  if (!ds.length) { noi(`Chưa có ghi chú nào về ${q}.`, `I found no notes about ${boDau(q)}.`); return; }
+  nhayNoron = { ids: new Set(ds.map((n) => n.id)), t0: giay() };
+  if (mo) { moChiTiet(ds[0].id); noi(ds[0].title); return; }
+  noi(`Có ${ds.length} ghi chú về ${q}. Đầu tiên: ${ds[0].title}.`,
+    `I found ${ds.length} ${ds.length === 1 ? 'note' : 'notes'} about ${boDau(q)}. First: ${boDau(ds[0].title)}.`);
+}
+function ghiBangGiong(noiDung) {
+  moTab('them');
+  oThem('content').value = noiDung;
+  danhDauGiong();
+  oThem('title').focus();
+  noi('Em đã chép vào ô Thêm. Anh đặt chủ đề, xem lại rồi bấm Lưu nhé.',
+    'I put it in the Add form. Please add a title, check it, then press Save.');
+}
+function lenhGiong(cau) {
+  const c = cau.replace(/[.?!…]+$/u, '').trim();
+  let m;
+  if (/^(thoát|tắt mặt|về quỹ đạo|tạm biệt)/iu.test(c)) {
+    noi('Tạm biệt anh.', 'Goodbye.');
+    setTimeout(() => datMat(false), 1300);
+  } else if ((m = c.match(/^(?:tìm kiếm|tìm|tra cứu|tra|kiếm)(?:\s+(?:giúp|cho)\s+(?:anh|em|tôi))?(?:\s+về)?\s+(.+)/iu))) {
+    timBangGiong(m[1], false);
+  } else if ((m = c.match(/^(?:mở|xem)(?:\s+ghi chú)?(?:\s+về)?\s+(.+)/iu))) {
+    timBangGiong(m[1], true);
+  } else if ((m = c.match(/^(?:thêm ghi chú|ghi chú|ghi lại|ghi nhớ|lưu lại)(?:\s+là|\s+rằng)?\s*[:,]?\s+(?!(?:nào|gì|về)(?:\s|$))(.+)/iu))) {
+    ghiBangGiong(m[1]);
+  } else {
+    $('#oHoi').value = c;                  // câu hỏi: hỏi Mây như tab Hỏi — trả lời xong Mây đọc câu đầu
+    moTab('hoi');
+    noi('Để em xem trong kho…', 'Let me check your notes.');
+    $('#nutHoi').click();
+  }
+}
+const nutNoiMay = $('#noiMay');
+if (NhanGiong) nutNoiMay.hidden = false;
+nutNoiMay.addEventListener('click', () => nghe(nutNoiMay, {
+  khiNghe: (chu) => baoNhanh(`Anh: ${chu}`, 4000),
+  khiXong: (chu) => { if (chu) lenhGiong(chu); },
+}));
+
 function datMat(bat) {
   matDich = bat ? 1 : 0;
   hoverLoi = false;          // lõi sắp dời chỗ — bỏ trạng thái rê chuột cũ (không thì tên 8 quẻ còn hiện lúc chuyển cảnh)
@@ -946,14 +1225,19 @@ function datMat(bat) {
   if (bat) {
     const n = DATA.tong_ghi_chu ?? DATA.notes.length;
     const v = (DATA.cay || []).filter((c) => c.duong_dan).length;
-    setTimeout(() => noi(n ? `Xin chào anh. Kho đang có ${n} ghi chú trong ${v} vùng kiến thức.`
-      : 'Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?'), itMotion ? 0 : 2300);
+    setTimeout(() => (n ? noi(`Xin chào anh. Kho đang có ${n} ghi chú trong ${v} vùng kiến thức.`,
+      `Hello. Your Second Brain holds ${n} ${n === 1 ? 'note' : 'notes'} in ${v} knowledge ${v === 1 ? 'area' : 'areas'}.`)
+      : noi('Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?',
+        'Hello. Your Second Brain is empty. Shall we write the first note?')), itMotion ? 0 : 2300);
   } else {
     loiNoi = null;
     if (coDocNoi) speechSynthesis.cancel();
   }
 }
-$('#batTieng').addEventListener('click', () => { if (coTieng && !giongDung()) chonCachNghe(); else datTieng(!coTieng); });
+$('#batTieng').addEventListener('click', () => {
+  if (coTieng && giongMang && !giongViet && !choMang && !daHoiMang) hoiGiongMang();
+  else datTieng(!coTieng);
+});
 datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
   const a = document.activeElement;
@@ -1005,6 +1289,10 @@ function veNao(t, a) {                   // nếp cuộn não sáng theo sóng c
 let hoverVung = null, nhayVung = null;
 function veVung(a, t, diem) {
   MH.vungXY = [];
+  // vòng vùng + đường nối vào não: để yên ~6 giây thì mờ đi (cùng lúc dải tên vùng, các nút); rê chuột / chạm là hiện lại
+  const yen = document.body.classList.contains('lang-yen') ? 0 : 1;
+  MH.hienVung = itMotion ? yen : (MH.hienVung ?? 1) + (yen - (MH.hienVung ?? 1)) * 0.06;
+  a *= MH.hienVung;
   const n = dsVung.length;
   if (!n || a <= 0.01) return;
   const u = MAT.u, rong = W - lechDich, hep = rong < 600;
@@ -1080,47 +1368,77 @@ function veVung(a, t, diem) {
   });
 }
 function timVung(x, y) {
-  if (!matDich || kMat < 0.9 || !MH) return null;
+  if (!matDich || kMat < 0.9 || !MH || MH.hienVung < 0.5) return null;
   const v = MH.vungXY.find((o) => Math.hypot(o.x - x, o.y - y) < o.r + 5);
   return v ? v.ten : null;
 }
 
-function veCau(x, y, r, loi, vien, a) {  // quả cầu năng lượng: quầng + thân sáng dần vào tâm
-  const q = cx.createRadialGradient(x, y, r * 0.5, x, y, r * 3);
-  q.addColorStop(0, `rgba(${vien},${(0.5 * a).toFixed(3)})`);
-  q.addColorStop(1, `rgba(${vien},0)`);
-  cx.fillStyle = q;
-  cx.beginPath(); cx.arc(x, y, r * 3, 0, Math.PI * 2); cx.fill();
-  const g = cx.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.05, x, y, r);
-  g.addColorStop(0, `rgba(255,255,255,${a.toFixed(3)})`);
-  g.addColorStop(0.3, `rgba(${loi},${(0.9 * a).toFixed(3)})`);
-  g.addColorStop(1, `rgba(${vien},${(0.35 * a).toFixed(3)})`);
-  cx.fillStyle = g;
-  cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
-  cx.strokeStyle = `rgba(${loi},${(0.8 * a).toFixed(3)})`;
-  cx.lineWidth = 1.2;
+/* Vòng Tiên Thiên Bát Quái lúc chuyển cảnh: 8 quẻ đúng phương vị (Càn trên, Khôn dưới, Ly trái, Khảm phải), hào sơ sát tâm;
+   hào dương (liền) vàng kim, hào âm (đứt) xanh lam. Quẻ sáng dần theo chiều khí Tiên Thiên — Chấn → Ly → Đoài → Càn (dương
+   trưởng), Tốn → Khảm → Cấn → Khôn (âm trưởng), theo kim đồng hồ — có đốm khí chạy trước. quet: số độ đã quét từ Chấn. */
+function veTienThien(tx, ty, R, a, quet) {
+  const u = MAT.u, hl = 0.13 * u, gap = 0.075 * u, day = Math.max(2.4, 0.034 * u);
+  cx.setLineDash([2, 7]);
+  cx.beginPath(); cx.arc(tx, ty, R, 0, Math.PI * 2);
+  cx.strokeStyle = `rgba(150,190,255,${(0.22 * a).toFixed(3)})`;
+  cx.lineWidth = 1;
   cx.stroke();
+  cx.setLineDash([]);
+  cx.font = `500 ${Math.round(keo(u * 0.085, 10, 13))}px "Be Vietnam Pro",sans-serif`;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  for (const [ten, hao, gocDo] of BAT_QUAI) {
+    const tuChan = ((gocDo - 135) % 360 + 360) % 360;    // quẻ này cách Chấn bao nhiêu độ theo chiều khí
+    const hien = a * em(tuChan - 10, tuChan + 25, quet);
+    if (hien < 0.01) continue;
+    const g = gocDo * Math.PI / 180, nx = Math.cos(g), ny = Math.sin(g), qx = -ny, qy = nx;
+    const px = tx + nx * R, py = ty + ny * R;
+    hao.forEach((duong, i) => {
+      const d = (i - 1) * gap, ox = px + nx * d, oy = py + ny * d;
+      const mau = duong ? '242,206,107' : '90,150,255';
+      const doan = duong ? [[-hl, hl]] : [[-hl, -0.22 * hl], [0.22 * hl, hl]];
+      for (const [w, al] of [[day * 2.6, 0.18], [day, 0.95]]) {
+        cx.beginPath();
+        for (const [s0, s1] of doan) { cx.moveTo(ox + qx * s0, oy + qy * s0); cx.lineTo(ox + qx * s1, oy + qy * s1); }
+        cx.strokeStyle = `rgba(${mau},${(al * hien).toFixed(3)})`;
+        cx.lineWidth = w;
+        cx.stroke();
+      }
+    });
+    cx.fillStyle = `rgba(225,236,252,${(0.75 * hien).toFixed(3)})`;
+    cx.fillText(ten, tx + nx * (R + 0.27 * u), ty + ny * (R + 0.27 * u));
+  }
+  if (quet > 0 && quet < 360) {                          // đốm khí: vàng ở nửa dương trưởng, lam ở nửa âm trưởng
+    const g = (135 + quet) * Math.PI / 180, { mau } = khiTai(g);
+    const x = tx + Math.cos(g) * R, y = ty + Math.sin(g) * R;
+    const q = cx.createRadialGradient(x, y, 0, x, y, 0.16 * u);
+    q.addColorStop(0, `rgba(255,255,255,${a.toFixed(3)})`);
+    q.addColorStop(0.3, `rgba(${mau},${(0.8 * a).toFixed(3)})`);
+    q.addColorStop(1, `rgba(${mau},0)`);
+    cx.fillStyle = q;
+    cx.beginPath(); cx.arc(x, y, 0.16 * u, 0, Math.PI * 2); cx.fill();
+  }
 }
 
 function veMat(tg, diem) {
   if (!MH) MH = dungMoHinh();
   const u = MAT.u, k = kMat, t = itMotion ? 0 : giay(), xong = k >= 1;
   const phu = em(0.62, 1, k);            // kính, não, mắt, vòng HUD, các vùng: hiện khi đầu đã gần thành hình
-  // hai quả cầu Âm Dương: tách khỏi lõi, xoay đúng một vòng quanh nhau rồi dừng ngang, bay vào làm hai mắt
-  const tach = em(0.03, 0.3, k), vao = em(0.55, 0.93, k);
-  const tamY = CY + (MAT.oy - 0.05 * u - CY) * em(0.08, 0.5, k);
-  const gq = Math.PI * 2 * em(0.04, 0.56, k), d = 1.15 * u * tach;
+  // Hai luồng Âm Dương từ lõi Bát Quái: Dương vàng kim, Âm xanh lam — hai cánh xoắn ốc như Thái Cực, vừa xoáy vừa nhấp nhô
+  // ngược pha nên cắt đan qua nhau; mỗi luồng là một bó sợi mảnh. Rồi các sợi gỡ thành đường vân của đầu, đầu luồng bay vào
+  // làm hai mắt. Thoát thì chạy ngược lại.
+  const no = em(0.03, 0.35, k), vao = em(0.55, 0.93, k), R = 1.3 * u * no;
+  const tx0 = CX, ty0 = CY + (MAT.oy - 0.05 * u - CY) * em(0.08, 0.5, k);
+  const xoay = (itMotion ? 0 : t * 1.6) + Math.PI * 2 * em(0.04, 0.6, k);
   const mT = chieuDiem(...MH.mat[0], 1), mP = chieuDiem(...MH.mat[1], 1);
-  let ax = CX - Math.cos(gq) * d, ay = tamY - Math.sin(gq) * d;
-  let bx = CX + Math.cos(gq) * d, by = tamY + Math.sin(gq) * d;
-  ax += (mT.x - ax) * vao; ay += (mT.y - ay) * vao;
-  bx += (mP.x - bx) * vao; by += (mP.y - by) * vao;
-  const L = Math.hypot(bx - ax, by - ay) || 1, px = -(by - ay) / L, py = (bx - ax) / L;
-  const viTriSoi = (c, s) => {            // điểm s (0 → 1) trên sợi năng lượng của đường c, nối Dương → Âm
-    const lech = Math.sin(Math.PI * s) * L * (c.a1 * Math.sin(6.283 * c.f1 * s + c.w1 * t + c.p1)
-      + c.a2 * Math.sin(6.283 * c.f2 * s - c.w2 * t + c.p2));
-    return [ax + (bx - ax) * s + px * lech, ay + (by - ay) * s + py * lech];
+  const luong = (j, s, lech) => {          // điểm s (0 tâm → 1 đầu luồng) của luồng j (0 Dương, 1 Âm), lệch khỏi trục luồng
+    const g = xoay + j * Math.PI + Math.PI * 2 * 1.15 * s;
+    const r = R * (0.1 + 0.9 * s) * (1 + 0.14 * Math.sin(6 * Math.PI * s + t * 3 + j * Math.PI)) + lech * u;
+    let x = tx0 + Math.cos(g) * r, y = ty0 + Math.sin(g) * r * 0.92;
+    if (vao > 0) { const m = j ? mP : mT, w = vao * (0.35 + 0.65 * s); x += (m.x - x) * w; y += (m.y - y) * w; }
+    return [x, y];
   };
+  const viTriSoi = (c, s) => luong(c.j, s, c.lech * Math.sin(c.f1 * 6.283 * s + c.w1 * t + c.p1));
   cx.save();
   cx.lineJoin = 'round';
   cx.lineCap = 'round';
@@ -1159,42 +1477,74 @@ function veMat(tg, diem) {
     cx.setLineDash([]);
     veVung(phu, t, diem);
   }
-  // các đường vân: lúc chuyển cảnh còn là sợi năng lượng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
+  // vòng Tiên Thiên Bát Quái quanh luồng xoáy, rồi thân hai luồng (dải sáng dọc trục) — chỉ lúc chuyển cảnh
   cx.globalCompositeOperation = 'lighter';
   const soi = em(0.05, 0.25, k), mieng = MAT.mieng;
-  const bo = [[], [], [], [], []];
-  for (const m of MH.manh) {
-    const c = MH.cha[m.cha], mo = xong ? 1 : em(c.bd, c.bd + 0.24, k);
-    const al = soi * 0.55 * (1 - mo) + m.sang * mo;
-    if (al < 0.01) continue;
-    const dd = m.d, b = m.b, n = dd.length / 5;
-    for (let i = 0; i < n; i++) {
-      const o = i * 5, x = dd[o];
-      let y = dd[o + 1];
-      // nhép miệng: môi dưới và cằm hạ xuống
-      if (mieng > 0 && m.laDau && y > 0.725 && x > -0.8 && x < 0.8) y += mieng * 0.9 * em(0.725, 0.79, y) * (1 - em(0.3, 0.8, Math.abs(x)));
-      if (m.mi) y *= MAT.chop;                // chớp mắt: hai mí khép về giữa mắt (y = 0)
-      chieuVao(b, i * 2, x, y, dd[o + 2], dd[o + 4]);
-      if (mo < 1) {
-        const [sx, sy] = viTriSoi(c, dd[o + 3]);
-        b[i * 2] = sx + (b[i * 2] - sx) * mo;
-        b[i * 2 + 1] = sy + (b[i * 2 + 1] - sy) * mo;
+  const aTT = em(0.12, 0.3, k) * (1 - em(0.6, 0.85, k));
+  if (aTT > 0.01) veTienThien(tx0, ty0, 1.75 * u * em(0.05, 0.3, k), aTT, 360 * em(0.14, 0.52, k));
+  const aL = soi * (1 - em(0.55, 0.85, k));
+  if (aL > 0.01) {
+    for (const j of [0, 1]) {
+      const mau = j ? '90,150,255' : '242,206,107';
+      cx.beginPath();
+      for (let i = 0; i <= 90; i++) { const [x, y] = luong(j, i / 90, 0); if (i) cx.lineTo(x, y); else cx.moveTo(x, y); }
+      for (const [w, al] of [[16, 0.12], [7, 0.3], [2.2, 0.9]]) {
+        cx.strokeStyle = `rgba(${mau},${(al * aL).toFixed(3)})`;
+        cx.lineWidth = w;
+        cx.stroke();
       }
+      const [x, y] = luong(j, 1, 0), q = cx.createRadialGradient(x, y, 0, x, y, 0.12 * u);   // đầu luồng sáng
+      q.addColorStop(0, `rgba(255,255,255,${aL.toFixed(3)})`);
+      q.addColorStop(0.35, `rgba(${mau},${(0.7 * aL).toFixed(3)})`);
+      q.addColorStop(1, `rgba(${mau},0)`);
+      cx.fillStyle = q;
+      cx.beginPath(); cx.arc(x, y, 0.12 * u, 0, Math.PI * 2); cx.fill();
     }
-    if (xong) { bo[Math.min(4, Math.floor(m.sang * 5.5))].push(m); continue; }
+  }
+  // các đường vân: lúc chuyển cảnh còn là sợi trong hai luồng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
+  const bo = [[], [], [], [], []];
+  MH.cha.forEach((c, ci) => {
+    const ds = MH.theoCha[ci], mo = xong ? 1 : em(c.bd, c.bd + 0.24, k);
+    const al = soi * 0.45 * (1 - mo) + c.sang * mo;
+    if (!ds.length || al < 0.01) return;
+    for (const m of ds) {
+      const dd = m.d, b = m.b, n = dd.length / 5;
+      for (let i = 0; i < n; i++) {
+        const o = i * 5, x = dd[o];
+        let y = dd[o + 1];
+        // nhép miệng: môi dưới và cằm hạ xuống
+        if (mieng > 0 && m.laDau && y > 0.725 && x > -0.8 && x < 0.8) y += mieng * 0.9 * em(0.725, 0.79, y) * (1 - em(0.3, 0.8, Math.abs(x)));
+        if (m.mi) y *= MAT.chop;                // chớp mắt: hai mí khép về giữa mắt (y = 0)
+        chieuVao(b, i * 2, x, y, dd[o + 2], dd[o + 4]);
+        if (mo < 1) {
+          const [sx, sy] = viTriSoi(c, m.s0 + dd[o + 3] * m.span);
+          b[i * 2] = sx + (b[i * 2] - sx) * mo;
+          b[i * 2 + 1] = sy + (b[i * 2 + 1] - sy) * mo;
+        }
+      }
+      if (xong) bo[Math.min(4, Math.floor(m.sang * 5.5))].push(m);
+    }
+    if (xong) return;
+    // còn đang chuyển cảnh: cả sợi một nét (mọi mảnh của sợi cùng màu, cùng độ gỡ). Còn trong luồng thì vẽ thường (không
+    // cộng sáng) — 60 sợi chồng nhau cộng sáng thành trắng xoá, mất màu vàng kim / xanh lam
+    cx.globalCompositeOperation = mo < 0.5 ? 'source-over' : 'lighter';
     const [r0, g0, b0] = c.mau;
     const mau = `${Math.round(r0 + (130 - r0) * mo)},${Math.round(g0 + (215 - g0) * mo)},${Math.round(b0 + (255 - b0) * mo)}`;
     cx.beginPath();
-    cx.moveTo(b[0], b[1]);
-    for (let i = 1; i < n; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+    for (const m of ds) {
+      const b = m.b;
+      cx.moveTo(b[0], b[1]);
+      for (let i = 1; i < b.length / 2; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+    }
     cx.strokeStyle = `rgba(${mau},${(al * 0.22).toFixed(3)})`;
     cx.lineWidth = 3;
     cx.stroke();
     cx.strokeStyle = `rgba(${mau},${al.toFixed(3)})`;
     cx.lineWidth = 1;
     cx.stroke();
-  }
-  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một lớp nét mảnh (nhẹ máy)
+  });
+  cx.globalCompositeOperation = 'lighter';
+  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một nét mảnh (thêm lớp quầng mờ thì máy yếu còn ~26 khung/giây)
   bo.forEach((ds, i) => {
     if (!ds.length) return;
     const al = (i + 0.5) / 5.5;
@@ -1205,12 +1555,12 @@ function veMat(tg, diem) {
       for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
     });
     cx.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
-    cx.lineWidth = 1;
+    cx.lineWidth = 1;                    // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
     cx.stroke();
   });
-  // hạt sáng trôi dọc các sợi
+  // hạt sáng trôi dọc hai luồng
   if (soi > 0 && !xong) {
-    cx.fillStyle = '#E8F4FF';
+    cx.fillStyle = '#FFF6DA';
     for (const p of MH.hat) {
       const c = MH.cha[p.cha], a = soi * (1 - em(c.bd, c.bd + 0.24, k));
       if (a < 0.02) continue;
@@ -1271,13 +1621,6 @@ function veMat(tg, diem) {
       cx.fillStyle = fl;
       cx.fillRect(p.x - u * 0.5, p.y - 0.8, u, 1.6);
     });
-  }
-  // hai quả cầu: Dương vàng (trái — phía Đông), Âm xanh tím (phải); nhỏ dần khi bay vào làm mắt
-  const aCau = em(0.02, 0.14, k) * (1 - em(0.84, 0.98, k));
-  if (aCau > 0.01) {
-    const r = u * (0.05 + 0.15 * tach) * (1 - 0.65 * vao);
-    veCau(ax, ay, r, '255,226,150', '240,170,60', aCau);
-    veCau(bx, by, r, '160,175,255', '110,90,255', aCau);
   }
   cx.restore();
 }
@@ -1470,7 +1813,12 @@ cv.addEventListener('click', (e) => {
   const b = cv.getBoundingClientRect();
   const x = e.clientX - b.left, y = e.clientY - b.top;
   const v = timVung(x, y);                 // mặt A.I, bấm vòng một vùng: đọc tên vùng + số ghi chú, đường nối sáng lên
-  if (v) { nhayVung = { ten: v, t0: giay() }; noi(`Vùng ${v}: ${vungSo[v] ?? 0} ghi chú.`); return; }
+  if (v) {
+    const so = vungSo[v] ?? 0;
+    nhayVung = { ten: v, t0: giay() };
+    noi(`Vùng ${v}: ${so} ghi chú.`, `${boDau(v)}: ${so} ${so === 1 ? 'note' : 'notes'}.`);
+    return;
+  }
   const nd = timGan(x, y);
   if (nd) { moChiTiet(nd.note.id); noi(nd.note.title); }   // mặt A.I: đọc tên ghi chú vừa bấm
 });
@@ -2216,15 +2564,26 @@ async function napViec() {
 }
 $('#vXong').addEventListener('change', napViec);
 
-/* ---------------- Nạp: dán văn bản / chọn file .md .txt ---------------- */
+/* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
+   .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ — tiêu đề trong Word
+   thành từng ghi chú, PDF dài tách mỗi trang một ghi chú. */
 let tepChon = [];
+const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
+const base64 = (buf) => {
+  const b = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(s);
+};
 async function docTep(files) {
-  const ok = [...files].filter((f) => /\.(md|markdown|txt)$/i.test(f.name) && f.size < 2 * 1024 * 1024);
-  tepChon = await Promise.all(ok.map(async (f) => ({ name: f.name, text: await f.text() })));
+  const ok = [...files].filter((f) => (LA_CHU.test(f.name) || LA_TEP.test(f.name)) && f.size < TOI_DA);
+  tepChon = await Promise.all(ok.map(async (f) => (LA_CHU.test(f.name)
+    ? { name: f.name, text: await f.text() } : { name: f.name, b64: base64(await f.arrayBuffer()) })));
   const bo = files.length - ok.length;
+  const doc = [...files].some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
   $('#dsTep').textContent = tepChon.length
-    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không phải .md/.txt hoặc quá 2 MB` : '')
-    : (bo ? `Bỏ ${bo} file — chỉ nhận .md / .txt dưới 2 MB` : '');
+    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không nhận được${doc}` : '')
+    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB${doc}` : '');
 }
 $('#chonTep').addEventListener('change', (e) => docTep(e.target.files));
 const vung = $('#vungTha');
@@ -2269,3 +2628,5 @@ window.addEventListener('resize', coLai);
 coLai();
 nap().then(hienTheoLoai);
 requestAnimationFrame(vong);
+// dựng sẵn mô hình mặt A.I lúc máy rảnh (~0,3 giây) — lần đầu bấm lõi Bát Quái không bị khựng
+(window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(() => { if (!MH) MH = dungMoHinh(); }, { timeout: 4000 });

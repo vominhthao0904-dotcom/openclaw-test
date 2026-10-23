@@ -6,7 +6,7 @@ mở SSH tunnel (xem SKILL.md), đừng đổi sang 0.0.0.0 khi chưa có HTTPS 
 
 Brain Query gọi `openclaw agent` ngay trên máy — ghi chú KHÔNG rời khỏi máy này.
 """
-import hmac, json, os, secrets, subprocess, sys, shutil, threading, urllib.parse, uuid
+import hmac, json, os, re, secrets, subprocess, sys, shutil, threading, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE))
 import brain  # dùng chung schema, đường dẫn DB và hàm tiện ích
 
 PUBLIC = (HERE.parent / "public").resolve()
-BODY_LIMIT = 4 << 20          # 4 MB: đủ cho nạp vài file Markdown một lần
+BODY_LIMIT = 8 << 20          # 8 MB: vài file Markdown, hoặc một file PDF/Word ~5 MB (gửi lên dạng base64 to hơn ~1/3)
 ASK_TIMEOUT = brain.so_env("BRAIN_ASK_TIMEOUT", 180, 10)
 TRAN_DO_THI = brain.so_env("BRAIN_MAX_NOTES", 1500, 50)   # số ghi chú tối đa gửi cho trang
 MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
@@ -158,11 +158,39 @@ def api_task_done(conn, _q, body):
     return {"ok": bool(n)} if n else {"ok": False, "error": "Không thấy việc này"}
 
 
+def doc_tep_nhi_phan(t, tach):
+    """File PDF / Word trình duyệt gửi lên (base64): ghi ra thư mục tạm riêng rồi đọc bằng brain.doc_nguon.
+    PDF dài (> ~6.000 chữ) mà để Tự động thì tách mỗi trang một ghi chú — cả cuốn trong một ghi chú thì khó tìm, khó ôn."""
+    import base64, binascii, tempfile
+    ten = t.get("name") if isinstance(t.get("name"), str) else ""
+    duoi = Path(ten).suffix.lower()
+    if duoi not in (".pdf", ".docx"):
+        raise ValueError(f"{ten or 'file'}: chỉ nhận PDF hoặc Word .docx dạng nhị phân")
+    try:
+        du_lieu = base64.b64decode(t.get("b64") or "", validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError(f"{ten}: dữ liệu file hỏng")
+    if len(du_lieu) > brain.NAP_MAX_FILE:
+        raise ValueError(f"{ten}: lớn hơn {brain.NAP_MAX_FILE >> 20} MB")
+    with tempfile.TemporaryDirectory(prefix="sb-nap-") as thu_muc:
+        # giữ tên file (đã lọc ký tự lạ, chỉ lấy phần tên) — brain.doc_nguon lấy tên file làm tên ghi chú
+        goc = re.sub(r"[^\w\- .]", "_", Path(ten).stem)[:120].strip() or "tep"
+        f = Path(thu_muc) / (goc + duoi)
+        f.write_bytes(du_lieu)
+        muc = brain.doc_nguon(f, tach)
+        if duoi == ".pdf" and tach == "tu-dong" and sum(len(m.get("content") or "") for m in muc) > 6000:
+            muc = brain.doc_nguon(f, "trang")
+    for m in muc:
+        m["_file"] = ten
+    return muc
+
+
 def api_ingest(conn, _q, body):
-    """Nạp từ trang web: dán văn bản hoặc chọn file .md/.txt (trình duyệt đọc rồi gửi chữ lên).
-    PDF/CSV/thư mục thì nạp bằng dòng lệnh (brain.py nap) hoặc nhờ Mây."""
+    """Nạp từ trang web: dán văn bản, chọn file .md/.txt (trình duyệt đọc rồi gửi chữ lên), hoặc PDF / Word .docx
+    (gửi nguyên file dạng base64, máy chủ đọc chữ). CSV/JSON/thư mục thì nạp bằng dòng lệnh (brain.py nap) hoặc nhờ Mây."""
     tep = body.get("files") if isinstance(body.get("files"), list) else []
-    # chỉ nhận {name: chuỗi, text: chuỗi}; phần tử sai kiểu bỏ qua, không để lọt "['a']" vào kho
+    # chỉ nhận {name: chuỗi, text: chuỗi} hoặc {name, b64: chuỗi}; phần tử sai kiểu bỏ qua, không để lọt "['a']" vào kho
+    nhi_phan = [t for t in tep if isinstance(t, dict) and isinstance(t.get("b64"), str)]
     tep = [t for t in tep if isinstance(t, dict) and isinstance(t.get("text"), str)]
     if isinstance(body.get("text"), str) and body.get("text").strip():
         tep = tep + [{"name": "", "text": body.get("text")}]
@@ -170,10 +198,15 @@ def api_ingest(conn, _q, body):
         body = {**body, **lam_sach(body, ("title", "category", "tags", "kind", "url", "cite"))}
     except ValueError as e:
         return {"ok": False, "error": str(e)}
-    if not tep:
+    if not tep and not nhi_phan:
         return {"ok": False, "error": "Chưa có nội dung để nạp"}
-    tach = body.get("tach") if body.get("tach") in ("tu-dong", "heading", "khong") else "tu-dong"
+    tach = body.get("tach") if body.get("tach") in ("tu-dong", "heading", "khong", "trang") else "tu-dong"
     muc = []
+    for t in nhi_phan[:20]:
+        try:
+            muc.extend(doc_tep_nhi_phan(t, tach))
+        except ValueError as e:
+            return {"ok": False, "error": str(e)}
     for t in tep[:200]:
         text = str(t.get("text") or "")
         ten = t.get("name") if isinstance(t.get("name"), str) else ""

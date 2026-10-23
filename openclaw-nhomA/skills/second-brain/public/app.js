@@ -1971,6 +1971,9 @@ function ngayDep(iso) {
   return isNaN(d) ? iso : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// nút mở một ghi chú: mang id ghi chú, để menu chuột phải (Mở · Sửa · Cất vào kho lưu) biết đang trỏ vào ghi chú nào
+function ganMo(b, id) { b.dataset.ghiChu = id; b.addEventListener('click', () => moChiTiet(id)); }
+
 async function moChiTiet(id) {
   const r = await api('/api/note?id=' + encodeURIComponent(id));
   if (!r.ok) return;
@@ -2039,7 +2042,7 @@ async function moChiTiet(id) {
       const b = el('button', 'hit');
       b.type = 'button';
       b.append(el('b', null, x.title), el('span', null, `${tenLoai(x.kind)} · ${duongDep(x.category)}`));
-      b.addEventListener('click', () => moChiTiet(x.id));
+      ganMo(b, x.id);
       lien.appendChild(b);
     });
     lien.hidden = false;
@@ -2150,9 +2153,51 @@ $('#ctCat').addEventListener('click', async (e) => {
   const r = await api('/api/archive', { id: e.target.dataset.id });
   if (!r.ok) return alert(r.error || 'Không cất được');
   dongChiTiet();
-  await nap();
-  if (!$('[data-pane="on"]').hidden) napHangOn();
+  await sauKhiCat();
 });
+async function sauKhiCat() {               // ghi chú vừa cất kho: rời đồ thị, Thư viện, hàng ôn
+  await nap();
+  if (xem === 'thu-vien') napThuVien();
+  if (!$('[data-pane="on"]').hidden) napHangOn();
+}
+
+/* Menu chuột phải trên một ghi chú — thẻ Thư viện, kết quả Tìm / Hỏi / Nạp, việc, chấm trên đồ thị: Mở · Sửa · Cất vào
+   kho lưu. Điện thoại: chạm giữ. Trên web không có xoá hẳn (cất kho lấy lại được); xoá thật phải nhờ Mây / lệnh máy chủ. */
+const menuGc = $('#menuGc');
+let menuId = null;
+function dongMenu() { menuGc.hidden = true; menuId = null; }
+document.addEventListener('contextmenu', (e) => {
+  let id = e.target instanceof Element ? e.target.closest('[data-ghi-chu]')?.dataset.ghiChu : null;
+  if (!id && e.target === cv) {
+    const b = cv.getBoundingClientRect();
+    id = timGan(e.clientX - b.left, e.clientY - b.top)?.note.id;
+  }
+  if (!id) { dongMenu(); return; }        // chỗ khác: để menu thường của trình duyệt
+  e.preventDefault();
+  menuId = id;
+  menuGc.hidden = false;
+  const r = menuGc.getBoundingClientRect();
+  menuGc.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
+  menuGc.style.top = `${Math.max(8, Math.min(e.clientY, innerHeight - r.height - 8))}px`;
+});
+menuGc.addEventListener('click', async (e) => {
+  const lam = e.target.closest('button')?.dataset.lam, id = menuId;
+  if (!lam || !id) return;
+  dongMenu();
+  if (lam === 'mo') return moChiTiet(id);
+  if (lam === 'sua') { await moChiTiet(id); if ($('#ctSua').hidden) $('#ctSuaMo').click(); return; }
+  const ten = DATA.notes.find((x) => x.id === id)?.title;
+  if (!confirm(`Cất ${ten ? `«${ten}»` : 'ghi chú này'} vào kho lưu?\n\nGhi chú rời khỏi đồ thị, Thư viện và tìm kiếm, `
+    + 'nhưng không mất — lấy lại được ở tab Ôn › Kho lưu.')) return;
+  const r = await api('/api/archive', { id });
+  if (!r.ok) return alert(r.error || 'Không cất được');
+  if (!$('#chiTiet').hidden && $('#ctCat').dataset.id === id) dongChiTiet();
+  await sauKhiCat();
+});
+document.addEventListener('click', (e) => { if (!menuGc.hidden && !menuGc.contains(e.target)) dongMenu(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') dongMenu(); });
+window.addEventListener('scroll', dongMenu, true);
+window.addEventListener('resize', dongMenu);
 
 $('#ctLay').addEventListener('click', async (e) => {
   const id = e.target.dataset.id;
@@ -2228,7 +2273,7 @@ function veHopCho() {
     s.textContent = 'thiếu ' + [!(n.category || '').trim() && 'nhóm', !(n.tags || []).length && 'thẻ']
       .filter(Boolean).join(' và ');
     b.append(t, s);
-    b.addEventListener('click', () => moChiTiet(n.id));
+    ganMo(b, n.id);
     khung.appendChild(b);
   });
   box.appendChild(khung);
@@ -2260,7 +2305,7 @@ async function veKhoLuu() {
     const s = document.createElement('span');
     s.textContent = `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`;
     b.append(t, s);
-    b.addEventListener('click', () => moChiTiet(x.id));
+    ganMo(b, x.id);
     box.appendChild(b);
   });
 }
@@ -2299,7 +2344,7 @@ async function napHangOn() {
     });
     const mo = document.createElement('button');
     mo.type = 'button'; mo.textContent = 'Mở ra xem';
-    mo.addEventListener('click', () => moChiTiet(n.id));
+    ganMo(mo, n.id);
     nut.append(ok, mo);
     the.append(h, p, khi, nut);
     box.appendChild(the);
@@ -2348,7 +2393,7 @@ function baoTrung(ds, loiDan, goiY = []) {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = s.title;
-    b.addEventListener('click', () => moChiTiet(s.id));
+    ganMo(b, s.id);
     box.appendChild(b);
   });
   box.hidden = false;
@@ -2383,7 +2428,7 @@ function timNgay() {
         else s.appendChild(document.createTextNode(part));
       });
       b.append(t, m, s);
-      b.addEventListener('click', () => moChiTiet(n.id));
+      ganMo(b, n.id);
       box.appendChild(b);
     });
     if (r.che_do === 'mo_rong') box.prepend(el('p', 'none', 'Không ghi chú nào có đủ mọi từ — đây là các ghi chú khớp nhiều từ nhất.'));
@@ -2419,7 +2464,7 @@ $('#nutHoi').addEventListener('click', async () => {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = u.title;
-      b.addEventListener('click', () => moChiTiet(u.id));
+      ganMo(b, u.id);
       d.appendChild(b);
     });
     out.appendChild(d);
@@ -2582,7 +2627,7 @@ function theGhiChu(n) {
   if (n.cite) meta.push('có trích dẫn');
   b.append(dau, el('h3', null, n.title), el('p', null, n.preview || ''),
     el('div', 'chan', meta.join(' · ') + ((n.tags || []).length ? '  ' + n.tags.map((t) => '#' + t).join(' ') : '')));
-  b.addEventListener('click', () => moChiTiet(n.id));
+  ganMo(b, n.id);
   return b;
 }
 
@@ -2618,7 +2663,7 @@ async function napViec() {
       const t = el('button', 'ten-viec');
       t.type = 'button';
       t.append(el('b', null, v.title), el('span', null, [v.due ? 'hạn ' + ngayDep(v.due) : '', duongDep(v.category), v.tom_tat].filter(Boolean).join(' · ')));
-      t.addEventListener('click', () => moChiTiet(v.id));
+      ganMo(t, v.id);
       dong.append(o, t);
       khoi.appendChild(dong);
     });
@@ -2629,8 +2674,8 @@ async function napViec() {
 $('#vXong').addEventListener('change', napViec);
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
-   .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ — tiêu đề trong Word
-   thành từng ghi chú, PDF dài tách mỗi trang một ghi chú. */
+   .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file
+   một ghi chú; chữ trong ô dán là thêm một nguồn riêng (thêm một ghi chú) — có cả hai thì hỏi trước khi nạp. */
 let tepChon = [];
 const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
 const base64 = (buf) => {
@@ -2645,9 +2690,22 @@ async function docTep(files) {
     ? { name: f.name, text: await f.text() } : { name: f.name, b64: base64(await f.arrayBuffer()) })));
   const bo = files.length - ok.length;
   const doc = [...files].some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
-  $('#dsTep').textContent = tepChon.length
+  veDsTep(tepChon.length
     ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không nhận được${doc}` : '')
-    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB${doc}` : '');
+    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB${doc}` : ''));
+}
+// danh sách file đã chọn + nút bỏ chọn (file chọn từ lần trước còn nằm đó thì lần nạp sau nạp luôn — dễ quên)
+function veDsTep(chu) {
+  const d = $('#dsTep');
+  d.textContent = chu;
+  if (!tepChon.length) return;
+  const x = el('button', 'bo-tep', '× bỏ chọn');
+  x.type = 'button';
+  x.addEventListener('click', (e) => {
+    e.preventDefault();                    // nút nằm trong khung chọn file: không để nó mở hộp chọn file
+    tepChon = []; $('#chonTep').value = ''; veDsTep('');
+  });
+  d.append(' ', x);
 }
 $('#chonTep').addEventListener('change', (e) => docTep(e.target.files));
 const vung = $('#vungTha');
@@ -2659,6 +2717,10 @@ async function napVao(thu) {
   const out = $('#napKq');
   const chu = $('#napChu').value.trim();
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
+  // có cả file lẫn chữ trong ô dán: ô dán thành thêm MỘT ghi chú riêng — hỏi trước, khỏi tưởng "cả file 1 ghi chú" sai
+  if (!thu && tepChon.length && chu && !confirm(`Ô "Hoặc dán nội dung" cũng đang có chữ (${chu.length} ký tự).\n\n`
+    + `Mỗi file thành 1 ghi chú, chữ trong ô dán thành thêm 1 ghi chú riêng — tổng ${tepChon.length + 1} nguồn.\n\n`
+    + 'OK = nạp cả file lẫn ô dán.  Huỷ = dừng lại (xoá chữ trong ô dán, hoặc bấm "× bỏ chọn" file, rồi nạp lại).')) return;
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
   const r = await api('/api/ingest', {
     files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value,
@@ -2667,20 +2729,23 @@ async function napVao(thu) {
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
   const so = thu ? r.se_them : r.da_them;
-  out.appendChild(el('p', 'say ok', (thu ? `Sẽ thêm ${so} ghi chú` : `Đã thêm ${so} ghi chú`) +
+  const tuDan = (r.ghi_chu || []).filter((g) => g.tu === '(dán vào)').length;
+  const nguon = tuDan && tuDan < (r.ghi_chu || []).length ? ` (${(r.ghi_chu || []).length - tuDan} từ file, ${tuDan} từ ô dán)` : '';
+  out.appendChild(el('p', 'say ok', (thu ? `Sẽ thêm ${so} ghi chú` : `Đã thêm ${so} ghi chú`) + nguon +
     (r.bo_qua_trung ? ` · bỏ ${r.bo_qua_trung} bản trùng` : '') + (r.bo_qua_rong ? ` · bỏ ${r.bo_qua_rong} mục rỗng` : '')));
   if (r.nhom_moi?.length) out.appendChild(el('p', 'hint', 'Nhóm mới: ' + r.nhom_moi.map(duongDep).join(', ')));
   const ds = el('div', 'list');
   (r.ghi_chu || []).forEach((g) => {
     const b = el('button', 'hit');
     b.type = 'button';
-    b.append(el('b', null, g.title), el('span', null, `${tenLoai(g.kind)} · ${duongDep(g.category)}`));
-    if (g.id) b.addEventListener('click', () => moChiTiet(g.id)); else b.disabled = true;
+    const tu = !g.tu ? '' : g.tu === '(dán vào)' ? ' · từ ô dán' : ` · từ file ${g.tu}`;
+    b.append(el('b', null, g.title), el('span', null, `${tenLoai(g.kind)} · ${duongDep(g.category)}${tu}`));
+    if (g.id) ganMo(b, g.id); else b.disabled = true;
     ds.appendChild(b);
   });
   out.appendChild(ds);
   if (!thu && so) {
-    tepChon = []; $('#chonTep').value = ''; $('#dsTep').textContent = ''; $('#napChu').value = '';
+    tepChon = []; $('#chonTep').value = ''; veDsTep(''); $('#napChu').value = '';
     await nap();
   }
 }

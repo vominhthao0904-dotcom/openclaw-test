@@ -400,6 +400,16 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   Sửa) hiện danh sách nguồn đã dùng trong toàn kho — mới dùng trước, tối đa 200, nhãn là tên ghi chú dùng gần nhất và số ghi
   chú dùng chung; gõ vài chữ để lọc. Máy chủ tính trên toàn kho (không chỉ phần ghi chú gửi xuống trang). Không tra Internet —
   trang không gửi gì ra ngoài. +1 test web (83; trong exec của Mây 80).
+- **"Chọn Cả file 1 ghi chú vẫn thêm 2 ghi chú"**: lần nạp đó có cả file lẫn chữ trong ô *Hoặc dán nội dung* — hai nguồn, mỗi
+  nguồn một ghi chú (ghi chú "Ghi chú dán vào" chỉ sinh ra từ ô dán). Đúng thiết kế nhưng trang không nói rõ. Nay: có cả hai thì
+  hỏi trước khi nạp (Huỷ = không nạp gì); kết quả / xem trước ghi rõ "từ file …" hay "từ ô dán" và đếm "(1 từ file, 1 từ ô
+  dán)"; thêm nút **× bỏ chọn** file (file chọn từ lần trước còn nằm đó dễ quên). Bài thử trình duyệt bắt được một lỗi trước khi
+  gửi: ô chọn file trong suốt phủ cả khung đè lên nút "× bỏ chọn" — bấm thì mở hộp chọn file; đã đưa nút nổi lên trên.
+- **Xoá ghi chú thế nào — chuột phải không có gì** (anh hỏi). Thêm menu chuột phải trên mọi chỗ hiện một ghi chú (thẻ Thư viện,
+  kết quả Tìm / Hỏi / Nạp, việc, ghi chú liên kết, chấm trên đồ thị; điện thoại: chạm giữ): **Mở · Sửa · Cất vào kho lưu (xoá
+  khỏi kho)**, có hỏi lại trước khi cất. Chỗ khác vẫn là menu thường của trình duyệt. Vẫn không có xoá hẳn trên web (cố ý). Cất
+  kho từ thẻ chi tiết nay cũng làm mới Thư viện ngay (trước đây thẻ đã cất còn nằm trong lưới tới khi tải lại). Thử trình duyệt
+  10 tình huống: đạt cả.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -220,6 +220,15 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
   (thoát) — nhấp đúp không làm đổi chế độ tên. Trình duyệt nhớ lựa chọn. Kiểm trên trình duyệt: cả 3 cách đổi đều được, nhấp
   đúp thoát mà giữ nguyên chế độ, tải lại trang vẫn nhớ; điện thoại chạm 1 lần đổi, chạm đúp thoát.
 
+## Vòng quỹ đạo sinh động hơn (anh yêu cầu)
+- Bao nhiêu vùng bấy nhiêu vòng (đã đúng từ trước) — nhưng vòng cũ gần như vô hình (nét 1px, độ đậm 11%, đứng yên).
+- **Màu**: mỗi vòng đúng màu vùng, rõ hơn (17–21%, vùng đang xem 45%) nhưng vẫn nhạt hơn chấm — chấm (ghi chú) luôn nổi nhất.
+  Bảng màu nới lên 12 màu, cách đều trên vòng màu, cùng độ sáng tương đối; từ vòng thứ 9 thêm nét đứt để 10–12 vòng vẫn tách bạch.
+- **Mã hoá dữ liệu**: nét vòng dày theo số ghi chú của vùng (1–2,4 px) — nhìn là biết vùng lớn/nhỏ.
+- **Chuyển động**: vòng "thở" rất nhẹ (bán kính ±0,4%, độ sáng ±4%), lệch nhịp giữa các vòng; mỗi vòng một **vệt sáng** chạy
+  dọc vòng cùng chiều chấm, nhanh hơn 1,8 lần — theo nút tốc độ, dừng xoay thì dừng; máy bật "giảm chuyển động" thì tắt hẳn.
+- Đo: kho 6 vùng và kho 10 vùng — đúng 6 và 10 vòng, 6/6 và 10/10 màu khác nhau, ~60 khung hình/giây, không lỗi JS.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

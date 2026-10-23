@@ -23,9 +23,11 @@ const api = async (path, body) => {
 };
 
 /* màu vùng — họ xanh dương / vàng kim / cam, xen kẽ để hai vòng cạnh nhau luôn khác tông */
-// 8 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 5 màu phân biệt.
-// Bản cũ chỉ có 3 tông lặp lại (vàng/vàng nhạt, xanh/xanh nhạt, cam/cam nhạt) nên từ vùng thứ 4 là trùng màu.
-const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5'];
+// 12 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 9 màu phân biệt, cách đều
+// nhau trên vòng màu và cùng độ sáng tương đối (không vùng nào "nặng" hơn vùng nào). 8 màu đầu khác hẳn nhau;
+// từ vùng thứ 9 vòng vẽ thêm nét đứt để 10–12 vòng vẫn phân biệt được.
+const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5',
+             '#D16BE0', '#5BE0A4', '#FF8A65', '#9AA8FF'];
 const MAU_CHUA = '#8A9BB5';   // "Chưa xếp chỗ" không phải một vùng — màu trung tính, nằm vòng ngoài cùng
 const CHUA = 'Chưa xếp chỗ';
 let mauVung = {};
@@ -310,14 +312,40 @@ function ve() {
   const soVong = vongMau.length;
   const tenVong = [];
   nodes.forEach((n) => { tenVong[n.vong] = n.nhom; });
+  // Mỗi vòng: màu của vùng; nét dày theo số ghi chú (vùng lớn nét đậm hơn); "thở" rất nhẹ lệch nhịp nhau;
+  // một vệt sáng chạy dọc vòng cùng chiều các chấm, nhanh hơn chút — theo nút tốc độ, dừng xoay thì dừng.
+  // Vòng vẫn nhạt hơn chấm: chấm (ghi chú) luôn là thứ nổi nhất.
+  const t = itMotion ? 0 : performance.now() / 1000;
   for (let i = 0; i < soVong; i++) {
-    const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70);
-    const sang = noiBat ? (tenVong[i] === noiBat ? 0.3 : 0.04) : 0.11;
+    const ten = tenVong[i], mau = vongMau[i];
+    const noi = noiBat && ten === noiBat, toiV = noiBat && !noi;
+    const tho = itMotion ? 0 : Math.sin(t * 0.9 + i * 1.3);
+    const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70) * (1 + 0.004 * tho);
+    const rx = R * bk, ry = rx * det();
+    const so = vungSo[ten] ?? nodes.filter((n) => n.vong === i).length;
+    const day = 1 + Math.min(1.4, so / 20);
+    cx.setLineDash(i >= 8 ? [6, 5] : []);
     cx.beginPath();
-    cx.ellipse(CX, CY, R * bk, R * bk * det(), 0, 0, Math.PI * 2);
-    cx.strokeStyle = rgba(vongMau[i], sang);
-    cx.lineWidth = 1;
+    cx.ellipse(CX, CY, rx, ry, 0, 0, Math.PI * 2);
+    cx.strokeStyle = rgba(mau, toiV ? 0.05 : noi ? 0.45 : 0.17 + 0.04 * tho);
+    cx.lineWidth = day;
     cx.stroke();
+    cx.setLineDash([]);
+    if (toiV || itMotion) continue;
+    // vệt sáng: 6 đoạn ngắn, đậm ở đầu, nhạt dần về đuôi
+    const huong = i % 2 ? -1 : 1;
+    const dau = goc * huong * (0.26 / (i + 2)) * 1.8 + i * 0.9;
+    const doan = 0.07;
+    for (let k = 0; k < 6; k++) {
+      const a1 = dau - huong * (k + 1) * doan, a2 = dau - huong * k * doan;
+      cx.beginPath();
+      cx.ellipse(CX, CY, rx, ry, 0, Math.min(a1, a2), Math.max(a1, a2));
+      cx.strokeStyle = rgba(mau, (noi ? 0.95 : 0.6) * (1 - k / 6));
+      cx.lineWidth = day + 1.4;
+      cx.lineCap = 'round';
+      cx.stroke();
+    }
+    cx.lineCap = 'butt';
   }
 
   const diem = new Map();

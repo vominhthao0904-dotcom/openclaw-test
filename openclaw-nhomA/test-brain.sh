@@ -270,10 +270,12 @@ if command -v rclone >/dev/null 2>&1; then
   export RCLONE_CONFIG="$TMP/rclone.conf"
   mkdir -p "$TMP/drive-gia"
   rclone config create gdrive alias remote "$TMP/drive-gia" >/dev/null 2>&1
+  # đưa mật khẩu thô + --obscure, KHÔNG "$(rclone obscure ...)": chuỗi đó ngẫu nhiên, ~1/64 lần mở đầu bằng "-"
+  # thì rclone tưởng là cờ, không tạo remote -> cả mục Drive hỏng lác đác dù script sao lưu không sai
   rclone config create brain-mahoa crypt remote gdrive:SecondBrain \
-    password "$(rclone obscure mk-thu-1)" password2 "$(rclone obscure mk-thu-2)" --no-obscure >/dev/null 2>&1
+    password mk-thu-1 password2 mk-thu-2 --obscure >/dev/null 2>&1
   rclone config create brain-sai crypt remote gdrive:SecondBrain \
-    password "$(rclone obscure SAI)" password2 "$(rclone obscure mk-thu-2)" --no-obscure >/dev/null 2>&1
+    password SAI password2 mk-thu-2 --obscure >/dev/null 2>&1
   check "sao lưu lên Drive chạy được" 'bash "$SLD" chay | grep -c "ĐÃ SAO LƯU"' "1"
   check "Drive không có chữ thô (đã mã hoá)" \
     'grep -rlE "Tiêu chí đất|notes-|sqlite" "$TMP/drive-gia" | wc -l' "0"
@@ -289,9 +291,23 @@ if command -v rclone >/dev/null 2>&1; then
     printf '%s\n' "$CRON_CU" | crontab -
   fi
   check "doctor đọc được trạng thái Drive" 'BR doctor | jq_ "\"goi_y\" not in d"' "True"
+  # rclone giả in danh sách remote chậm từng dòng — như VPS ít nhân CPU: kiểu "listremotes | grep -q" từng
+  # dính SIGPIPE và báo "chưa có remote" oan; máy nhiều nhân hiếm khi lộ ra
+  mkdir -p "$TMP/rclone-cham"
+  cat > "$TMP/rclone-cham/rclone" <<EOF
+#!/usr/bin/env bash
+[ "\$1" = listremotes ] || exec "$(command -v rclone)" "\$@"
+"$(command -v rclone)" listremotes | while IFS= read -r d; do echo "\$d"; sleep 0.2; done
+EOF
+  chmod +x "$TMP/rclone-cham/rclone"
+  check "rclone in chậm (VPS ít nhân): vẫn chạy" \
+    'PATH="$TMP/rclone-cham:$PATH" bash "$SLD" chay | grep -c "ĐÃ SAO LƯU"' "1"
+  check "kho mới chưa có backups/: lần đầu vẫn chạy" \
+    'SECOND_BRAIN_DB="$TMP/moi/n.sqlite" BR add --title "Kho mới" --content "Ghi chú đầu tiên" >/dev/null;
+     SECOND_BRAIN_DB="$TMP/moi/n.sqlite" bash "$SLD" chay | grep -c "ĐÃ SAO LƯU"' "1"
   unset RCLONE_CONFIG
 else
-  echo "  (máy này chưa có rclone — bỏ qua 7 test Drive)"
+  echo "  (máy này chưa có rclone — bỏ qua các test Drive)"
 fi
 
 echo

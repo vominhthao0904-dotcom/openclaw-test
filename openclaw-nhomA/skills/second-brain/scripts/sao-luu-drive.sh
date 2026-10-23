@@ -31,7 +31,12 @@ can_rclone() {
 }
 
 can_remote() {
-  rclone listremotes 2>/dev/null | grep -qx "$REMOTE:" \
+  # đọc HẾT danh sách rồi mới so, không dùng ống "rclone listremotes | grep -q": grep thấy tên ở dòng đầu là
+  # thoát, rclone ghi tiếp dòng sau thì dính SIGPIPE, pipefail coi cả ống là lỗi -> báo "chưa có remote" oan.
+  # VPS ít nhân CPU gặp gần như mỗi lần (đo 38/40) -> sao lưu đêm bị bỏ.
+  local ds
+  ds="$(rclone listremotes 2>/dev/null)"
+  grep -qx "$REMOTE:" <<<"$ds" \
     || loi "chưa có remote '$REMOTE' — làm Bước 6 trong CAI-DAT.md (rclone config: tạo 'gdrive' rồi 'brain-mahoa' kiểu crypt)"
   local kieu
   kieu="$(rclone config show "$REMOTE" 2>/dev/null | awk -F' = ' '$1=="type"{print $2}')"
@@ -61,13 +66,15 @@ cmd_kiem() {
   else loi "không kết nối được Drive — token hết hạn? chạy: rclone config reconnect gdrive:"; fi
   if [ -f "$TRANG_THAI" ]; then echo "lần sao lưu Drive gần nhất: $(cat "$TRANG_THAI")"
   else echo "chưa sao lưu lên Drive lần nào — chạy: bash $0 chay"; fi
-  crontab -l 2>/dev/null | grep -q "sao-luu-drive.sh chay" && echo "lịch tự động: đã bật" || echo "lịch tự động: CHƯA bật — chạy: bash $0 lich"
+  grep -q "sao-luu-drive.sh chay" <<<"$(crontab -l 2>/dev/null)" && echo "lịch tự động: đã bật" || echo "lịch tự động: CHƯA bật — chạy: bash $0 lich"
 }
 
 cmd_chay() {
   can_rclone; can_remote
   [ -f "$DB" ] || loi "không thấy kho $DB"
-  # không chạy chồng hai lần (cron + tay cùng lúc)
+  # không chạy chồng hai lần (cron + tay cùng lúc). Kho mới chưa chụp lần nào thì chưa có backups/:
+  # phải tạo trước, không thì mở khoá hỏng và flock báo nhầm "đang có lần khác chạy"
+  mkdir -p "$BK"
   exec 9>"$BK/.drive.lock"
   command -v flock >/dev/null 2>&1 && { flock -n 9 || loi "đang có một lần sao lưu Drive khác chạy"; }
   # 1. chụp kho thành MỘT file nhất quán (không chép thẳng notes.sqlite — chế độ WAL có thể thiếu dữ liệu)

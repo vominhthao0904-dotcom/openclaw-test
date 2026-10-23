@@ -10,7 +10,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **111** |
+| Test `test-brain.sh` | 50 | **113** |
 | Test `test-web.sh` | 30 | **69** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
@@ -166,6 +166,18 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   Nguyên nhân: `printf "$DS" | grep -q` dưới `set -o pipefail` — danh sách skill của OpenClaw thật dài hơn bộ đệm ống (~64 KB),
   grep thấy tên thì thoát sớm, printf dính SIGPIPE, cả ống bị coi là lỗi. Sửa: so khớp ngay trong bash, không qua ống.
   Tái hiện bằng `openclaw` giả in 310 KB: bản cũ 4 dòng CHƯA ĐẠT, bản sửa 4 ĐẠT; thiếu skill thật vẫn báo đúng CHƯA ĐẠT.
+- **`sao-luu-drive.sh` có lúc báo "chưa có remote 'brain-mahoa'" dù đã cấu hình đúng** (Mây thấy 5 test Drive giả hỏng trong
+  `test-brain.sh` khi nghiệm thu PR #13). Cùng loại lỗi với `kiemtra.sh` ở trên: `rclone listremotes | grep -qx` dưới `pipefail` —
+  `brain-mahoa` đứng đầu danh sách, grep thấy là thoát, rclone ghi dòng tiếp theo thì dính SIGPIPE. Máy nhiều nhân hiếm gặp; ép chạy
+  trên 1 nhân CPU (như VPS nhỏ) thì hỏng 38/40 lần. Nếu bật sao lưu Drive thật mà chưa sửa thì **nhiều đêm sẽ bỏ sao lưu**.
+  Sửa: đọc hết danh sách rồi mới so (cả chỗ kiểm lịch trong `kiem`).
+- Cùng đợt: **lần sao lưu Drive đầu tiên trên kho chưa có `backups/`** thì hỏng và báo nhầm "đang có một lần sao lưu Drive khác chạy"
+  (file khoá nằm trong thư mục chưa tạo). Sửa: tạo thư mục trước khi khoá.
+- Bộ test cũng có lỗi riêng làm mục Drive hỏng lác đác: mật khẩu thử tạo bằng `rclone obscure` là chuỗi ngẫu nhiên, khoảng 1/64 lần
+  mở đầu bằng "-" nên rclone tưởng là cờ, không tạo được remote. Sửa: đưa mật khẩu thô kèm `--obscure`. Bước 6 trong `CAI-DAT.md`
+  dùng `rclone config` hỏi đáp nên không dính lỗi này.
+- Thêm 2 test (brain 113): rclone giả in danh sách chậm từng dòng — bản cũ hỏng mọi lần, bản sửa đạt — và kho mới chưa có `backups/`.
+  Chạy 15 lần liên tiếp trên 1 nhân CPU: 15/15 đạt.
 
 - **Trang web, kho trống: chữ "Kho đang trống" đè lên lõi Bát Quái** (thấy trên ảnh chụp máy anh). Chữ và lõi cùng nằm giữa khung.
   Sửa: đẩy chữ xuống dưới lõi, đủ xa để không đè cả khi rê chuột (lõi nở to, hiện tên 8 quẻ). Đã chụp kiểm ở laptop 1366×640,
@@ -266,6 +278,47 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
   vùng ẩn trong chế độ này. Máy bật "giảm chuyển động": chuyển ngay, không lắc đầu / quét / nhép miệng, phụ đề hiện đủ.
 - Kiểm trên trình duyệt: vào/ra bằng bấm lõi, phím M, chạm lõi trên điện thoại; đầu nhìn theo chuột (yaw +0,36 / −0,36);
   miệng mở khi nói; bấm chấm mở đúng ghi chú và đọc tên; toàn màn hình; ~61 khung hình/giây; không lỗi JS.
+
+## Mặt A.I làm lại theo ảnh mẫu (anh yêu cầu: bản đầu "xấu quá")
+Bản đầu là khung lưới thưa kiểu "người sắt": kho 14 ghi chú chỉ có 14 chấm lưa thưa, nét đa giác thô, đường nối ghi chú
+cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
+- **Đầu và thân (ảnh 2)**: mô hình 3D (bề rộng, độ nhô theo từng tầng mặt + hốc mắt, cung mày, sống mũi, cánh mũi, gò má, môi,
+  cằm, thái dương; cổ, dốc vai, cơ vai, xương quai xanh, ngực) vẽ bằng **đường đồng mức độ sâu** (marching squares, dựng một
+  lần khi bật) — vân ôm theo khối như bản đồ địa hình. Thêm tai, lông mày, mí mắt (khép khi chớp), khe miệng. Nhép miệng: môi
+  dưới và cằm hạ xuống theo tiếng. Đầu quay có phối cảnh; cổ xoay theo một phần; thân đứng yên, nhìn hơi từ trên xuống.
+- **Não và mạng (ảnh 3)**: hộp sọ trong suốt (vân mờ dần lên đỉnh), bên trong hai bán cầu não — nếp cuộn là đường đồng mức của
+  tổng vài sóng phẳng (ra hoa văn mê cung như vỏ não), sáng theo sóng chạy ngang, đang nói thì sáng hơn. Mỗi ghi chú là một
+  nơ-ron phát sáng, chỗ cố định theo mã ghi chú, vùng nào nằm ở thuỳ hướng về vòng của vùng đó. Mỗi vùng một vòng tròn quanh
+  đầu (trái → phải theo thứ tự vòng quỹ đạo; 7 vùng trở lên thì vòng lan xuống hai bên), nối tới từng nơ-ron, có xung sáng chạy
+  vào não. Bấm vòng: Mây đọc tên vùng và số ghi chú.
+- **Chuyển cảnh (ảnh 1 + ý anh "hai luồng âm dương")**: Thái Cực tách hai quả cầu Dương (vàng, bên trái — phía Đông) và Âm
+  (xanh tím), xoay đúng một vòng quanh nhau; mỗi đường vân của đầu lúc đầu là một sợi năng lượng nối hai quả cầu (~90 sợi, có
+  hạt sáng trôi dọc), rồi gỡ dần thành đường vân (viền đầu trước, chóp mũi sau); hai quả cầu bay vào làm hai mắt, lõi Bát Quái
+  xuống giữa ngực (theo góp ý: hạ xuống qua khỏi cổ, không sát đầu). Vào ~2,6 giây, ra ~1,5 giây chạy ngược lại.
+- Theo góp ý sau bản thử: mặt mềm hơn (vân viền thưa, dịu hơn; trán dốc nhẹ nên không còn mảng trống hình chữ T), vai mềm và
+  thật hơn (vai dốc dài, tròn, rộng; cổ rõ).
+- Nhẹ máy: tọa độ chiếu ghi thẳng vào mảng có sẵn (không tạo đối tượng mỗi điểm), đã thành hình thì gom nét theo độ sáng và vẽ
+  một lớp, quầng nơ-ron vẽ sẵn mỗi màu một lần. Trình duyệt không card đồ hoạ (máy thử): ~60 khung hình/giây ở kho 14 và kho
+  200 ghi chú, máy tính và điện thoại.
+- Sửa kèm: thông báo dài (vd "chưa có giọng đọc tiếng Việt") trên điện thoại tràn khỏi màn hình — nay xuống dòng; ở chế độ mặt
+  A.I thông báo nằm trên phụ đề, không che các vòng vùng. Kho trống: ẩn chữ "Kho đang trống" (Mây đã nói câu đó) để không đè mặt.
+- Kiểm trên trình duyệt (kho 14 ghi chú, kho 200 ghi chú / 9 vùng, kho trống; 1366×768, toàn màn hình, điện thoại 390×844):
+  vào/ra bằng bấm lõi và phím M, giữa chừng chuyển cảnh; đầu nhìn theo chuột; miệng mở khi nói; rê vòng vùng ra con trỏ bàn tay,
+  bấm vòng đọc đúng "Vùng Kỹ thuật: 4 ghi chú", không mở thẻ, không phóng to; bấm nơ-ron mở đúng ghi chú và đọc tên; mở thẻ chi
+  tiết thì mặt dịch trái vừa khung; "giảm chuyển động" vào/ra ngay; không lỗi JS.
+
+## Tiếng nói: "bật loa mà không nghe gì" (anh báo khi thử trên máy)
+- Nguyên nhân: anh mở bằng **Chrome trên Windows**. Chrome chỉ thấy giọng SAPI cũ của Windows (tiếng Anh: David, Zira, Mark);
+  giọng tiếng Việt cài trong Cài đặt Windows ("Microsoft An") chỉ Edge thấy, và danh sách giọng Google qua mạng của Chrome máy
+  tính không có tiếng Việt. Máy không có giọng nào để đọc; thông báo cũ chỉ hiện 6 giây một lần, lại nói chung chung → dễ bỏ qua.
+- Sửa: nút loa có trạng thái **"chưa nghe được"** (vàng, chấm đỏ); rê/bấm vào là thấy lý do đúng theo trình duyệt — Chrome trên
+  Windows: "mở bằng Microsoft Edge"; máy chưa cài giọng: cách cài. Máy không có giọng trong máy mà trình duyệt có giọng tiếng Việt
+  qua mạng (Edge: HoaiMy, NamMinh): bấm nút loa thì **hỏi rõ** có dùng không (chữ Mây đọc sẽ gửi lên máy chủ của hãng); mặc định
+  vẫn chỉ giọng trong máy, tắt tiếng là bỏ quyền, bật lại hỏi lại. Thêm hai cách chống lỗi Chrome làm tiếng không phát (kẹt trạng
+  thái tạm dừng; câu đang đọc bị thu hồi mất sự kiện kết thúc). Danh sách giọng nạp chậm vẫn bắt được.
+- Kiểm bằng giọng giả lập 5 tình huống: Chrome Windows (chỉ tiếng Anh) → nút vàng + chỉ mở bằng Edge, không hộp hỏi; Edge chưa cài
+  giọng → hỏi; đồng ý thì đọc bằng HoaiMy, tải lại vẫn nhớ, tắt tiếng thì bỏ quyền; từ chối thì chỉ phụ đề; Edge có Microsoft An →
+  đọc ngay, không hỏi; giọng nạp chậm → vẫn đọc. **Chưa nghe bằng loa thật** — cần anh thử trên Edge.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -71,6 +71,7 @@ const el = (tag, cls, text) => {
 let DATA = { notes: [], categories: {}, links: [], cay: [], loai: [] };
 let vungSo = {};          // số ghi chú THẬT của từng vùng (gồm mọi nhóm con)
 let nodes = [];
+let dsVung = [];         // tên các vùng theo thứ tự vòng (trong → ngoài) — các vòng tròn quanh đầu A.I
 let vongMau = [];        // màu theo thứ tự vòng
 let tocVong = [];        // tốc độ góc theo thứ tự vòng (dấu = chiều xoay)
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
@@ -192,6 +193,7 @@ function dungQuyDao() {
     : (DATA.tong_ghi_chu ?? tongThat) - tenDay.reduce((s, k) => s + nhom[k].length, 0);
 
   const ten = tenDay;
+  dsVung = ten.slice();
   nodes = [];
   vongMau = [];
   tocVong = [];
@@ -311,11 +313,11 @@ function viTri(nd) {
   const b = bkThat(nd.bk);
   const p = { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * det() };
   if (kMat <= 0) return p;
-  // chế độ mặt A.I: mỗi chấm bay về một điểm trên đường nét khuôn mặt, lệch nhau một chút cho có nhịp
-  const ds = diemTrenMat(nodes.length), i = nd.chiSo ?? 0;
-  const k = Math.min(1, Math.max(0, kMat * 1.5 - (i / Math.max(1, nodes.length)) * 0.5));
-  const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
-  const q = chieuDau(ds[i][0], ds[i][1]);
+  // chế độ mặt A.I: mỗi chấm bay vào chỗ của nó trong não (nơ-ron), lệch nhịp nhau một chút
+  const r = (nd.chiSo ?? 0) / Math.max(1, nodes.length), e = em(0.3 + 0.35 * r, 0.62 + 0.35 * r, kMat);
+  if (e <= 0) return p;
+  if (!nd.nao) nd.nao = viTriNao(nd);
+  const q = chieuDiem(nd.nao[0], nd.nao[1], nd.nao[2], 1);
   return { x: p.x + (q.x - p.x) * e, y: p.y + (q.y - p.y) * e };
 }
 
@@ -338,9 +340,9 @@ function ve() {
   cx.globalAlpha = 1;
   capNhatMat(tg);
 
-  // vòng quỹ đạo — mỗi nhóm một màu riêng (mờ dần khi chuyển sang mặt A.I)
-  cx.globalAlpha = 1 - eMat;
-  const soVong = vongMau.length;
+  // vòng quỹ đạo — mỗi nhóm một màu riêng (tắt dần khi hai quả cầu Âm Dương tách ra)
+  cx.globalAlpha = anQD;
+  const soVong = anQD > 0.003 ? vongMau.length : 0;
   const tenVong = [];
   nodes.forEach((n) => { tenVong[n.vong] = n.nhom; });
   // Mỗi vòng: màu của vùng; nét dày theo số ghi chú (vùng lớn nét đậm hơn); "thở" rất nhẹ lệch nhịp nhau;
@@ -383,8 +385,8 @@ function ve() {
   nodes.forEach((nd) => diem.set(nd.note.id, viTri(nd)));
 
   // nan hoa từ lõi (mặt A.I thì không)
-  cx.globalAlpha = 1 - eMat;
-  nodes.forEach((nd) => {
+  cx.globalAlpha = anQD;
+  if (anQD > 0.003) nodes.forEach((nd) => {
     const p = diem.get(nd.note.id);
     const nb = nd === hover || nd === chon;
     cx.beginPath();
@@ -407,7 +409,7 @@ function ve() {
     cx.lineWidth = 1;
     cx.stroke();
   });
-  if (eMat > 0.005) veMat(tg);
+  if (kMat > 0.001) veMat(tg, diem);
 
   // lõi: Thái Cực – Tiên Thiên Bát Quái (đứng yên — Càn luôn ở trên mới đúng phương vị)
   const dich = hoverLoi ? banKinhLoiTo() : banKinhLoi();
@@ -439,6 +441,11 @@ function ve() {
     const p = diem.get(nd.note.id);
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
+    if (eMat > 0.05) {                   // mặt A.I: nơ-ron phát sáng
+      const rr = (nb ? nd.r + 2.4 : nd.r) * toCham * 3.2;
+      cx.globalAlpha = eMat * (toi ? 0.15 : 0.75);
+      cx.drawImage(quangCham(nd.mau), p.x - rr, p.y - rr, rr * 2, rr * 2);
+    }
     cx.beginPath();
     cx.arc(p.x, p.y, (nb ? nd.r + 2.4 : nd.r) * toCham, 0, Math.PI * 2);
     cx.fillStyle = nd.mau;
@@ -458,7 +465,7 @@ function ve() {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
     // chế độ "chỉ chấm" và mặt A.I: rê chuột mới hiện tên
-    if (!nb && (toi || (tapTrung && !hienTen) || eMat > 0.5)) return;
+    if (!nb && (toi || (tapTrung && !hienTen) || kMat > 0.12)) return;
     const p = diem.get(nd.note.id);
     const tran = nb ? 90 : tranTen;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
@@ -505,81 +512,295 @@ function ve() {
 }
 
 /* ---------------- Chế độ MẶT A.I — nút ẩn: bấm lõi Bát Quái (hoặc phím M) ----------------
-   Mặt nạ hologram 3D kiểu "người sắt": khung lưới vàng kim / xanh, mắt phát sáng, đầu quay nhìn theo con trỏ,
-   thỉnh thoảng chớp mắt, nhép miệng khi "Mây nói" (kèm phụ đề chạy chữ). Lõi Bát Quái thành lò phản ứng trên ngực,
-   khí âm dương vẫn vận hành. Các chấm ghi chú bay từ quỹ đạo về xếp dọc đường nét khuôn mặt, giữ màu vùng.
-   Toạ độ mô hình: đơn vị = bán kính đầu, gốc ở tâm đầu, y hướng xuống; chiều sâu z lấy theo mặt elip của đầu. */
+   Chuyển cảnh: Thái Cực tách ra hai quả cầu Dương (vàng) và Âm (xanh tím) xoay quanh nhau, nối bằng hàng chục sợi năng lượng
+   đan xen; các sợi gỡ dần thành đường vân của một cái đầu A.I trong suốt, hai quả cầu bay vào làm hai mắt, lõi Bát Quái xuống
+   ngực. Thoát thì chạy ngược lại. Đầu vẽ bằng các đường đồng mức độ sâu (như bản đồ địa hình) của một mô hình 3D — ôm theo trán,
+   hốc mắt, sống mũi, gò má, môi, cằm; cổ và vai cũng vậy. Trong hộp sọ là bộ não phát sáng: mỗi ghi chú là một nơ-ron mang màu
+   vùng, mỗi vùng là một vòng tròn quanh đầu nối mạng vào não. Đầu quay nhìn theo con trỏ, chớp mắt, nhép miệng khi "Mây nói".
+   Toạ độ mô hình: đơn vị = bán kính đầu, gốc ở tâm đầu, x sang phải, y xuống dưới, z hướng về người xem. */
 let matDich = 0, kMat = 0, eMat = 0;     // đích (0/1), tiến độ chuyển cảnh, tiến độ đã làm mượt
+let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai quả cầu tách ra)
 let LX = 0, LY = 0;                      // vị trí lõi Bát Quái: giữa đồ thị, hoặc trên ngực khi là mặt A.I
 let dtKhung = 16.7, chuot = null, loiNoi = null;
 const MAT = { yaw: 0, pitch: 0, u: 1, oy: 0, mieng: 0, chop: 1, henChop: 2.5, batDauChop: -9 };
-const guong = (d) => d.map(([x, y]) => [-x, y]);
-const doiXung = (nua) => nua.concat(guong(nua.slice(1, -1).reverse()));   // nửa phải (trên → cằm) → cả vòng
-const NET = {
-  vien: { kin: true, d: doiXung([[0, -1.25], [0.42, -1.18], [0.75, -0.98], [0.95, -0.62], [1, -0.2], [0.97, 0.2],
-    [0.88, 0.52], [0.7, 0.85], [0.45, 1.08], [0.18, 1.2], [0, 1.22]]) },
-  mask: { kin: true, d: doiXung([[0, -0.92], [0.38, -0.86], [0.66, -0.62], [0.74, -0.3], [0.72, 0.05], [0.6, 0.38],
-    [0.52, 0.72], [0.3, 0.95], [0, 1.02]]) },
-  tran: { d: [[-0.55, -0.5], [-0.2, -0.6], [0, -0.62], [0.2, -0.6], [0.55, -0.5]] },
-  goP: { d: [[0.72, 0.05], [0.42, 0.22], [0.32, 0.55]] },
-  goT: { d: guong([[0.72, 0.05], [0.42, 0.22], [0.32, 0.55]]) },
-  thaiP: { d: [[0.66, -0.62], [0.95, -0.62]] },
-  thaiT: { d: guong([[0.66, -0.62], [0.95, -0.62]]) },
-  taiP: { d: [[0.97, -0.25], [0.86, -0.05], [0.86, 0.3], [0.96, 0.36]] },
-  taiT: { d: guong([[0.97, -0.25], [0.86, -0.05], [0.86, 0.3], [0.96, 0.36]]) },
-  mui: { d: [[0, -0.45], [0, 0.18]] },
-  canhMui: { d: [[-0.1, 0.24], [0, 0.3], [0.1, 0.24]] },
+const QUAY = { cy: 1, sy: 0, cp: 1, sp: 0 };   // cos/sin góc quay đầu của khung hình đang vẽ
+const keo = (v, a, b) => Math.max(a, Math.min(b, v));
+const em = (a, b, v) => { const t = keo((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };   // chuyển mượt a → b
+const giay = () => performance.now() / 1000;
+const g2 = (x, y, x0, y0, sx, sy) => Math.exp(-(((x - x0) / sx) ** 2 + ((y - y0) / sy) ** 2));
+const noiSuy = (bang, v) => {            // nội suy theo bảng [[v, giá trị], …]
+  if (v <= bang[0][0]) return bang[0][1];
+  for (let i = 1; i < bang.length; i++) {
+    if (v <= bang[i][0]) { const [a, p] = bang[i - 1], [b, q] = bang[i]; return p + (q - p) * (v - a) / (b - a); }
+  }
+  return bang[bang.length - 1][1];
 };
-const MAT_P = [[0.16, -0.24], [0.56, -0.33], [0.6, -0.22], [0.2, -0.12]];   // khe mắt phải (mắt trái đối xứng)
-const THAN = [[[0.38, 1.1], [0.42, 1.45]], [[-0.38, 1.1], [-0.42, 1.45]],
-  [[0.42, 1.45], [0.95, 1.55], [1.4, 1.72], [1.62, 2.05]], [[-0.42, 1.45], [-0.95, 1.55], [-1.4, 1.72], [-1.62, 2.05]],
-  [[-0.55, 1.6], [0, 1.5], [0.55, 1.6]]];
-const LO_NGUC = [0, 1.84];
-const DUONG_CHAM = ['vien', 'mask', 'tran', 'goP', 'goT', 'thaiP', 'thaiT'];   // các chấm xếp dọc những nét này
 
-const sauDau = (x, y) => 0.82 * Math.sqrt(Math.max(0, 1 - x * x / 1.02 - (y / 1.3) ** 2)) + 0.05;
-function chieuDau(x, y) {        // điểm trên đầu → màn hình, theo góc quay đầu (yaw) và gật (pitch), có phối cảnh
-  const z = sauDau(x, y);
-  const cy = Math.cos(MAT.yaw), sy = Math.sin(MAT.yaw), cp = Math.cos(MAT.pitch), sp = Math.sin(MAT.pitch);
+// Hình đầu nhìn thẳng: nửa bề rộng và độ nhô đường giữa mặt theo y. Đỉnh đầu là nửa elip; dưới thái dương lấy theo bảng.
+const RONG_DUOI = [[-0.35, 0.92], [-0.05, 0.9], [0.25, 0.87], [0.5, 0.82], [0.7, 0.74], [0.86, 0.62], [0.98, 0.48],
+  [1.07, 0.33], [1.13, 0.18], [1.16, 0]];
+const NHO_DUOI = [[-0.35, 0.86], [-0.1, 0.9], [0.3, 0.86], [0.6, 0.82], [0.85, 0.77], [1.0, 0.68], [1.1, 0.5], [1.16, 0]];
+const vom = (y) => Math.max(0, 1 - ((y + 0.35) / 0.95) ** 2);
+const nuaRong = (y) => (y < -0.35 ? 0.92 * Math.sqrt(vom(y)) : noiSuy(RONG_DUOI, y));
+const nhoGiua = (y) => (y < -0.35 ? 0.86 * Math.sqrt(vom(y)) : noiSuy(NHO_DUOI, y));   // trán dốc nhẹ ra sau
+function doSau(x, y) {                   // độ nhô (z) của mặt trước đầu tại (x, y); âm = ngoài đầu
+  const w = nuaRong(y);
+  if (w <= 0) return -1;
+  const s = 1 - (x / w) ** 2;
+  if (s <= 0) return s;
+  const ax = Math.abs(x);
+  let z = nhoGiua(y) * s ** 0.55
+    - 0.13 * g2(ax, y, 0.34, 0.02, 0.17, 0.11)      // hốc mắt
+    + 0.035 * g2(ax, y, 0.32, -0.15, 0.18, 0.05)    // cung mày
+    - 0.04 * g2(x, y, 0, 0, 0.25, 0.07)             // chỗ trũng giữa hai mắt (tách sống mũi khỏi trán)
+    + 0.05 * g2(ax, y, 0.52, 0.28, 0.16, 0.12)      // gò má
+    - 0.03 * g2(ax, y, 0.5, 0.62, 0.14, 0.12)       // má hóp
+    - 0.03 * g2(ax, y, 0.8, -0.35, 0.1, 0.18)       // thái dương
+    + 0.07 * g2(ax, y, 0.12, 0.44, 0.06, 0.05)      // cánh mũi
+    + 0.06 * g2(x, y, 0, 0.66, 0.2, 0.04)           // môi trên
+    + 0.07 * g2(x, y, 0, 0.79, 0.17, 0.045)         // môi dưới
+    - 0.04 * g2(x, y, 0, 0.725, 0.22, 0.018)        // khe môi
+    + 0.06 * g2(x, y, 0, 0.98, 0.16, 0.08);         // cằm
+  if (y > -0.1 && y < 0.6) {             // sống mũi cao dần từ giữa hai mắt tới chóp mũi rồi hụt xuống
+    const t = keo((y + 0.05) / 0.47, 0, 1);
+    let A = 0.03 + 0.17 * t ** 1.6;
+    if (y > 0.42) A *= Math.exp(-(((y - 0.42) / 0.06) ** 2));
+    z += A * Math.exp(-((x / (0.05 + 0.05 * t)) ** 2));
+  }
+  return z;
+}
+// cổ → dốc vai → vai tròn → cánh tay: nửa bề rộng nhìn thẳng, và độ nhô ở giữa thân, theo y
+const RONG_THAN = [[1.1, 0.26], [1.45, 0.27], [1.57, 0.3], [1.64, 0.48], [1.72, 0.78], [1.82, 1.1], [1.92, 1.38], [2.02, 1.6],
+  [2.14, 1.76], [2.27, 1.84], [2.47, 1.85], [2.72, 1.8], [2.97, 1.75]];
+const NHO_THAN = [[1.1, 0.26], [1.57, 0.28], [1.67, 0.34], [1.87, 0.42], [2.12, 0.5], [2.42, 0.56], [2.97, 0.56]];
+function doSauThan(x, y) {               // độ nhô của cổ, vai, ngực: thân tròn + xương quai xanh + cơ ngực + cơ vai
+  const W = noiSuy(RONG_THAN, y), s = 1 - (x / W) ** 2;
+  if (s <= 0) return s * 0.3;            // âm ngoài thân: đường đồng mức thấp nhất là viền thân
+  const ax = Math.abs(x), r = Math.sqrt(s);
+  return (noiSuy(NHO_THAN, y) + 0.12 * g2(ax, y, 1.66, 2.22, 0.22, 0.28)) * r
+    + 0.04 * Math.exp(-(((y - 1.72 - 0.08 * ax) / 0.06) ** 2)) * em(0.1, 0.25, ax) * (1 - em(1.0, 1.25, ax))
+    + 0.035 * g2(ax, y, 0.5, 2.34, 0.45, 0.3) - 0.015 * g2(x, y, 0, 2.3, 0.08, 0.3);
+}
+const LO_NGUC = 2.12;                    // lò phản ứng (lõi Bát Quái) giữa ngực — cách cằm, dưới cổ
+const NGHIENG = -0.3;                    // thân nhìn hơi từ trên xuống — vân trên vai, ngực cong theo khối
+
+// điểm mô hình → màn hình, ghi vào b[o], b[o+1] (không tạo đối tượng mới — mỗi khung hình chiếu vài nghìn điểm).
+// f = phần góc quay đầu áp cho điểm này: đầu 1, cổ giảm dần, vai 0 (thân đứng yên, nhìn hơi từ trên xuống)
+function chieuVao(b, o, x, y, z, f) {
+  let cy = QUAY.cy, sy = QUAY.sy, cp = QUAY.cp, sp = QUAY.sp;
+  if (f !== 1) {
+    const a = MAT.yaw * f, c = MAT.pitch * f + NGHIENG * (1 - f);
+    cy = Math.cos(a); sy = Math.sin(a); cp = Math.cos(c); sp = Math.sin(c);
+  }
   const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
   const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
   const k = 6 / (6 - z2);
-  return { x: CX + x1 * k * MAT.u, y: MAT.oy + y1 * k * MAT.u };
+  b[o] = CX + x1 * k * MAT.u;
+  b[o + 1] = MAT.oy + y1 * k * MAT.u;
 }
-const chieuThan = (x, y) => ({ x: CX + x * MAT.u, y: MAT.oy + y * MAT.u });   // thân đứng yên, chỉ đầu quay
+const NHAP = new Float32Array(2);
+const chieuDiem = (x, y, z, f) => { chieuVao(NHAP, 0, x, y, z, f); return { x: NHAP[0], y: NHAP[1] }; };
 
-let camMat = { n: -1, ds: [] };
-function diemTrenMat(N) {        // N điểm chia đều theo chiều dài các nét khuôn mặt
-  if (camMat.n === N) return camMat.ds;
-  const doan = [];
-  DUONG_CHAM.forEach((k) => {
-    const d = NET[k].kin ? NET[k].d.concat([NET[k].d[0]]) : NET[k].d;
-    for (let i = 1; i < d.length; i++) doan.push([d[i - 1], d[i]]);
+/* Đường đồng mức (marching squares) của hàm ham trên lưới bước h → các đường [[x, y], …]; đường khép kín lặp lại điểm đầu ở cuối. */
+function dongMuc(ham, x0, y0, nx, ny, h, mucs) {
+  const f = new Float32Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) f[j * nx + i] = ham(x0 + i * h, y0 + j * h);
+  const kq = [];
+  mucs.forEach((muc, chiSo) => {
+    const diem = new Map(), ke = new Map();
+    // khoá cạnh: cạnh ngang (i,j)–(i+1,j) = 2(j·nx+i); cạnh dọc (i,j)–(i,j+1) = 2(j·nx+i)+1
+    const cat = (k, i1, j1, i2, j2) => {
+      if (!diem.has(k)) {
+        const a = f[j1 * nx + i1] - muc, b = f[j2 * nx + i2] - muc, t = a / (a - b);
+        diem.set(k, [x0 + (i1 + (i2 - i1) * t) * h, y0 + (j1 + (j2 - j1) * t) * h]);
+      }
+      return k;
+    };
+    const noi = (a, b) => { for (const [p, q] of [[a, b], [b, a]]) { const l = ke.get(p); if (l) l.push(q); else ke.set(p, [q]); } };
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        const v0 = f[j * nx + i] > muc, v1 = f[j * nx + i + 1] > muc, v2 = f[(j + 1) * nx + i + 1] > muc, v3 = f[(j + 1) * nx + i] > muc;
+        if (v0 === v1 && v1 === v2 && v2 === v3) continue;
+        const c = [];
+        if (v0 !== v1) c.push(['T', cat(2 * (j * nx + i), i, j, i + 1, j)]);
+        if (v1 !== v2) c.push(['R', cat(2 * (j * nx + i + 1) + 1, i + 1, j, i + 1, j + 1)]);
+        if (v3 !== v2) c.push(['B', cat(2 * ((j + 1) * nx + i), i, j + 1, i + 1, j + 1)]);
+        if (v0 !== v3) c.push(['L', cat(2 * (j * nx + i) + 1, i, j, i, j + 1)]);
+        if (c.length === 2) { noi(c[0][1], c[1][1]); continue; }
+        // ô yên ngựa: tâm ô quyết định cách nối
+        const k = Object.fromEntries(c), tam = (f[j * nx + i] + f[j * nx + i + 1] + f[(j + 1) * nx + i + 1] + f[(j + 1) * nx + i]) / 4 > muc;
+        if (v0 === tam) { noi(k.T, k.R); noi(k.B, k.L); } else { noi(k.T, k.L); noi(k.R, k.B); }
+      }
+    }
+    const da = new Set();
+    const di = (dau) => {
+      const ds = [dau];
+      da.add(dau);
+      for (let hien = dau; ;) {
+        const tiep = ke.get(hien).find((x) => !da.has(x));
+        if (tiep === undefined) break;
+        da.add(tiep); ds.push(tiep); hien = tiep;
+      }
+      return ds;
+    };
+    for (const [k, l] of ke) if (l.length === 1 && !da.has(k)) kq.push({ d: di(k).map((x) => diem.get(x)), chiSo });
+    for (const k of ke.keys()) {
+      if (da.has(k)) continue;
+      const d = di(k).map((x) => diem.get(x));
+      d.push(d[0]);
+      kq.push({ d, chiSo });
+    }
   });
-  const dai = doan.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
-  const tong = dai.reduce((s, x) => s + x, 0);
-  const ds = [];
-  for (let i = 0; i < Math.max(1, N); i++) {
-    let s = (i + 0.5) / Math.max(1, N) * tong, j = 0;
-    while (j < dai.length - 1 && s > dai[j]) { s -= dai[j]; j++; }
-    const t = s / dai[j], [a, b] = doan[j];
-    ds.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  return kq;
+}
+function chiaDeu(d, buoc) {              // chia lại đường thành các điểm cách đều
+  const dai = [0];
+  for (let i = 1; i < d.length; i++) dai.push(dai[i - 1] + Math.hypot(d[i][0] - d[i - 1][0], d[i][1] - d[i - 1][1]));
+  const tong = dai[dai.length - 1], n = Math.max(6, Math.round(tong / buoc) + 1), kq = [];
+  for (let k = 0, j = 1; k < n; k++) {
+    const s = tong * k / (n - 1);
+    while (j < d.length - 1 && dai[j] < s) j++;
+    const t = (s - dai[j - 1]) / ((dai[j] - dai[j - 1]) || 1);
+    kq.push([d[j - 1][0] + (d[j][0] - d[j - 1][0]) * t, d[j - 1][1] + (d[j][1] - d[j - 1][1]) * t, k / (n - 1)]);
   }
-  camMat = { n: N, ds };
-  return ds;
+  return { d: kq, tong };
 }
 
-const keo = (v, a, b) => Math.max(a, Math.min(b, v));
-const giay = () => performance.now() / 1000;
+/* Dựng mô hình một lần (lần đầu bật mặt A.I): ~70 đường vân, não, mắt, hạt sáng của các sợi năng lượng. */
+let MH = null;
+function dungMoHinh() {
+  let h = 20261024;
+  const ngau = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
+  const MAU_SOI = [[120, 220, 255], [215, 232, 255], [176, 140, 255]];
+  const cha = [], manh = [];
+  // Mỗi đường vân là một sợi năng lượng lúc chuyển cảnh: tham số sợi riêng; bd = lúc bắt đầu gỡ thành đường vân.
+  const themDuong = (d, f, bd, sang, laDau, mi) => {
+    const { d: ds } = chiaDeu(d, 0.03);
+    const c = cha.length;
+    cha.push({ bd, a1: 0.05 + 0.2 * ngau(), f1: 0.5 + 1.1 * ngau(), w1: 1.2 + 2 * ngau(), p1: ngau() * 6.28,
+      a2: 0.03 + 0.1 * ngau(), f2: 1 + 1.5 * ngau(), w2: 1 + 2 * ngau(), p2: ngau() * 6.28, mau: MAU_SOI[c % 3] });
+    // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn để thấy não; còn lại theo độ nhô
+    let ht = null, lop = -1;
+    ds.forEach(([x, y, s]) => {
+      const z = laDau ? Math.max(0, doSau(x, y)) : Math.max(0, doSauThan(x, y));
+      const l = laDau ? Math.round(3 * em(-0.6, -0.1, y)) : 3;
+      if (l !== lop) {
+        if (ht) ht.pts.push([x, y, z, s]);
+        ht = { cha: c, laDau, f, mi, pts: [], sang: sang * (0.45 + 0.55 * l / 3) };
+        manh.push(ht);
+        lop = l;
+      }
+      ht.pts.push([x, y, z, s]);
+    });
+  };
+  // đầu: 16 mức cách đều theo bề ngang ở đường giữa (vân đều, thưa vừa từ viền vào), rồi cách đều theo độ nhô ở mặt trước
+  // (trán, sống mũi, môi, cằm đều có vân — không để mảng trống)
+  const mucDau = [];
+  for (let k = 0; k < 16; k++) { const q = 1 - k / 20; mucDau.push(Math.max(0.004, 0.88 * (1 - q * q) ** 0.55)); }
+  for (let z = 0.874; z < 1.1; z += 0.02) mucDau.push(z);
+  let vien = null;
+  dongMuc(doSau, -1.02, -1.34, 103, 127, 0.02, mucDau).forEach(({ d, chiSo }) => {
+    if (d.length < 5) return;
+    if (chiSo === 0 && (!vien || d.length > vien.length)) vien = d;
+    themDuong(d, 1, 0.44 + 0.3 * chiSo / mucDau.length, 0.26 + 0.46 * Math.min(1, mucDau[chiSo] / 1.1), true);
+  });
+  // tai: vành ngoài + vành trong, mỗi bên
+  [[[0.86, -0.14], [0.97, -0.12], [1.04, 0.0], [1.05, 0.16], [1.0, 0.3], [0.93, 0.4], [0.85, 0.42]],
+    [[0.88, -0.04], [0.96, -0.02], [0.99, 0.1], [0.96, 0.24], [0.9, 0.3]]].forEach((d, i) => {
+    for (const b of [-1, 1]) themDuong(d.map(([x, y]) => [b * x, y]), 1, 0.5 + 0.05 * i, 0.4 - 0.08 * i, true);
+  });
+  // nét mặt người: lông mày (hai nét), mí trên + mí dưới (chớp theo mắt), khe miệng
+  const cung = (n, ham) => Array.from({ length: n }, (_, i) => ham(i / (n - 1)));
+  for (const b of [-1, 1]) {
+    for (const l of [0, 0.02]) {
+      themDuong(cung(16, (t) => [b * (0.13 + 0.42 * t), -0.15 + l - 0.055 * Math.sin(Math.PI * t ** 0.75) + 0.02 * t]), 1, 0.7, 0.5, true);
+    }
+    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 - 0.06 * Math.sin(Math.PI * t) * (1 - 0.25 * t)]), 1, 0.72, 0.62, true, true);
+    themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 + 0.032 * Math.sin(Math.PI * t)]), 1, 0.72, 0.5, true, true);
+  }
+  themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 1, 0.74, 0.6, true);
+  // cổ + vai + ngực: đường đồng mức như mặt — ôm theo cơ vai tròn, xương quai xanh, ngực; thân đứng yên, cổ xoay theo đầu một phần
+  const mucThan = [];
+  for (let z = 0.03; z < 0.66; z += 0.04) mucThan.push(z);
+  dongMuc(doSauThan, -2.0, 1.1, 161, 76, 0.025, mucThan).forEach(({ d, chiSo }) => {
+    if (d.length < 5) return;
+    themDuong(d, null, 0.5 + 0.28 * chiSo / mucThan.length, 0.2 + 0.2 * chiSo / mucThan.length, false);
+  });
+  for (const b of [-1, 1]) {               // viền vai mềm: từ cổ xuống cánh tay
+    themDuong(cung(44, (t) => { const y = 1.12 + 1.85 * t; return [b * noiSuy(RONG_THAN, y), y]; }), null, 0.5, 0.42, false);
+  }
+  manh.forEach((m) => {
+    const n = m.pts.length;
+    m.d = new Float32Array(n * 5);
+    m.pts.forEach(([x, y, z, s], i) => {
+      m.d.set([x, y, z, s, m.f ?? 0.85 * (1 - em(1.05, 1.5, y))], i * 5);
+    });
+    m.b = new Float32Array(n * 2);
+    delete m.pts;
+  });
+  // não: hai bán cầu, mỗi bên một viền lượn sóng + các nếp cuộn (đi ngẫu nhiên, đổi hướng mượt, chạm mép thì quay vào)
+  const nao = [], zNao = {};
+  for (const b of [-1, 1]) {
+    const tx = b * 0.35, ty = -0.68, rx = 0.33, ry = 0.4;
+    zNao[b] = (x, y) => 0.12 + 0.48 * Math.sqrt(Math.max(0, 1 - ((x - tx) / rx) ** 2 - ((y - ty) / ry) ** 2));
+    const v = [];
+    for (let i = 0; i <= 72; i++) {
+      const a = i / 72 * Math.PI * 2, w = 0.97 + 0.035 * Math.sin(a * 9 + b);
+      v.push([tx + rx * w * Math.cos(a), ty + ry * w * Math.sin(a)]);
+    }
+    nao.push(v);
+    // nếp cuộn não: đường đồng mức 0 của tổng vài sóng phẳng ngẫu nhiên — ra hoa văn mê cung như vỏ não; chỉ lấy trong bán cầu
+    const song = Array.from({ length: 6 }, () => { const a = ngau() * Math.PI; return [Math.cos(a) * 44, Math.sin(a) * 44, ngau() * 6.28]; });
+    const truong = (x, y) => (((x - tx) / rx) ** 2 + ((y - ty) / ry) ** 2 > 0.86 ? 1
+      : song.reduce((s, [kx, ky, ph]) => s + Math.sin(kx * x + ky * y + ph), 0));
+    dongMuc(truong, tx - rx, ty - ry, Math.ceil(2 * rx / 0.012) + 1, Math.ceil(2 * ry / 0.012) + 1, 0.012, [0])
+      .forEach(({ d }) => { if (d.length > 8) nao.push(chiaDeu(d, 0.018).d); });
+  }
+  // gom nếp não theo 6 dải ngang — mỗi dải sáng lên theo một nhịp (sóng sáng chạy qua não), vẽ một lần mỗi dải
+  const naoMH = Array.from({ length: 6 }, () => ({ ds: [], tx: 0 }));
+  nao.forEach((d) => {
+    const a = new Float32Array(d.length * 3);
+    d.forEach(([x, y], i) => a.set([x, y, zNao[x < 0 ? -1 : 1](x, y)], i * 3));
+    const tx = d.reduce((s, q) => s + q[0], 0) / d.length, g = naoMH[Math.min(5, Math.floor((tx + 0.7) / 1.4 * 6))];
+    g.ds.push({ d: a, b: new Float32Array(d.length * 2) });
+    g.tx = -0.7 + (naoMH.indexOf(g) + 0.5) * 1.4 / 6;
+  });
+  const hat = Array.from({ length: 90 }, () => ({ cha: Math.floor(ngau() * cha.length), s0: ngau(), v: (ngau() - 0.5) * 0.5, r: 0.6 + ngau() * 1.2 }));
+  const vienD = new Float32Array(vien.length * 3);
+  vien.forEach(([x, y], i) => vienD.set([x, y, 0], i * 3));
+  return { cha, manh, nao: naoMH, hat, vien: vienD, vienB: new Float32Array(vien.length * 2),
+    mat: [-1, 1].map((b) => [b * 0.34, 0.0, doSau(b * 0.34, 0) + 0.05]), vungXY: [] };
+}
+
+// Mỗi ghi chú một chỗ cố định trong não: vùng nào nằm ở thuỳ hướng về vòng tròn của vùng đó (trái → phải như các vòng).
+const bam = (s, hat) => {
+  let x = 2166136261 ^ hat;
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); }
+  return ((x >>> 0) % 100003) / 100003;
+};
+function viTriNao(nd) {
+  const n = Math.max(1, vongMau.length), id = String(nd.note.id);
+  const nh = (Math.PI + 1.1) / n;
+  const th = -Math.PI - 0.55 + (nd.vong + 0.12 + 0.76 * bam(id, 1)) * nh;
+  const rho = 0.28 + 0.66 * Math.sqrt(bam(id, 2));
+  let x = 0.68 * rho * Math.cos(th);
+  const y = -0.68 + 0.4 * rho * Math.sin(th);
+  if (Math.abs(x) < 0.05) x = x < 0 ? -0.05 : 0.05;       // tránh rãnh giữa hai bán cầu
+  const z = 0.12 + 0.5 * Math.sqrt(Math.max(0, 1 - rho * rho)) * (0.6 + 0.4 * bam(id, 3));
+  return [x, y, z];
+}
+
 function capNhatMat(tg) {
-  const buoc = itMotion ? 1 : dtKhung / 1000 * 0.8;          // ~1,25 giây chuyển cảnh
+  // vào ~2,6 giây (đủ thấy hai luồng âm dương), ra ~1,5 giây
+  const buoc = itMotion ? 1 : dtKhung / 1000 / (matDich ? 2.6 : 1.5);
   kMat = matDich ? Math.min(1, kMat + buoc) : Math.max(0, kMat - buoc);
-  eMat = kMat < 0.5 ? 2 * kMat * kMat : 1 - (-2 * kMat + 2) ** 2 / 2;
-  // bố cục: từ đỉnh đầu (-1,25) tới vai (2,05) = 3,3 đơn vị, nằm gọn giữa thanh chuyển ở trên và phụ đề ở dưới
-  const rong = W - lechDich;
-  const tren = tapTrung ? 24 : 56, duoi = H - 72;
-  MAT.u = Math.max(20, Math.min((duoi - tren) / 3.3, rong * 0.92 / 3.4));
-  MAT.oy = tren + Math.max(0, duoi - tren - 3.3 * MAT.u) / 2 + 1.25 * MAT.u;
+  eMat = em(0, 1, kMat);
+  anQD = 1 - em(0, 0.3, kMat);
+  // bố cục: vòng tròn các vùng trên đỉnh đầu (≈ −2 đơn vị) tới lò phản ứng trên ngực, nằm gọn giữa thanh chuyển và phụ đề
+  const rong = W - lechDich, hep = rong < 600;
+  const tren = 50, duoi = H - (tapTrung ? 18 : 60);      // trên chừa chỗ cho thanh chuyển / thông báo toàn màn hình
+  MAT.u = Math.max(30, Math.min((duoi - tren - 60) / 4.14, hep ? rong / 2.35 : (rong / 2 - 70) / 2.2));
+  MAT.oy = tren + 24 + 2.0 * MAT.u + Math.max(0, duoi - tren - 60 - 4.14 * MAT.u) / 2;
   const t = giay();
   const dangNoi = loiNoi && t - loiNoi.t0 < loiNoi.dai;
   // đầu nhìn theo con trỏ; không có con trỏ (điện thoại) thì lắc nhẹ; đang nói thì gật khẽ theo nhịp
@@ -593,6 +814,7 @@ function capNhatMat(tg) {
   }
   MAT.yaw += (yawT - MAT.yaw) * 0.05;
   MAT.pitch += (pitchT - MAT.pitch) * 0.05;
+  QUAY.cy = Math.cos(MAT.yaw); QUAY.sy = Math.sin(MAT.yaw); QUAY.cp = Math.cos(MAT.pitch); QUAY.sp = Math.sin(MAT.pitch);
   // chớp mắt mỗi 2,5–5,5 giây
   if (!itMotion && t > MAT.henChop) { MAT.batDauChop = t; MAT.henChop = t + 2.5 + Math.random() * 3; }
   const dc = t - MAT.batDauChop;
@@ -617,33 +839,73 @@ function capNhatMat(tg) {
   // nút loa luôn nằm trong phần còn nhìn thấy (thẻ chi tiết mở thì dịch sang trái theo)
   if (matDich) $('#batTieng').style.right = `${16 + Math.round(lechDich)}px`;
   // lõi Bát Quái: giữa đồ thị ↔ lò phản ứng trên ngực
-  const lo = chieuThan(LO_NGUC[0], LO_NGUC[1]);
-  LX = CX + (lo.x - CX) * eMat;
-  LY = CY + (lo.y - CY) * eMat;
+  const lo = chieuDiem(0, LO_NGUC, doSauThan(0, LO_NGUC), 0), e = em(0.45, 0.95, kMat);
+  LX = CX + (lo.x - CX) * e;
+  LY = CY + (lo.y - CY) * e;
 }
 
-/* Tiếng nói: CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", giọng Google trên Android, iPhone "Linh").
-   Giọng đọc qua mạng (vd "Google Tiếng Việt" trên Chrome máy tính) gửi nội dung lên máy chủ — bị loại, đúng nguyên tắc
-   kho không gửi gì ra ngoài. Không có giọng tiếng Việt trong máy thì chỉ hiện phụ đề (báo một lần). */
+/* Tiếng nói. Mặc định CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", Android Google, iPhone "Linh") —
+   không gửi gì ra ngoài. Máy không có giọng trong máy mà trình duyệt có giọng tiếng Việt qua mạng (Edge: HoaiMy, NamMinh)
+   thì chỉ dùng khi anh đồng ý rõ ràng (hộp hỏi khi bấm nút loa): chữ Mây đọc sẽ gửi lên máy chủ của hãng đó; tắt tiếng là
+   bỏ quyền này. Chrome trên Windows không thấy giọng của Windows (chỉ có giọng tiếng Anh) — nút loa chỉ cách mở bằng Edge.
+   Không đọc được thì nút loa chuyển vàng, rê/bấm vào là thấy lý do và cách sửa; Mây vẫn hiện phụ đề. */
 const coDocNoi = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-let coTieng = true, giongViet = null, daBaoThieuGiong = false;
-try { if (localStorage.getItem('sb.tieng') === '0') coTieng = false; } catch (_) { /* mặc định có tiếng */ }
+const chromeWin = /Windows/.test(navigator.userAgent) && /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+let coTieng = true, choMang = false, giongViet = null, giongMang = null, daBaoThieuGiong = false, cauDangDoc = null;
+try {
+  if (localStorage.getItem('sb.tieng') === '0') coTieng = false;
+  choMang = localStorage.getItem('sb.giongMang') === '1';
+} catch (_) { /* mặc định có tiếng, chỉ giọng trong máy */ }
+const giongVN = (ds) => ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
 function chonGiong() {
   if (!coDocNoi) return;
-  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang) && v.localService);
-  giongViet = ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
+  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang));
+  giongViet = giongVN(ds.filter((v) => v.localService));
+  giongMang = giongVN(ds.filter((v) => !v.localService));
+  capNhatLoa();
 }
-if (coDocNoi) {
-  chonGiong();
-  speechSynthesis.addEventListener?.('voiceschanged', chonGiong);
+const giongDung = () => giongViet || (choMang ? giongMang : null);
+function lyDoThieuGiong() {
+  if (!coDocNoi) return 'Trình duyệt này không đọc thành tiếng được — Mây chỉ hiện phụ đề.';
+  if (giongMang) return 'Máy chưa cài giọng tiếng Việt — bấm nút loa để chọn cách nghe.';
+  if (chromeWin) return 'Chrome trên Windows không dùng được giọng tiếng Việt của máy — mở trang này bằng Microsoft Edge để nghe Mây nói.';
+  return 'Máy chưa có giọng đọc tiếng Việt — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).';
+}
+function capNhatLoa() {
+  const b = $('#batTieng'), g = giongDung(), thieu = coTieng && !g;
+  b.setAttribute('aria-pressed', String(coTieng));
+  b.classList.toggle('thieu-giong', thieu);
+  b.title = !coTieng ? 'Đang tắt tiếng — bấm để bật'
+    : thieu ? `Chưa nghe được: ${lyDoThieuGiong()}`
+      : `Đang có tiếng — ${g.name}${g.localService ? '' : ' (giọng qua mạng)'} — bấm để tắt`;
 }
 function datTieng(bat) {
   coTieng = bat;
-  const b = $('#batTieng');
-  b.setAttribute('aria-pressed', String(bat));
-  b.title = bat ? 'Đang có tiếng — bấm để tắt' : 'Đang tắt tiếng — bấm để bật';
-  try { localStorage.setItem('sb.tieng', bat ? '1' : '0'); } catch (_) { /* không lưu được thì thôi */ }
+  if (!bat) choMang = false;               // tắt tiếng là bỏ quyền dùng giọng qua mạng — bật lại sẽ hỏi lại
+  try {
+    localStorage.setItem('sb.tieng', bat ? '1' : '0');
+    localStorage.setItem('sb.giongMang', choMang ? '1' : '0');
+  } catch (_) { /* không lưu được thì thôi */ }
   if (!bat && coDocNoi) speechSynthesis.cancel();
+  capNhatLoa();
+}
+if (coDocNoi) {
+  chonGiong();
+  speechSynthesis.addEventListener?.('voiceschanged', chonGiong);   // Chrome nạp danh sách giọng sau khi mở trang
+}
+// Đang bật tiếng mà chưa có giọng: bấm nút loa thì hỏi / chỉ cách (không tắt). Có giọng thì đọc thử một câu.
+function chonCachNghe() {
+  chonGiong();
+  if (!giongDung() && giongMang && confirm('Máy chưa cài giọng tiếng Việt trong máy.\n\n'
+    + `Bấm OK để dùng giọng đọc qua mạng "${giongMang.name}": chữ Mây đọc (lời chào, tên ghi chú, câu trả lời) `
+    + 'sẽ được gửi lên máy chủ của hãng để đọc. Tắt tiếng là bỏ quyền này.\n\n'
+    + 'Bấm Huỷ để giữ riêng tư: Mây chỉ hiện phụ đề — cài giọng tiếng Việt cho máy theo Hướng dẫn.')) {
+    choMang = true;
+    try { localStorage.setItem('sb.giongMang', '1'); } catch (_) { /* chỉ trong lần mở trang này */ }
+    capNhatLoa();
+  }
+  if (giongDung()) noi('Mây đây. Anh nghe rõ không?');
+  else baoNhanh(lyDoThieuGiong(), 9000);
 }
 
 function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + tiếng (chỉ khi đang ở chế độ mặt A.I)
@@ -653,22 +915,22 @@ function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + t
   loiNoi = ln;
   if (!coTieng || !coDocNoi) return;
   speechSynthesis.cancel();
-  if (!giongViet) chonGiong();
-  if (!giongViet) {
-    if (!daBaoThieuGiong) {
-      daBaoThieuGiong = true;
-      baoNhanh('Máy chưa có giọng đọc tiếng Việt cài sẵn — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).', 6000);
-    }
+  if (!giongDung()) chonGiong();
+  const g = giongDung();
+  if (!g) {
+    if (!daBaoThieuGiong) { daBaoThieuGiong = true; baoNhanh(lyDoThieuGiong(), 9000); }
     return;
   }
   const u = new SpeechSynthesisUtterance(chu);
-  u.voice = giongViet;
-  u.lang = giongViet.lang;
+  u.voice = g;
+  u.lang = g.lang;
   u.rate = 1;
   // miệng và phụ đề bám theo tiếng thật: bắt đầu khi phát, tới đâu hiện chữ tới đó, dừng khi đọc xong
   u.onstart = () => { ln.t0 = giay(); ln.dai = 60; ln.tieng = true; };
   u.onboundary = (e) => { ln.chiSo = e.charIndex + (e.charLength || 0); };
   u.onend = u.onerror = () => { if (ln.tieng) ln.dai = giay() - ln.t0; ln.xong = true; };
+  cauDangDoc = u;                          // giữ tham chiếu: Chrome có lúc thu hồi câu đang đọc, mất sự kiện kết thúc
+  speechSynthesis.resume();                // Chrome đôi khi kẹt ở trạng thái tạm dừng — đọc mà không ra tiếng
   speechSynthesis.speak(u);
 }
 const cauDau = (s) => {
@@ -685,13 +947,13 @@ function datMat(bat) {
     const n = DATA.tong_ghi_chu ?? DATA.notes.length;
     const v = (DATA.cay || []).filter((c) => c.duong_dan).length;
     setTimeout(() => noi(n ? `Xin chào anh. Kho đang có ${n} ghi chú trong ${v} vùng kiến thức.`
-      : 'Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?'), itMotion ? 0 : 1000);
+      : 'Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?'), itMotion ? 0 : 2300);
   } else {
     loiNoi = null;
     if (coDocNoi) speechSynthesis.cancel();
   }
 }
-$('#batTieng').addEventListener('click', () => datTieng(!coTieng));
+$('#batTieng').addEventListener('click', () => { if (coTieng && !giongDung()) chonCachNghe(); else datTieng(!coTieng); });
 datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
   const a = document.activeElement;
@@ -700,83 +962,322 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape' && matDich && !tapTrung && $('#chiTiet').hidden) datMat(false);
 });
 
-function duongNet(d, kin, chieu) {
-  cx.beginPath();
-  d.forEach(([x, y], i) => { const p = chieu(x, y); if (i) cx.lineTo(p.x, p.y); else cx.moveTo(p.x, p.y); });
-  if (kin) cx.closePath();
+// quầng sáng quanh chấm (nơ-ron): vẽ sẵn mỗi màu một lần — tạo gradient cho từng chấm mỗi khung hình thì nặng
+const quangMau = new Map();
+function quangCham(mau) {
+  let c = quangMau.get(mau);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, rgba(mau, 0.9)); r.addColorStop(0.25, rgba(mau, 0.35)); r.addColorStop(1, rgba(mau, 0));
+    g.fillStyle = r;
+    g.fillRect(0, 0, 64, 64);
+    quangMau.set(mau, c);
+  }
+  return c;
 }
-function veMat(tg) {
-  const u = MAT.u, t = giay();
+
+function veNao(t, a) {                   // nếp cuộn não sáng theo sóng chạy ngang; đang nói thì sáng hơn
+  const noiNhieu = loiNoi && giay() - loiNoi.t0 < loiNoi.dai ? 1.5 : 1;
+  for (const g of MH.nao) {
+    if (!g.ds.length) continue;
+    cx.beginPath();
+    for (const c of g.ds) {
+      const d = c.d, b = c.b, n = d.length / 3;
+      for (let i = 0; i < n; i++) chieuVao(b, i * 2, d[i * 3], d[i * 3 + 1], d[i * 3 + 2], 1);
+      cx.moveTo(b[0], b[1]);
+      for (let i = 1; i < n; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+    }
+    const nhip = itMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * 1.7 - g.tx * 4);
+    const al = Math.min(1, a * (0.2 + 0.45 * nhip) * noiNhieu);
+    cx.strokeStyle = `rgba(80,160,255,${(al * 0.3).toFixed(3)})`;
+    cx.lineWidth = 3.2;
+    cx.stroke();
+    cx.strokeStyle = `rgba(190,228,255,${al.toFixed(3)})`;
+    cx.lineWidth = 1;
+    cx.stroke();
+  }
+}
+
+/* Các vùng: vòng tròn quanh đầu (trái → phải theo thứ tự vòng quỹ đạo), nối mạng tới từng nơ-ron của vùng trong não;
+   một xung sáng chạy từ vòng vào não. Bấm vòng: Mây đọc tên vùng và số ghi chú, các đường nối của vùng sáng lên. */
+let hoverVung = null, nhayVung = null;
+function veVung(a, t, diem) {
+  MH.vungXY = [];
+  const n = dsVung.length;
+  if (!n || a <= 0.01) return;
+  const u = MAT.u, rong = W - lechDich, hep = rong < 600;
+  const rv = keo(u * 0.15, 13, 24);
+  const rx = hep ? rong / 2 - rv - 8 : Math.min(2.2 * u, rong / 2 - 62), ry = 1.72 * u, tamY = MAT.oy - 0.25 * u;
+  const cung = n <= 6 ? Math.PI : Math.min(Math.PI * 1.45, Math.PI + (n - 6) * 0.38);
+  const nhay = nhayVung && giay() - nhayVung.t0 < 2.5 ? nhayVung.ten : null;
+  dsVung.forEach((ten, r) => {
+    const goc0 = -Math.PI / 2 + ((r + 0.5) / n - 0.5) * cung;
+    MH.vungXY.push({ ten, x: CX + rx * Math.cos(goc0), y: tamY + ry * Math.sin(goc0), r: rv });
+  });
+  cx.globalCompositeOperation = 'lighter';
+  cx.lineWidth = 1;
+  MH.vungXY.forEach((v) => {
+    const mau = mauCua(v.ten), toi = noiBat && noiBat !== v.ten, sang = v.ten === nhay || v.ten === hoverVung;
+    const ds = nodes.filter((nd) => nd.nhom === v.ten).map((nd) => diem.get(nd.note.id)).filter(Boolean);
+    if (!ds.length) return;
+    cx.beginPath();
+    ds.forEach((p) => { cx.moveTo(v.x, v.y); cx.lineTo(p.x, p.y); });
+    cx.strokeStyle = rgba(mau, a * (toi ? 0.03 : sang ? 0.45 : 0.1));
+    cx.stroke();
+    if (itMotion || toi) return;
+    const tb = ds.reduce((s, p) => ({ x: s.x + p.x / ds.length, y: s.y + p.y / ds.length }), { x: 0, y: 0 });
+    const s = (t * 0.45 + bam(v.ten, 7)) % 1;
+    cx.fillStyle = rgba(mau, a * 0.9);
+    cx.beginPath();
+    cx.arc(v.x + (tb.x - v.x) * s, v.y + (tb.y - v.y) * s, 2, 0, Math.PI * 2);
+    cx.fill();
+  });
+  cx.beginPath();                        // chòm sao nối các vòng kề nhau
+  MH.vungXY.forEach((v, i) => { if (i) cx.lineTo(v.x, v.y); else cx.moveTo(v.x, v.y); });
+  cx.strokeStyle = `rgba(120,190,255,${(0.12 * a).toFixed(3)})`;
+  cx.stroke();
+  cx.globalCompositeOperation = 'source-over';
+  const coChu = hep ? 10 : 11.5, toiDa = hep ? 74 : 104;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.lineJoin = 'round';
+  MH.vungXY.forEach((v) => {
+    const mau = mauCua(v.ten), sang = v.ten === nhay || v.ten === hoverVung;
+    const aa = a * (noiBat && noiBat !== v.ten ? 0.35 : 1);
+    const q = cx.createRadialGradient(v.x, v.y, v.r * 0.7, v.x, v.y, v.r * 2);
+    q.addColorStop(0, rgba(mau, (sang ? 0.5 : 0.28) * aa));
+    q.addColorStop(1, rgba(mau, 0));
+    cx.fillStyle = q;
+    cx.beginPath(); cx.arc(v.x, v.y, v.r * 2, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = `rgba(8,20,44,${(0.88 * aa).toFixed(3)})`;
+    cx.beginPath(); cx.arc(v.x, v.y, v.r, 0, Math.PI * 2); cx.fill();
+    cx.strokeStyle = rgba(mau, 0.95 * aa);
+    cx.lineWidth = sang ? 2.4 : 1.6;
+    cx.stroke();
+    cx.setLineDash([2, 5]);
+    cx.lineDashOffset = itMotion ? 0 : -t * 10;
+    cx.beginPath(); cx.arc(v.x, v.y, v.r + 5, 0, Math.PI * 2);
+    cx.strokeStyle = rgba(mau, 0.45 * aa);
+    cx.lineWidth = 1;
+    cx.stroke();
+    cx.setLineDash([]);
+    cx.globalAlpha = aa;
+    cx.font = `700 ${Math.round(v.r * 0.62)}px "Be Vietnam Pro",sans-serif`;
+    cx.fillStyle = TRUNG;
+    cx.fillText(String(vungSo[v.ten] ?? nodes.filter((nd) => nd.nhom === v.ten).length), v.x, v.y + 0.5);
+    cx.font = `500 ${coChu}px "Be Vietnam Pro",sans-serif`;
+    let ten = v.ten;
+    while (ten.length > 3 && cx.measureText(ten).width > toiDa) ten = ten.slice(0, -2).trimEnd() + '…';
+    const tx = keo(v.x, toiDa / 2 + 4, W - lechDich - toiDa / 2 - 4), ty = v.y + v.r + 8 + coChu * 0.6;
+    cx.lineWidth = 3.5;
+    cx.strokeStyle = 'rgba(6,14,30,.85)';
+    cx.strokeText(ten, tx, ty);
+    cx.fillStyle = 'rgba(225,236,252,.88)';
+    cx.fillText(ten, tx, ty);
+    cx.globalAlpha = 1;
+  });
+}
+function timVung(x, y) {
+  if (!matDich || kMat < 0.9 || !MH) return null;
+  const v = MH.vungXY.find((o) => Math.hypot(o.x - x, o.y - y) < o.r + 5);
+  return v ? v.ten : null;
+}
+
+function veCau(x, y, r, loi, vien, a) {  // quả cầu năng lượng: quầng + thân sáng dần vào tâm
+  const q = cx.createRadialGradient(x, y, r * 0.5, x, y, r * 3);
+  q.addColorStop(0, `rgba(${vien},${(0.5 * a).toFixed(3)})`);
+  q.addColorStop(1, `rgba(${vien},0)`);
+  cx.fillStyle = q;
+  cx.beginPath(); cx.arc(x, y, r * 3, 0, Math.PI * 2); cx.fill();
+  const g = cx.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.05, x, y, r);
+  g.addColorStop(0, `rgba(255,255,255,${a.toFixed(3)})`);
+  g.addColorStop(0.3, `rgba(${loi},${(0.9 * a).toFixed(3)})`);
+  g.addColorStop(1, `rgba(${vien},${(0.35 * a).toFixed(3)})`);
+  cx.fillStyle = g;
+  cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+  cx.strokeStyle = `rgba(${loi},${(0.8 * a).toFixed(3)})`;
+  cx.lineWidth = 1.2;
+  cx.stroke();
+}
+
+function veMat(tg, diem) {
+  if (!MH) MH = dungMoHinh();
+  const u = MAT.u, k = kMat, t = itMotion ? 0 : giay(), xong = k >= 1;
+  const phu = em(0.62, 1, k);            // kính, não, mắt, vòng HUD, các vùng: hiện khi đầu đã gần thành hình
+  // hai quả cầu Âm Dương: tách khỏi lõi, xoay đúng một vòng quanh nhau rồi dừng ngang, bay vào làm hai mắt
+  const tach = em(0.03, 0.3, k), vao = em(0.55, 0.93, k);
+  const tamY = CY + (MAT.oy - 0.05 * u - CY) * em(0.08, 0.5, k);
+  const gq = Math.PI * 2 * em(0.04, 0.56, k), d = 1.15 * u * tach;
+  const mT = chieuDiem(...MH.mat[0], 1), mP = chieuDiem(...MH.mat[1], 1);
+  let ax = CX - Math.cos(gq) * d, ay = tamY - Math.sin(gq) * d;
+  let bx = CX + Math.cos(gq) * d, by = tamY + Math.sin(gq) * d;
+  ax += (mT.x - ax) * vao; ay += (mT.y - ay) * vao;
+  bx += (mP.x - bx) * vao; by += (mP.y - by) * vao;
+  const L = Math.hypot(bx - ax, by - ay) || 1, px = -(by - ay) / L, py = (bx - ax) / L;
+  const viTriSoi = (c, s) => {            // điểm s (0 → 1) trên sợi năng lượng của đường c, nối Dương → Âm
+    const lech = Math.sin(Math.PI * s) * L * (c.a1 * Math.sin(6.283 * c.f1 * s + c.w1 * t + c.p1)
+      + c.a2 * Math.sin(6.283 * c.f2 * s - c.w2 * t + c.p2));
+    return [ax + (bx - ax) * s + px * lech, ay + (by - ay) * s + py * lech];
+  };
   cx.save();
-  cx.globalAlpha = eMat;
   cx.lineJoin = 'round';
   cx.lineCap = 'round';
-  // vòng HUD quanh đầu — hai cung nét đứt xoay ngược chiều nhau
-  const tam = chieuDau(0, -0.05);
-  [[1.55, 'rgba(230,196,106,.35)', 1], [1.72, 'rgba(95,180,255,.3)', -1]].forEach(([r, mau, chieu]) => {
-    cx.setLineDash([3, 9]);
-    cx.lineDashOffset = itMotion ? 0 : chieu * tg * 24;
-    cx.beginPath();
-    cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
-    cx.strokeStyle = mau;
-    cx.lineWidth = 1.4;
-    cx.stroke();
-  });
-  cx.setLineDash([]);
-  // nền mặt nạ mờ (hologram)
-  duongNet(NET.vien.d, true, chieuDau);
-  const nen = cx.createRadialGradient(tam.x, tam.y, u * 0.2, tam.x, tam.y, u * 1.3);
-  nen.addColorStop(0, 'rgba(30,70,140,.38)');
-  nen.addColorStop(1, 'rgba(12,30,62,.12)');
-  cx.fillStyle = nen;
-  cx.fill();
-  // khung lưới phát sáng
-  cx.shadowBlur = 10;
-  const net = (ten, mau, day, bong) => {
-    cx.shadowColor = bong;
-    duongNet(NET[ten].d, NET[ten].kin, chieuDau);
-    cx.strokeStyle = mau;
-    cx.lineWidth = day;
-    cx.stroke();
-  };
-  net('vien', 'rgba(230,196,106,.85)', 1.8, 'rgba(230,196,106,.7)');
-  net('mask', 'rgba(95,180,255,.7)', 1.3, 'rgba(95,180,255,.7)');
-  ['tran', 'goP', 'goT', 'thaiP', 'thaiT', 'mui', 'canhMui'].forEach((k) => net(k, 'rgba(230,196,106,.5)', 1.1, 'rgba(230,196,106,.5)'));
-  ['taiP', 'taiT'].forEach((k) => net(k, 'rgba(95,180,255,.55)', 1.6, 'rgba(95,180,255,.6)'));
-  // thân: cổ, vai, giáp ngực — đứng yên
-  cx.shadowColor = 'rgba(95,180,255,.5)';
-  THAN.forEach((d) => { duongNet(d, false, chieuThan); cx.strokeStyle = 'rgba(95,180,255,.45)'; cx.lineWidth = 1.3; cx.stroke(); });
-  // mắt: khe sáng xanh, chớp mắt, sáng hơn khi đang nói
-  const sang = MAT.mieng > 0 ? 1 : 0.85;
-  cx.shadowColor = 'rgba(120,220,255,.95)';
-  cx.shadowBlur = 18;
-  [MAT_P, guong(MAT_P)].forEach((m) => {
-    const tamY = m.reduce((s, [, y]) => s + y, 0) / m.length;
-    duongNet(m.map(([x, y]) => [x, tamY + (y - tamY) * MAT.chop]), true, chieuDau);
-    cx.fillStyle = `rgba(185,240,255,${sang})`;
-    cx.fill();
-  });
-  // miệng: môi trên cố định, môi dưới mở theo âm tiết; mở thì lòng miệng sáng
-  const m = MAT.mieng;
-  const moiTren = [[-0.3, 0.6], [-0.12, 0.57], [0, 0.58], [0.12, 0.57], [0.3, 0.6]];
-  const moiDuoi = [[0.3, 0.6], [0.14, 0.6 + m * 0.75], [0, 0.6 + m], [-0.14, 0.6 + m * 0.75], [-0.3, 0.6]];
-  if (m > 0.005) {
-    duongNet(moiTren.concat(moiDuoi), true, chieuDau);
-    cx.fillStyle = `rgba(150,225,255,${keo(m * 4, 0, 0.8)})`;
-    cx.fill();
+  const vien = new Path2D();
+  { const v = MH.vien, b = MH.vienB;
+    for (let i = 0; i < v.length / 3; i++) {
+      chieuVao(b, i * 2, v[i * 3], v[i * 3 + 1], v[i * 3 + 2], 1);
+      if (i) vien.lineTo(b[i * 2], b[i * 2 + 1]); else vien.moveTo(b[0], b[1]);
+    }
+    vien.closePath(); }
+  const tam = chieuDiem(0, -0.1, 0, 1);
+  if (phu > 0) {
+    // quầng xanh sau đầu, kính trong suốt, não bên trong
+    const q = cx.createRadialGradient(tam.x, tam.y, u * 0.3, tam.x, tam.y, u * 2.1);
+    q.addColorStop(0, `rgba(40,120,255,${(0.2 * phu).toFixed(3)})`);
+    q.addColorStop(1, 'rgba(40,120,255,0)');
+    cx.fillStyle = q;
+    cx.fillRect(tam.x - u * 2.2, tam.y - u * 2.2, u * 4.4, u * 4.4);
+    const g = cx.createRadialGradient(tam.x, tam.y - u * 0.2, u * 0.1, tam.x, tam.y, u * 1.3);
+    g.addColorStop(0, `rgba(90,180,255,${(0.13 * phu).toFixed(3)})`);
+    g.addColorStop(1, `rgba(30,90,200,${(0.05 * phu).toFixed(3)})`);
+    cx.fillStyle = g;
+    cx.fill(vien);
+    cx.globalCompositeOperation = 'lighter';
+    veNao(t, phu);
+    // vòng HUD — hai cung nét đứt xoay ngược chiều nhau
+    [[1.42, '95,180,255', 1], [1.55, '150,200,255', -1]].forEach(([r, mau, chieu]) => {
+      cx.setLineDash([3, 9]);
+      cx.lineDashOffset = itMotion ? 0 : chieu * tg * 24;
+      cx.beginPath();
+      cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
+      cx.strokeStyle = `rgba(${mau},${(0.3 * phu).toFixed(3)})`;
+      cx.lineWidth = 1.2;
+      cx.stroke();
+    });
+    cx.setLineDash([]);
+    veVung(phu, t, diem);
   }
-  cx.shadowBlur = 10;
-  cx.shadowColor = 'rgba(230,196,106,.6)';
-  [moiTren, moiDuoi].forEach((d) => { duongNet(d, false, chieuDau); cx.strokeStyle = 'rgba(230,196,106,.85)'; cx.lineWidth = 1.5; cx.stroke(); });
-  cx.shadowBlur = 0;
-  // vệt quét ngang mặt nạ — từ đỉnh xuống cằm, ~3 giây một lượt
-  if (!itMotion) {
-    const y = -1.2 + ((t * 0.33) % 1) * 2.4, nua = 0.98 * Math.sqrt(Math.max(0, 1 - (y / 1.25) ** 2));
-    const a = chieuDau(-nua, y), b = chieuDau(nua, y);
-    const g = cx.createLinearGradient(a.x, a.y, b.x, b.y);
-    g.addColorStop(0, 'rgba(120,220,255,0)'); g.addColorStop(0.5, 'rgba(120,220,255,.35)'); g.addColorStop(1, 'rgba(120,220,255,0)');
-    cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y);
-    cx.strokeStyle = g; cx.lineWidth = 1.5; cx.stroke();
+  // các đường vân: lúc chuyển cảnh còn là sợi năng lượng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
+  cx.globalCompositeOperation = 'lighter';
+  const soi = em(0.05, 0.25, k), mieng = MAT.mieng;
+  const bo = [[], [], [], [], []];
+  for (const m of MH.manh) {
+    const c = MH.cha[m.cha], mo = xong ? 1 : em(c.bd, c.bd + 0.24, k);
+    const al = soi * 0.55 * (1 - mo) + m.sang * mo;
+    if (al < 0.01) continue;
+    const dd = m.d, b = m.b, n = dd.length / 5;
+    for (let i = 0; i < n; i++) {
+      const o = i * 5, x = dd[o];
+      let y = dd[o + 1];
+      // nhép miệng: môi dưới và cằm hạ xuống
+      if (mieng > 0 && m.laDau && y > 0.725 && x > -0.8 && x < 0.8) y += mieng * 0.9 * em(0.725, 0.79, y) * (1 - em(0.3, 0.8, Math.abs(x)));
+      if (m.mi) y *= MAT.chop;                // chớp mắt: hai mí khép về giữa mắt (y = 0)
+      chieuVao(b, i * 2, x, y, dd[o + 2], dd[o + 4]);
+      if (mo < 1) {
+        const [sx, sy] = viTriSoi(c, dd[o + 3]);
+        b[i * 2] = sx + (b[i * 2] - sx) * mo;
+        b[i * 2 + 1] = sy + (b[i * 2 + 1] - sy) * mo;
+      }
+    }
+    if (xong) { bo[Math.min(4, Math.floor(m.sang * 5.5))].push(m); continue; }
+    const [r0, g0, b0] = c.mau;
+    const mau = `${Math.round(r0 + (130 - r0) * mo)},${Math.round(g0 + (215 - g0) * mo)},${Math.round(b0 + (255 - b0) * mo)}`;
+    cx.beginPath();
+    cx.moveTo(b[0], b[1]);
+    for (let i = 1; i < n; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+    cx.strokeStyle = `rgba(${mau},${(al * 0.22).toFixed(3)})`;
+    cx.lineWidth = 3;
+    cx.stroke();
+    cx.strokeStyle = `rgba(${mau},${al.toFixed(3)})`;
+    cx.lineWidth = 1;
+    cx.stroke();
+  }
+  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một lớp nét mảnh (nhẹ máy)
+  bo.forEach((ds, i) => {
+    if (!ds.length) return;
+    const al = (i + 0.5) / 5.5;
+    cx.beginPath();
+    ds.forEach((m) => {
+      const b = m.b;
+      cx.moveTo(b[0], b[1]);
+      for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
+    });
+    cx.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
+    cx.lineWidth = 1;
+    cx.stroke();
+  });
+  // hạt sáng trôi dọc các sợi
+  if (soi > 0 && !xong) {
+    cx.fillStyle = '#E8F4FF';
+    for (const p of MH.hat) {
+      const c = MH.cha[p.cha], a = soi * (1 - em(c.bd, c.bd + 0.24, k));
+      if (a < 0.02) continue;
+      const [x, y] = viTriSoi(c, ((p.s0 + p.v * t) % 1 + 1) % 1);
+      cx.globalAlpha = a;
+      cx.beginPath(); cx.arc(x, y, p.r, 0, Math.PI * 2); cx.fill();
+    }
+    cx.globalAlpha = 1;
+  }
+  if (phu > 0) {
+    // vệt quét từ đỉnh đầu xuống cằm, ~3,5 giây một lượt
+    if (!itMotion) {
+      const yq = chieuDiem(0, -1.35 + ((t * 0.28) % 1) * 2.6, 0.9, 1).y;
+      const g = cx.createLinearGradient(0, yq - u * 0.1, 0, yq + u * 0.1);
+      g.addColorStop(0, 'rgba(120,220,255,0)');
+      g.addColorStop(0.5, `rgba(120,220,255,${(0.16 * phu).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(120,220,255,0)');
+      cx.save();
+      cx.clip(vien);
+      cx.fillStyle = g;
+      cx.fillRect(tam.x - u * 1.4, yq - u * 0.1, u * 2.8, u * 0.2);
+      cx.restore();
+    }
+    // miệng: lòng miệng sáng lên khi mở
+    if (mieng > 0.005) {
+      cx.beginPath();
+      for (let i = 0; i <= 12; i++) {
+        const x = -0.22 + 0.44 * i / 12, q = chieuDiem(x, 0.725, doSau(x, 0.725), 1);
+        if (i) cx.lineTo(q.x, q.y); else cx.moveTo(q.x, q.y);
+      }
+      for (let i = 12; i >= 0; i--) {
+        const x = -0.22 + 0.44 * i / 12, y = 0.725 + mieng * 0.6 * (1 - (x / 0.22) ** 2);
+        const q = chieuDiem(x, y, doSau(x, y), 1);
+        cx.lineTo(q.x, q.y);
+      }
+      cx.fillStyle = `rgba(120,200,255,${(keo(mieng * 2, 0, 0.3) * phu).toFixed(3)})`;
+      cx.fill();
+    }
+    // mắt: lõi trắng, quầng xanh, vệt loé ngang; chớp mắt; đang nói thì sáng hơn
+    const sang = phu * (mieng > 0 ? 1 : 0.88);
+    [mT, mP].forEach((p) => {
+      const r = u * 0.2;
+      cx.save();
+      cx.translate(p.x, p.y);
+      cx.scale(1, Math.max(0.1, MAT.chop));
+      const g = cx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, `rgba(255,255,255,${sang.toFixed(3)})`);
+      g.addColorStop(0.1, `rgba(200,240,255,${(0.95 * sang).toFixed(3)})`);
+      g.addColorStop(0.3, `rgba(90,190,255,${(0.4 * sang).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(60,140,255,0)');
+      cx.fillStyle = g;
+      cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.fill();
+      cx.restore();
+      const fl = cx.createLinearGradient(p.x - u * 0.5, 0, p.x + u * 0.5, 0);
+      fl.addColorStop(0, 'rgba(150,220,255,0)');
+      fl.addColorStop(0.5, `rgba(220,245,255,${(0.55 * sang * MAT.chop).toFixed(3)})`);
+      fl.addColorStop(1, 'rgba(150,220,255,0)');
+      cx.fillStyle = fl;
+      cx.fillRect(p.x - u * 0.5, p.y - 0.8, u, 1.6);
+    });
+  }
+  // hai quả cầu: Dương vàng (trái — phía Đông), Âm xanh tím (phải); nhỏ dần khi bay vào làm mắt
+  const aCau = em(0.02, 0.14, k) * (1 - em(0.84, 0.98, k));
+  if (aCau > 0.01) {
+    const r = u * (0.05 + 0.15 * tach) * (1 - 0.65 * vao);
+    veCau(ax, ay, r, '255,226,150', '240,170,60', aCau);
+    veCau(bx, by, r, '160,175,255', '110,90,255', aCau);
   }
   cx.restore();
 }
@@ -959,14 +1460,18 @@ cv.addEventListener('mousemove', (e) => {
   const b = cv.getBoundingClientRect();
   const mx = e.clientX - b.left, my = e.clientY - b.top;
   chuot = { x: mx, y: my };
-  hoverLoi = Math.hypot(mx - LX, my - LY) < (hoverLoi ? rkHienTai + 6 : banKinhLoi() + 4);
-  hover = hoverLoi ? null : timGan(mx, my);
-  cv.style.cursor = hover ? 'pointer' : hoverLoi ? 'help' : 'default';
+  hoverVung = timVung(mx, my);
+  hoverLoi = !hoverVung && Math.hypot(mx - LX, my - LY) < (hoverLoi ? rkHienTai + 6 : banKinhLoi() + 4);
+  hover = hoverLoi || hoverVung ? null : timGan(mx, my);
+  cv.style.cursor = hover || hoverVung ? 'pointer' : hoverLoi ? 'help' : 'default';
 });
-cv.addEventListener('mouseleave', () => { hover = null; hoverLoi = false; chuot = null; });
+cv.addEventListener('mouseleave', () => { hover = null; hoverLoi = false; hoverVung = null; chuot = null; });
 cv.addEventListener('click', (e) => {
   const b = cv.getBoundingClientRect();
-  const nd = timGan(e.clientX - b.left, e.clientY - b.top);
+  const x = e.clientX - b.left, y = e.clientY - b.top;
+  const v = timVung(x, y);                 // mặt A.I, bấm vòng một vùng: đọc tên vùng + số ghi chú, đường nối sáng lên
+  if (v) { nhayVung = { ten: v, t0: giay() }; noi(`Vùng ${v}: ${vungSo[v] ?? 0} ghi chú.`); return; }
+  const nd = timGan(x, y);
   if (nd) { moChiTiet(nd.note.id); noi(nd.note.title); }   // mặt A.I: đọc tên ghi chú vừa bấm
 });
 
@@ -1069,7 +1574,7 @@ cv.addEventListener('pointerup', (e) => {
     if (!dup) datMat(!matDich);
     return;
   }
-  if (timGan(x, y)) return;                // lên một chấm: là mở ghi chú, không phóng to / bật tắt tên
+  if (timGan(x, y) || timVung(x, y)) return;   // lên một chấm / một vòng vùng: không phóng to, không bật tắt tên
   clearTimeout(henMotLan);
   if (dup) { datTapTrung(!tapTrung); return; }
   // toàn màn hình, nhấp 1 lần vào chỗ trống: bật/tắt tên — chờ một nhịp để phân biệt với nhấp đúp

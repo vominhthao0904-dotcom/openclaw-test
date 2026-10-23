@@ -340,7 +340,7 @@ function ve() {
   cx.globalAlpha = 1;
   capNhatMat(tg);
 
-  // vòng quỹ đạo — mỗi nhóm một màu riêng (tắt dần khi hai quả cầu Âm Dương tách ra)
+  // vòng quỹ đạo — mỗi nhóm một màu riêng (tắt dần khi hai luồng Âm Dương tuôn ra)
   cx.globalAlpha = anQD;
   const soVong = anQD > 0.003 ? vongMau.length : 0;
   const tenVong = [];
@@ -523,14 +523,14 @@ function ve() {
 }
 
 /* ---------------- Chế độ MẶT A.I — nút ẩn: bấm lõi Bát Quái (hoặc phím M) ----------------
-   Chuyển cảnh: Thái Cực tách ra hai quả cầu Dương (vàng) và Âm (xanh tím) xoay quanh nhau, nối bằng hàng chục sợi năng lượng
-   đan xen; các sợi gỡ dần thành đường vân của một cái đầu A.I trong suốt, hai quả cầu bay vào làm hai mắt, lõi Bát Quái xuống
+   Chuyển cảnh: từ lõi tuôn ra hai luồng Dương (vàng kim) – Âm (xanh lam) xoáy đan nhau như Thái Cực, vòng Tiên Thiên Bát Quái
+   sáng dần theo chiều khí; rồi hai luồng gỡ thành đường vân của một cái đầu A.I trong suốt, đầu luồng bay vào làm mắt, lõi Bát Quái xuống
    ngực. Thoát thì chạy ngược lại. Đầu vẽ bằng các đường vân dài, liền, cách đều (đường dòng) chạy theo khối của một mô hình 3D —
    vòng quanh mắt, mũi, môi, tai, dọc má, ngang trán; cổ thành vòng ngang chảy xuống vai. Trong hộp sọ là bộ não phát sáng: mỗi ghi chú là một nơ-ron mang màu
    vùng, mỗi vùng là một vòng tròn quanh đầu nối mạng vào não. Đầu quay nhìn theo con trỏ, chớp mắt, nhép miệng khi "Mây nói".
    Toạ độ mô hình: đơn vị = bán kính đầu, gốc ở tâm đầu, x sang phải, y xuống dưới, z hướng về người xem. */
 let matDich = 0, kMat = 0, eMat = 0;     // đích (0/1), tiến độ chuyển cảnh, tiến độ đã làm mượt
-let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai quả cầu tách ra)
+let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai luồng Âm Dương tuôn ra)
 let LX = 0, LY = 0;                      // vị trí lõi Bát Quái: giữa đồ thị, hoặc trên ngực khi là mặt A.I
 let dtKhung = 16.7, chuot = null, loiNoi = null;
 const MAT = { yaw: 0, pitch: 0, u: 1, oy: 0, mieng: 0, chop: 1, henChop: 2.5, batDauChop: -9 };
@@ -781,18 +781,21 @@ let MH = null;
 function dungMoHinh() {
   let h = 20261024;
   const ngau = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
-  const MAU_SOI = [[120, 220, 255], [215, 232, 255], [176, 140, 255]];
-  // 120 sợi năng lượng lúc chuyển cảnh; mỗi đường vân gắn vào một sợi theo thứ tự hiện (viền đầu trước, chóp mũi sau, rồi cổ,
-  // vai) — bd = lúc sợi bắt đầu gỡ thành đường vân. Vẽ theo sợi: mỗi sợi một nét, đỡ nặng máy.
+  // 120 sợi mảnh chia đều cho 2 luồng: sợi chẵn thuộc luồng Dương (vàng kim), sợi lẻ thuộc luồng Âm (xanh lam) — mỗi luồng là
+  // một bó sợi. Mỗi đường vân gắn vào một sợi theo thứ tự hiện (viền đầu trước, chóp mũi sau, rồi cổ, vai);
+  // bd = lúc sợi bắt đầu gỡ thành đường vân. Vẽ theo sợi: mỗi sợi một nét, đỡ nặng máy.
   const SO_SOI = 120;
-  const cha = Array.from({ length: SO_SOI }, (_, c) => ({ bd: 0.44 + 0.3 * c / SO_SOI, a1: 0.05 + 0.2 * ngau(),
-    f1: 0.5 + 1.1 * ngau(), w1: 1.2 + 2 * ngau(), p1: ngau() * 6.28, a2: 0.03 + 0.1 * ngau(), f2: 1 + 1.5 * ngau(),
-    w2: 1 + 2 * ngau(), p2: ngau() * 6.28, mau: MAU_SOI[c % 3] }));
+  const cha = Array.from({ length: SO_SOI }, (_, c) => ({ bd: 0.5 + 0.26 * c / SO_SOI, j: c % 2,
+    lech: (ngau() - 0.5) * 0.12, f1: 1 + 2 * ngau(), w1: 1.5 + 2 * ngau(), p1: ngau() * 6.28,
+    mau: c % 2 ? [90, 150, 255] : [242, 206, 107] }));
   const manh = [];
   const soiTheo = (thuTu) => Math.min(SO_SOI - 1, Math.max(0, Math.floor((thuTu + (ngau() - 0.5) * 0.08) * SO_SOI)));
   const themDuong = (d, thuTu, sang, laDau, mi, buoc = 0.012) => {
-    const { d: ds } = chiaDeu(d, buoc);
+    const { d: ds, tong } = chiaDeu(d, buoc);
     const c = soiTheo(thuTu);
+    // lúc chuyển cảnh đường này nằm trên một đoạn của luồng dài tương ứng độ dài của nó (đường ngắn trải hết luồng thì thành
+    // các nét thẳng cắt ngang luồng)
+    const span = Math.min(1, tong / 4), s0 = ngau() * (1 - span);
     // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn một chút để thấy não
     let ht = null, lop = -1;
     ds.forEach(([x, y, s]) => {
@@ -800,7 +803,7 @@ function dungMoHinh() {
       const l = laDau ? Math.round(3 * em(-0.6, -0.1, y)) : 3;
       if (l !== lop) {
         if (ht) ht.pts.push([x, y, z, s]);
-        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.55 + 0.45 * l / 3) };
+        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.55 + 0.45 * l / 3), s0, span };
         manh.push(ht);
         lop = l;
       }
@@ -811,7 +814,30 @@ function dungMoHinh() {
      mũi, môi, tai; dọc má; ngang trán), cách nhau đều ~0,034 bán kính đầu; đường dài, liền, chỗ hai dòng gặp nhau thì
      đường dừng gọn — ra chất vân tay / mê cung liền mạch, không đứt vụn. */
   const vDau = luoi(doSau, -1.14, -1.36, 1.14, 1.2, 0.01);
-  duongDong((x, y) => vDau(x, y) > 0.004, tiepTuyen(vDau, 0.012), 0.034, 0.007, [-1.14, -1.36, 1.14, 1.2],
+  // Chất MÊ CUNG như ảnh mẫu: từng mảng xen kẽ (theo một trường sóng chậm) vân rẽ vuông góc — đường vẫn liền, cách đều, chỉ có
+  // góc rẽ vuông và đầu cụt như đường mạch. Quanh mắt giữ vòng tròn, cổ giữ vòng ngang. Chóp mũi đi dọc, môi và cằm đi ngang
+  // (trộn dần vào hướng đồng mức) để không thành các vòng tròn đồng tâm như bia bắn.
+  const songMC = Array.from({ length: 4 }, () => { const a = ngau() * Math.PI * 2; return [Math.cos(a) * 19, Math.sin(a) * 19, ngau() * 6.28]; });
+  const meCung = (x, y) => songMC.reduce((t, [kx, ky, ph]) => t + Math.sin(kx * x + ky * y + ph), 0) / Math.SQRT2;
+  const reVuong = (huong, duocRe) => (x, y) => {
+    const [hx, hy] = huong(x, y);
+    return duocRe(x, y) && meCung(x, y) > 0.5 ? [-hy, hx] : [hx, hy];
+  };
+  const tron = (h, gx, gy, w) => {         // trộn hướng h với hướng dẫn (gx, gy) theo trọng số w — hướng không dấu nên lật cho cùng chiều
+    if (h[0] * gx + h[1] * gy < 0) { gx = -gx; gy = -gy; }
+    const x = h[0] * (1 - w) + gx * w, y = h[1] * (1 - w) + gy * w, l = Math.hypot(x, y) || 1;
+    return [x / l, y / l];
+  };
+  const dongMucDau = tiepTuyen(vDau, 0.012);
+  const huongDau = (x, y) => {
+    const ax = Math.abs(x);
+    let h = dongMucDau(x, y);
+    h = tron(h, 0, 1, 0.85 * g2(ax, y, 0, 0.36, 0.11, 0.12));                  // chóp mũi: dọc
+    h = tron(h, 1, 0, 0.85 * Math.max(g2(ax, y, 0, 0.76, 0.2, 0.09), g2(ax, y, 0, 0.98, 0.18, 0.08)));   // môi, cằm: ngang
+    return h;
+  };
+  const ngoaiMat = (x, y) => g2(Math.abs(x), y, 0.34, 0.02, 0.22, 0.15) < 0.35;
+  duongDong((x, y) => vDau(x, y) > 0.004, reVuong(huongDau, ngoaiMat), 0.034, 0.007, [-1.14, -1.36, 1.14, 1.2],
     [[0, -0.6], [0.4, 0.45], [-0.4, 0.45], [0.95, 0.12], [-0.95, 0.12]]).forEach((d) => {
     const zt = d.reduce((t, [x, y]) => t + Math.max(0, vDau(x, y)), 0) / d.length;
     themDuong(d, 0.62 * Math.min(1, zt), 0.64, true);
@@ -831,7 +857,7 @@ function dungMoHinh() {
   const vThan = luoi((x, y) => 0.7 * y - doSauThan(x, y), -2.0, 0.55, 2.0, 3.0, 0.012);
   const mThan = luoi((x, y) => (y > 0.6 && Math.abs(x) < noiSuy(RONG_THAN, y) - 0.012 && doSau(x, y) <= -0.002 ? 1 : 0),
     -2.0, 0.55, 2.0, 3.0, 0.012);
-  duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
+  duongDong((x, y) => mThan(x, y) > 0.5, reVuong(tiepTuyen(vThan, 0.015), (x, y) => y > 1.55), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
     [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5]]).forEach((d) => {
     const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
     themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
@@ -901,8 +927,8 @@ function viTriNao(nd) {
 }
 
 function capNhatMat(tg) {
-  // vào ~2,6 giây (đủ thấy hai luồng âm dương), ra ~1,5 giây
-  const buoc = itMotion ? 1 : dtKhung / 1000 / (matDich ? 2.6 : 1.5);
+  // vào ~3,2 giây (đủ thấy hai luồng Âm Dương và vòng Tiên Thiên), ra ~1,6 giây
+  const buoc = itMotion ? 1 : dtKhung / 1000 / (matDich ? 3.2 : 1.6);
   kMat = matDich ? Math.min(1, kMat + buoc) : Math.max(0, kMat - buoc);
   eMat = em(0, 1, kMat);
   anQD = 1 - em(0, 0.3, kMat);
@@ -1355,42 +1381,72 @@ function timVung(x, y) {
   return v ? v.ten : null;
 }
 
-function veCau(x, y, r, loi, vien, a) {  // quả cầu năng lượng: quầng + thân sáng dần vào tâm
-  const q = cx.createRadialGradient(x, y, r * 0.5, x, y, r * 3);
-  q.addColorStop(0, `rgba(${vien},${(0.5 * a).toFixed(3)})`);
-  q.addColorStop(1, `rgba(${vien},0)`);
-  cx.fillStyle = q;
-  cx.beginPath(); cx.arc(x, y, r * 3, 0, Math.PI * 2); cx.fill();
-  const g = cx.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.05, x, y, r);
-  g.addColorStop(0, `rgba(255,255,255,${a.toFixed(3)})`);
-  g.addColorStop(0.3, `rgba(${loi},${(0.9 * a).toFixed(3)})`);
-  g.addColorStop(1, `rgba(${vien},${(0.35 * a).toFixed(3)})`);
-  cx.fillStyle = g;
-  cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
-  cx.strokeStyle = `rgba(${loi},${(0.8 * a).toFixed(3)})`;
-  cx.lineWidth = 1.2;
+/* Vòng Tiên Thiên Bát Quái lúc chuyển cảnh: 8 quẻ đúng phương vị (Càn trên, Khôn dưới, Ly trái, Khảm phải), hào sơ sát tâm;
+   hào dương (liền) vàng kim, hào âm (đứt) xanh lam. Quẻ sáng dần theo chiều khí Tiên Thiên — Chấn → Ly → Đoài → Càn (dương
+   trưởng), Tốn → Khảm → Cấn → Khôn (âm trưởng), theo kim đồng hồ — có đốm khí chạy trước. quet: số độ đã quét từ Chấn. */
+function veTienThien(tx, ty, R, a, quet) {
+  const u = MAT.u, hl = 0.13 * u, gap = 0.075 * u, day = Math.max(2.4, 0.034 * u);
+  cx.setLineDash([2, 7]);
+  cx.beginPath(); cx.arc(tx, ty, R, 0, Math.PI * 2);
+  cx.strokeStyle = `rgba(150,190,255,${(0.22 * a).toFixed(3)})`;
+  cx.lineWidth = 1;
   cx.stroke();
+  cx.setLineDash([]);
+  cx.font = `500 ${Math.round(keo(u * 0.085, 10, 13))}px "Be Vietnam Pro",sans-serif`;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  for (const [ten, hao, gocDo] of BAT_QUAI) {
+    const tuChan = ((gocDo - 135) % 360 + 360) % 360;    // quẻ này cách Chấn bao nhiêu độ theo chiều khí
+    const hien = a * em(tuChan - 10, tuChan + 25, quet);
+    if (hien < 0.01) continue;
+    const g = gocDo * Math.PI / 180, nx = Math.cos(g), ny = Math.sin(g), qx = -ny, qy = nx;
+    const px = tx + nx * R, py = ty + ny * R;
+    hao.forEach((duong, i) => {
+      const d = (i - 1) * gap, ox = px + nx * d, oy = py + ny * d;
+      const mau = duong ? '242,206,107' : '90,150,255';
+      const doan = duong ? [[-hl, hl]] : [[-hl, -0.22 * hl], [0.22 * hl, hl]];
+      for (const [w, al] of [[day * 2.6, 0.18], [day, 0.95]]) {
+        cx.beginPath();
+        for (const [s0, s1] of doan) { cx.moveTo(ox + qx * s0, oy + qy * s0); cx.lineTo(ox + qx * s1, oy + qy * s1); }
+        cx.strokeStyle = `rgba(${mau},${(al * hien).toFixed(3)})`;
+        cx.lineWidth = w;
+        cx.stroke();
+      }
+    });
+    cx.fillStyle = `rgba(225,236,252,${(0.75 * hien).toFixed(3)})`;
+    cx.fillText(ten, tx + nx * (R + 0.27 * u), ty + ny * (R + 0.27 * u));
+  }
+  if (quet > 0 && quet < 360) {                          // đốm khí: vàng ở nửa dương trưởng, lam ở nửa âm trưởng
+    const g = (135 + quet) * Math.PI / 180, { mau } = khiTai(g);
+    const x = tx + Math.cos(g) * R, y = ty + Math.sin(g) * R;
+    const q = cx.createRadialGradient(x, y, 0, x, y, 0.16 * u);
+    q.addColorStop(0, `rgba(255,255,255,${a.toFixed(3)})`);
+    q.addColorStop(0.3, `rgba(${mau},${(0.8 * a).toFixed(3)})`);
+    q.addColorStop(1, `rgba(${mau},0)`);
+    cx.fillStyle = q;
+    cx.beginPath(); cx.arc(x, y, 0.16 * u, 0, Math.PI * 2); cx.fill();
+  }
 }
 
 function veMat(tg, diem) {
   if (!MH) MH = dungMoHinh();
   const u = MAT.u, k = kMat, t = itMotion ? 0 : giay(), xong = k >= 1;
   const phu = em(0.62, 1, k);            // kính, não, mắt, vòng HUD, các vùng: hiện khi đầu đã gần thành hình
-  // hai quả cầu Âm Dương: tách khỏi lõi, xoay đúng một vòng quanh nhau rồi dừng ngang, bay vào làm hai mắt
-  const tach = em(0.03, 0.3, k), vao = em(0.55, 0.93, k);
-  const tamY = CY + (MAT.oy - 0.05 * u - CY) * em(0.08, 0.5, k);
-  const gq = Math.PI * 2 * em(0.04, 0.56, k), d = 1.15 * u * tach;
+  // Hai luồng Âm Dương từ lõi Bát Quái: Dương vàng kim, Âm xanh lam — hai cánh xoắn ốc như Thái Cực, vừa xoáy vừa nhấp nhô
+  // ngược pha nên cắt đan qua nhau; mỗi luồng là một bó sợi mảnh. Rồi các sợi gỡ thành đường vân của đầu, đầu luồng bay vào
+  // làm hai mắt. Thoát thì chạy ngược lại.
+  const no = em(0.03, 0.35, k), vao = em(0.55, 0.93, k), R = 1.3 * u * no;
+  const tx0 = CX, ty0 = CY + (MAT.oy - 0.05 * u - CY) * em(0.08, 0.5, k);
+  const xoay = (itMotion ? 0 : t * 1.6) + Math.PI * 2 * em(0.04, 0.6, k);
   const mT = chieuDiem(...MH.mat[0], 1), mP = chieuDiem(...MH.mat[1], 1);
-  let ax = CX - Math.cos(gq) * d, ay = tamY - Math.sin(gq) * d;
-  let bx = CX + Math.cos(gq) * d, by = tamY + Math.sin(gq) * d;
-  ax += (mT.x - ax) * vao; ay += (mT.y - ay) * vao;
-  bx += (mP.x - bx) * vao; by += (mP.y - by) * vao;
-  const L = Math.hypot(bx - ax, by - ay) || 1, px = -(by - ay) / L, py = (bx - ax) / L;
-  const viTriSoi = (c, s) => {            // điểm s (0 → 1) trên sợi năng lượng của đường c, nối Dương → Âm
-    const lech = Math.sin(Math.PI * s) * L * (c.a1 * Math.sin(6.283 * c.f1 * s + c.w1 * t + c.p1)
-      + c.a2 * Math.sin(6.283 * c.f2 * s - c.w2 * t + c.p2));
-    return [ax + (bx - ax) * s + px * lech, ay + (by - ay) * s + py * lech];
+  const luong = (j, s, lech) => {          // điểm s (0 tâm → 1 đầu luồng) của luồng j (0 Dương, 1 Âm), lệch khỏi trục luồng
+    const g = xoay + j * Math.PI + Math.PI * 2 * 1.15 * s;
+    const r = R * (0.1 + 0.9 * s) * (1 + 0.14 * Math.sin(6 * Math.PI * s + t * 3 + j * Math.PI)) + lech * u;
+    let x = tx0 + Math.cos(g) * r, y = ty0 + Math.sin(g) * r * 0.92;
+    if (vao > 0) { const m = j ? mP : mT, w = vao * (0.35 + 0.65 * s); x += (m.x - x) * w; y += (m.y - y) * w; }
+    return [x, y];
   };
+  const viTriSoi = (c, s) => luong(c.j, s, c.lech * Math.sin(c.f1 * 6.283 * s + c.w1 * t + c.p1));
   cx.save();
   cx.lineJoin = 'round';
   cx.lineCap = 'round';
@@ -1429,13 +1485,35 @@ function veMat(tg, diem) {
     cx.setLineDash([]);
     veVung(phu, t, diem);
   }
-  // các đường vân: lúc chuyển cảnh còn là sợi năng lượng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
+  // vòng Tiên Thiên Bát Quái quanh luồng xoáy, rồi thân hai luồng (dải sáng dọc trục) — chỉ lúc chuyển cảnh
   cx.globalCompositeOperation = 'lighter';
   const soi = em(0.05, 0.25, k), mieng = MAT.mieng;
+  const aTT = em(0.12, 0.3, k) * (1 - em(0.6, 0.85, k));
+  if (aTT > 0.01) veTienThien(tx0, ty0, 1.75 * u * em(0.05, 0.3, k), aTT, 360 * em(0.14, 0.52, k));
+  const aL = soi * (1 - em(0.55, 0.85, k));
+  if (aL > 0.01) {
+    for (const j of [0, 1]) {
+      const mau = j ? '90,150,255' : '242,206,107';
+      cx.beginPath();
+      for (let i = 0; i <= 90; i++) { const [x, y] = luong(j, i / 90, 0); if (i) cx.lineTo(x, y); else cx.moveTo(x, y); }
+      for (const [w, al] of [[16, 0.12], [7, 0.3], [2.2, 0.9]]) {
+        cx.strokeStyle = `rgba(${mau},${(al * aL).toFixed(3)})`;
+        cx.lineWidth = w;
+        cx.stroke();
+      }
+      const [x, y] = luong(j, 1, 0), q = cx.createRadialGradient(x, y, 0, x, y, 0.12 * u);   // đầu luồng sáng
+      q.addColorStop(0, `rgba(255,255,255,${aL.toFixed(3)})`);
+      q.addColorStop(0.35, `rgba(${mau},${(0.7 * aL).toFixed(3)})`);
+      q.addColorStop(1, `rgba(${mau},0)`);
+      cx.fillStyle = q;
+      cx.beginPath(); cx.arc(x, y, 0.12 * u, 0, Math.PI * 2); cx.fill();
+    }
+  }
+  // các đường vân: lúc chuyển cảnh còn là sợi trong hai luồng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
   const bo = [[], [], [], [], []];
   MH.cha.forEach((c, ci) => {
     const ds = MH.theoCha[ci], mo = xong ? 1 : em(c.bd, c.bd + 0.24, k);
-    const al = soi * 0.55 * (1 - mo) + c.sang * mo;
+    const al = soi * 0.45 * (1 - mo) + c.sang * mo;
     if (!ds.length || al < 0.01) return;
     for (const m of ds) {
       const dd = m.d, b = m.b, n = dd.length / 5;
@@ -1447,7 +1525,7 @@ function veMat(tg, diem) {
         if (m.mi) y *= MAT.chop;                // chớp mắt: hai mí khép về giữa mắt (y = 0)
         chieuVao(b, i * 2, x, y, dd[o + 2], dd[o + 4]);
         if (mo < 1) {
-          const [sx, sy] = viTriSoi(c, dd[o + 3]);
+          const [sx, sy] = viTriSoi(c, m.s0 + dd[o + 3] * m.span);
           b[i * 2] = sx + (b[i * 2] - sx) * mo;
           b[i * 2 + 1] = sy + (b[i * 2 + 1] - sy) * mo;
         }
@@ -1455,7 +1533,9 @@ function veMat(tg, diem) {
       if (xong) bo[Math.min(4, Math.floor(m.sang * 5.5))].push(m);
     }
     if (xong) return;
-    // còn đang chuyển cảnh: cả sợi một nét (mọi mảnh của sợi cùng màu, cùng độ gỡ)
+    // còn đang chuyển cảnh: cả sợi một nét (mọi mảnh của sợi cùng màu, cùng độ gỡ). Còn trong luồng thì vẽ thường (không
+    // cộng sáng) — 60 sợi chồng nhau cộng sáng thành trắng xoá, mất màu vàng kim / xanh lam
+    cx.globalCompositeOperation = mo < 0.5 ? 'source-over' : 'lighter';
     const [r0, g0, b0] = c.mau;
     const mau = `${Math.round(r0 + (130 - r0) * mo)},${Math.round(g0 + (215 - g0) * mo)},${Math.round(b0 + (255 - b0) * mo)}`;
     cx.beginPath();
@@ -1471,6 +1551,7 @@ function veMat(tg, diem) {
     cx.lineWidth = 1;
     cx.stroke();
   });
+  cx.globalCompositeOperation = 'lighter';
   // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một lớp nét mảnh (nhẹ máy)
   bo.forEach((ds, i) => {
     if (!ds.length) return;
@@ -1485,9 +1566,9 @@ function veMat(tg, diem) {
     cx.lineWidth = 1;
     cx.stroke();
   });
-  // hạt sáng trôi dọc các sợi
+  // hạt sáng trôi dọc hai luồng
   if (soi > 0 && !xong) {
-    cx.fillStyle = '#E8F4FF';
+    cx.fillStyle = '#FFF6DA';
     for (const p of MH.hat) {
       const c = MH.cha[p.cha], a = soi * (1 - em(c.bd, c.bd + 0.24, k));
       if (a < 0.02) continue;
@@ -1548,13 +1629,6 @@ function veMat(tg, diem) {
       cx.fillStyle = fl;
       cx.fillRect(p.x - u * 0.5, p.y - 0.8, u, 1.6);
     });
-  }
-  // hai quả cầu: Dương vàng (trái — phía Đông), Âm xanh tím (phải); nhỏ dần khi bay vào làm mắt
-  const aCau = em(0.02, 0.14, k) * (1 - em(0.84, 0.98, k));
-  if (aCau > 0.01) {
-    const r = u * (0.05 + 0.15 * tach) * (1 - 0.65 * vao);
-    veCau(ax, ay, r, '255,226,150', '240,170,60', aCau);
-    veCau(bx, by, r, '160,175,255', '110,90,255', aCau);
   }
   cx.restore();
 }

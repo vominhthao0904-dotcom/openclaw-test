@@ -344,6 +344,18 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   Giới hạn thân yêu cầu nâng 4 → 8 MB (file ~4 MB gửi dạng base64). Thử file hướng dẫn thật: Word → 16 ghi chú theo tiêu đề,
   PDF 27 trang → 27 ghi chú. Thêm 4 test brain (Word tách mục, giữ gạch đầu dòng, Word hỏng báo rõ, PDF tách trang) và 3 test web.
 
+- **Vẫn chưa đạt so với ảnh mẫu** (anh gửi lại ảnh): vân đường dòng liền nhưng tròn đều như bản đồ địa hình, chóp mũi / môi /
+  cằm thành vòng tròn đồng tâm như bia bắn. Thêm **chất mê cung**: từng mảng xen kẽ (theo một trường sóng chậm) vân rẽ vuông góc —
+  đường vẫn liền, cách đều, có góc rẽ vuông và đầu cụt như đường mạch; quanh mắt giữ vòng, cổ giữ vòng ngang; chóp mũi đi dọc,
+  môi và cằm đi ngang.
+- **Mục 8 — chuyển cảnh chỉ còn 2 luồng Âm Dương** (anh yêu cầu): bỏ hai quả cầu và các sợi nhiều màu. Từ lõi tuôn ra luồng Dương
+  vàng kim và luồng Âm xanh lam — hai cánh xoắn ốc như Thái Cực, nhấp nhô ngược pha nên cắt đan qua nhau; mỗi luồng là một bó
+  60 sợi mảnh (mỗi đường vân của đầu nằm trên một đoạn luồng dài tương ứng — trải hết luồng thì thành nét thẳng cắt ngang).
+  Vẽ sợi thường, không cộng sáng (60 sợi cộng sáng thành trắng xoá, mất màu). **Hiệu ứng Tiên Thiên**: vòng 8 quẻ đúng phương vị,
+  hào sơ sát tâm, hào dương vàng / hào âm lam, sáng lần lượt theo chiều khí Tiên Thiên (Chấn → Ly → Đoài → Càn → Tốn → Khảm →
+  Cấn → Khôn, theo kim đồng hồ) với đốm khí chạy trước (vàng nửa dương trưởng, lam nửa âm trưởng). Rồi sợi gỡ thành đường vân,
+  đầu hai luồng bay vào làm mắt, vòng quẻ mờ đi. Vào ~3,2 giây, ra ~1,6 giây chạy ngược.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

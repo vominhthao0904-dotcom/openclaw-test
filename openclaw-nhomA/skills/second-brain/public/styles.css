@@ -177,7 +177,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .empty[hidden],.sheet[hidden]{display:none}
 /* chú giải nhóm — bấm để chỉ làm nổi một vòng */
 .duoi{
-  position:absolute;left:20px;bottom:16px;right:290px;
+  position:absolute;left:20px;bottom:16px;right:60px;
   display:flex;flex-direction:column;align-items:flex-start;gap:8px
 }
 .legend{display:flex;flex-wrap:wrap;gap:5px}
@@ -197,21 +197,27 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 }
 .con-lai[hidden]{display:none}
 
-/* tốc độ xoay: − mức + · Dừng xoay */
-.toc-do{
-  position:absolute;right:18px;bottom:16px;display:flex;align-items:center;gap:2px;
-  background:rgba(16,32,58,.82);border:1px solid var(--son-3);border-radius:999px;
-  padding:3px;backdrop-filter:blur(4px);font:500 12px var(--ui);color:var(--trung-mo)
+/* tốc độ xoay: chỉ là một biểu tượng nhỏ, mờ ở góc — bấm mới hiện bảng − mức + ❚❚, tự ẩn khi không dùng */
+.toc-do{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;align-items:center;gap:6px}
+.mo-toc{
+  width:28px;height:28px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;
+  background:rgba(16,32,58,.55);border:1px solid var(--son-3);color:var(--trung-mo);opacity:.5
 }
-.toc-do button{
-  background:none;border:0;color:var(--trung-mo);font:inherit;cursor:pointer;border-radius:999px
+.mo-toc:hover,.mo-toc[aria-expanded="true"],.mo-toc:focus-visible{opacity:1}
+.mo-toc.dang-dung{color:var(--vang)}
+.toc-bang{
+  display:flex;align-items:center;gap:1px;background:rgba(16,32,58,.9);border:1px solid var(--son-3);
+  border-radius:999px;padding:2px;font:500 11.5px var(--ui);color:var(--trung-mo);backdrop-filter:blur(4px)
 }
-.toc-do button:hover:not(:disabled){color:var(--trung);background:var(--son-3)}
-.toc-do button:disabled{opacity:.35;cursor:default}
+.toc-bang[hidden]{display:none}
+.toc-bang button{background:none;border:0;color:var(--trung-mo);cursor:pointer;border-radius:999px}
+.toc-bang button:hover:not(:disabled){color:var(--trung);background:var(--son-3)}
+.toc-bang button:disabled{opacity:.35;cursor:default}
 .toc-do button:focus-visible{outline:2px solid var(--vang);outline-offset:1px}
-.toc-do .nut-toc{width:26px;height:26px;font-size:16px;line-height:1}
-.toc-do #mucToc{min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
-.toc-do .dung{padding:5px 11px;border-left:1px solid var(--son-3);border-radius:0 999px 999px 0}
+.nut-toc{width:24px;height:24px;display:grid;place-items:center;padding:0;font:500 15px/1 var(--ui)}
+#mucToc{min-width:56px;text-align:center}
+#dung .i-chay,#dung[aria-pressed="true"] .i-dung{display:none}
+#dung[aria-pressed="true"] .i-chay{display:block}
 
 /* ---------- thẻ chi tiết ---------- */
 .sheet{
@@ -379,10 +385,6 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .lien h3{font:600 12px var(--ui);letter-spacing:.06em;text-transform:uppercase;color:#8299B8;margin:0 0 8px}
 .lien .hit{width:100%}
 
-@media (max-width:600px){
-  /* màn hẹp: nút tốc độ một hàng riêng ở đáy, chú giải nằm ngay trên */
-  .duoi{right:20px;bottom:58px}
-}
 @media (max-width:900px){
   .stage{height:auto;min-height:62dvh}
   .xem{position:relative;inset:auto}

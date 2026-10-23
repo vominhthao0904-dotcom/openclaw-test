@@ -549,8 +549,12 @@ function capNhatToc(luu) {
   $('#cham').disabled = mucToc === 0;
   $('#nhanh').disabled = mucToc === MUC_TOC.length - 1;
   const d = $('#dung');
-  d.textContent = quay ? 'Dừng xoay' : 'Xoay lại';
   d.setAttribute('aria-pressed', String(!quay));
+  d.setAttribute('aria-label', quay ? 'Dừng xoay' : 'Xoay lại');
+  d.title = quay ? 'Dừng xoay' : 'Xoay lại';
+  // biểu tượng nhỏ ở góc đổi màu vàng khi đang dừng — để biết vì sao đồ thị đứng yên
+  $('#moToc').classList.toggle('dang-dung', !quay);
+  $('#moToc').title = quay ? `Tốc độ xoay: ${MUC_TOC[mucToc][0]}` : 'Đang dừng xoay';
   if (luu) {
     try {
       localStorage.setItem('sb.mucToc', String(mucToc));
@@ -558,10 +562,22 @@ function capNhatToc(luu) {
     } catch (_) { /* không lưu được thì thôi */ }
   }
 }
+// bảng chỉnh ẩn sẵn; bấm biểu tượng mới hiện, tự ẩn sau 5 giây không dùng, bấm ra ngoài hoặc Esc
+let henAn = 0;
+function moBangToc(mo) {
+  $('#tocBang').hidden = !mo;
+  $('#moToc').setAttribute('aria-expanded', String(mo));
+  clearTimeout(henAn);
+  if (mo) henAn = setTimeout(() => moBangToc(false), 5000);
+}
+$('#moToc').addEventListener('click', () => moBangToc($('#tocBang').hidden));
+document.addEventListener('click', (e) => { if (!$('#tocDo').contains(e.target)) moBangToc(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tocBang').hidden) moBangToc(false); });
 // chỉnh tốc độ nghĩa là muốn xem xoay — đang dừng thì cho xoay lại luôn
-$('#cham').addEventListener('click', () => { mucToc = Math.max(0, mucToc - 1); quay = true; capNhatToc(true); });
-$('#nhanh').addEventListener('click', () => { mucToc = Math.min(MUC_TOC.length - 1, mucToc + 1); quay = true; capNhatToc(true); });
-$('#dung').addEventListener('click', () => { quay = !quay; capNhatToc(true); });
+const chinhToc = (f) => () => { f(); capNhatToc(true); moBangToc(true); };
+$('#cham').addEventListener('click', chinhToc(() => { mucToc = Math.max(0, mucToc - 1); quay = true; }));
+$('#nhanh').addEventListener('click', chinhToc(() => { mucToc = Math.min(MUC_TOC.length - 1, mucToc + 1); quay = true; }));
+$('#dung').addEventListener('click', chinhToc(() => { quay = !quay; }));
 capNhatToc(false);
 
 /* ---------------- thẻ chi tiết ---------------- */

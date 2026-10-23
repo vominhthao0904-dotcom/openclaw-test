@@ -73,6 +73,8 @@ let vongMau = [];        // màu theo thứ tự vòng
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
 let tapTrung = false;    // nhấp đúp: toàn màn hình — lõi, chấm và tên, ẩn mọi nút
+let hienTen = true;      // toàn màn hình: có tên / chỉ chấm (nhấp 1 lần, phím T, nút Aa) — trình duyệt nhớ
+try { if (localStorage.getItem('sb.hienTen') === '0') hienTen = false; } catch (_) { /* mặc định có tên */ }
 let goc = 0;
 let hover = null;
 let chon = null;
@@ -390,7 +392,7 @@ function ve() {
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
-    if (!nb && toi) return;
+    if (!nb && (toi || (tapTrung && !hienTen))) return;   // chế độ "chỉ chấm": rê chuột mới hiện tên
     const p = diem.get(nd.note.id);
     const tran = nb ? 90 : tranTen;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
@@ -641,6 +643,22 @@ hienDuoi();
    Toàn màn hình thật (Fullscreen API) nếu trình duyệt cho; không cho (iPhone) thì phủ kín cửa sổ bằng CSS — vẫn dùng được. */
 let lanCham = { t: 0, x: 0, y: 0 };
 let henGoiY = 0;
+let henMotLan = 0;
+const cam = () => matchMedia('(pointer:coarse)').matches;
+function baoNhanh(chu, ms) {
+  const g = $('#goiYThoat');
+  g.textContent = chu;
+  g.hidden = false;
+  clearTimeout(henGoiY);
+  henGoiY = setTimeout(() => { g.hidden = true; }, ms);
+}
+function datHienTen(bat) {
+  hienTen = bat;
+  $('#batTen').setAttribute('aria-pressed', String(bat));
+  $('#batTen').title = bat ? 'Đang hiện tên — bấm để chỉ còn chấm (phím T)' : 'Chỉ chấm — bấm để hiện tên (phím T)';
+  try { localStorage.setItem('sb.hienTen', bat ? '1' : '0'); } catch (_) { /* không lưu được thì thôi */ }
+  if (tapTrung) baoNhanh(bat ? 'Hiện tên' : 'Chỉ chấm', 1200);
+}
 function datTapTrung(bat) {
   if (bat === tapTrung) return;
   tapTrung = bat;
@@ -649,11 +667,8 @@ function datTapTrung(bat) {
     if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => { /* không cho thì dùng chế độ phủ cửa sổ */ });
     }
-    const g = $('#goiYThoat');
-    g.textContent = matchMedia('(pointer:coarse)').matches ? 'Chạm đúp để thoát' : 'Nhấp đúp hoặc Esc để thoát';
-    g.hidden = false;
-    clearTimeout(henGoiY);
-    henGoiY = setTimeout(() => { g.hidden = true; }, 2500);
+    baoNhanh(cam() ? 'Chạm 1 lần: bật/tắt tên · Chạm đúp: thoát'
+      : 'Nhấp 1 lần (hoặc phím T): bật/tắt tên · Nhấp đúp hoặc Esc: thoát', 3500);
   } else {
     $('#goiYThoat').hidden = true;
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
@@ -665,8 +680,20 @@ cv.addEventListener('pointerup', (e) => {
   const x = e.clientX - b.left, y = e.clientY - b.top;
   const dup = e.timeStamp - lanCham.t < 350 && Math.hypot(x - lanCham.x, y - lanCham.y) < 30;
   lanCham = dup ? { t: 0, x: 0, y: 0 } : { t: e.timeStamp, x, y };
-  if (dup && !timGan(x, y)) datTapTrung(!tapTrung);   // nhấp đúp lên một chấm là mở ghi chú, không phóng to
+  if (timGan(x, y)) return;                // lên một chấm: là mở ghi chú, không phóng to / bật tắt tên
+  clearTimeout(henMotLan);
+  if (dup) { datTapTrung(!tapTrung); return; }
+  // toàn màn hình, nhấp 1 lần vào chỗ trống: bật/tắt tên — chờ một nhịp để phân biệt với nhấp đúp
+  if (tapTrung) henMotLan = setTimeout(() => datHienTen(!hienTen), 330);
 });
+$('#batTen').addEventListener('click', () => datHienTen(!hienTen));
+document.addEventListener('keydown', (e) => {
+  if (!tapTrung || (e.key !== 't' && e.key !== 'T') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  datHienTen(!hienTen);
+});
+datHienTen(hienTen);
 // thoát toàn màn hình bằng phím của trình duyệt (Esc, F11) thì cũng thoát chế độ này
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tapTrung) datTapTrung(false); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tapTrung && $('#chiTiet').hidden) datTapTrung(false); });

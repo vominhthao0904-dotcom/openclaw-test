@@ -414,7 +414,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 
 /* tự ẩn khi không động vào màn hình */
 .duoi,.toc-do{transition:opacity .45s ease}
-body.lang-yen .duoi,body.lang-yen .toc-do{opacity:0;pointer-events:none}
+body.lang-yen .duoi,body.lang-yen .toc-do,body.lang-yen .bat-ten{opacity:0;pointer-events:none}
 
 /* nhấp đúp: toàn màn hình, chỉ lõi và các chấm */
 #do{touch-action:manipulation}
@@ -427,3 +427,8 @@ body.tap-trung .che-do,body.tap-trung .duoi,body.tap-trung .toc-do,body.tap-trun
   background:rgba(16,32,58,.86);border:1px solid var(--son-3);border-radius:999px;padding:6px 14px;
   font:500 12px var(--ui);color:var(--trung-mo);white-space:nowrap
 }
+
+/* nút Aa: chỉ có ở toàn màn hình — bật/tắt tên ghi chú; tự ẩn như các nút khác */
+.bat-ten{position:absolute;right:14px;bottom:14px;z-index:3;display:none;font:600 12px var(--ui);transition:opacity .45s ease}
+body.tap-trung .bat-ten{display:grid}
+.bat-ten[aria-pressed="false"]{color:var(--vang)}

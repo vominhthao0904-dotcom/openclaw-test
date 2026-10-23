@@ -215,6 +215,10 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - **Cỡ chữ theo số lượng** (anh yêu cầu): cỡ chữ, độ dài tên và cỡ chấm tính theo số ghi chú đang hiện (đang xem một vùng thì chỉ
   đếm vùng đó) — ít thì to, nhiều thì nhỏ; toàn màn hình to thêm một bậc; điện thoại giới hạn để chừa chỗ ngang. Đo toàn màn hình
   1366×768: 5 ghi chú → 18 px, 17 ghi chú → 15,5 px, 81 ghi chú → 12 px.
+- **Hai chế độ toàn màn hình: có tên / chỉ chấm** (anh yêu cầu): nhấp 1 lần (chạm 1 lần) vào chỗ trống, phím T, hoặc nút Aa nhỏ ở góc
+  (chỉ có khi toàn màn hình, tự ẩn khi không dùng, vàng khi đang tắt tên). Nhấp 1 lần chờ 0,33 giây để phân biệt với nhấp đúp
+  (thoát) — nhấp đúp không làm đổi chế độ tên. Trình duyệt nhớ lựa chọn. Kiểm trên trình duyệt: cả 3 cách đổi đều được, nhấp
+  đúp thoát mà giữ nguyên chế độ, tải lại trang vẫn nhớ; điện thoại chạm 1 lần đổi, chạm đúp thoát.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -329,11 +329,11 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 117 trường hợp: tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 123 trường hợp: tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), gộp các ghi chú trang, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 72 trường hợp: lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 79 trường hợp: lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), ô Hỏi gọi openclaw agent đúng cách, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
@@ -484,7 +484,7 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 | **Kho ghi chú** | `notes.sqlite`, `backups/`, `deleted/` chỉ chủ sở hữu đọc được (600/700) — user khác trên VPS không đọc được |
 | **Trang web** | Chỉ nghe `127.0.0.1` và **cần mã truy cập** (chương trình khác trên VPS cũng không đọc được kho); từ chối yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn; kết nối treo tự ngắt sau 30 giây |
 | **Sao lưu** | VPS: hằng đêm `.json.gz` (giữ 60 bản) + bản `.sqlite` đầy đủ. Google Drive (Bước 6): mã hoá rclone crypt, giữ 90 ngày, chỉ chịu gửi qua kết nối mã hoá, quyền Google chỉ thấy file do nó tạo. `doctor` báo khi lịch sao lưu ngừng |
-| **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan cho `openclaw agent` trên chính VPS, và dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
+| **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan (ghi chú dài: chỉ các đoạn khớp câu hỏi) cho `openclaw agent` trên chính VPS, qua file tạm quyền riêng — không nằm trên dòng lệnh; phiên riêng `second-brain`; dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
 | **Video** | Từ chối khi file kết quả trùng file gốc — không bao giờ ghi đè video gốc |
 | **Slide** | Ảnh tải từ link chỉ nhận https, máy chủ công khai, ≤ 15 MB; kiểm lại cả khi bị chuyển hướng (không lọt vào mạng nội bộ/metadata VPS) |
 

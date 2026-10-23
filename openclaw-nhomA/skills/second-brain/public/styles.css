@@ -411,3 +411,19 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   .nut-cay,.mui{min-height:38px}
   .tabs button{min-height:44px}
 }
+
+/* tự ẩn khi không động vào màn hình */
+.duoi,.toc-do{transition:opacity .45s ease}
+body.lang-yen .duoi,body.lang-yen .toc-do{opacity:0;pointer-events:none}
+
+/* nhấp đúp: toàn màn hình, chỉ lõi và các chấm */
+#do{touch-action:manipulation}
+body.tap-trung{overflow:hidden}
+body.tap-trung .stage{position:fixed;inset:0;z-index:15;height:auto;min-height:0}
+body.tap-trung .xem[data-xem="do"]{position:absolute;inset:0;height:auto}
+body.tap-trung .che-do,body.tap-trung .duoi,body.tap-trung .toc-do,body.tap-trung .empty{display:none}
+.goi-y-thoat{
+  position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:4;margin:0;pointer-events:none;
+  background:rgba(16,32,58,.86);border:1px solid var(--son-3);border-radius:999px;padding:6px 14px;
+  font:500 12px var(--ui);color:var(--trung-mo);white-space:nowrap
+}

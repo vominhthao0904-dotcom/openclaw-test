@@ -197,6 +197,13 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - **Nút quá nhỏ cho ngón tay** (thanh chuyển 28px, ô tích việc 13px, nút báo 16px): màn cảm ứng / điện thoại nay ≥ 36–44px.
 - **Điện thoại mở lần đầu là form Thêm dài cả màn hình**, đồ thị bị đẩy xuống: nay vào tab Tìm (gọn), trang nhớ tab dùng lần trước.
 - Rê chuột / chọn một chấm: nhãn hiện **đủ tên** (trước cắt ở 32 ký tự). Phím **/** nhảy vào ô Tìm. Gợi ý ô Tìm ngắn lại cho vừa điện thoại.
+- **Tự ẩn khi không dùng** (anh yêu cầu): dải tên vùng và biểu tượng tốc độ mờ dần sau 6 giây không động vào màn hình; rê chuột,
+  chạm, cuộn, gõ phím là hiện lại; đang chọn bằng bàn phím hoặc bảng tốc độ đang mở thì không ẩn.
+- **Nhấp đúp / chạm đúp → toàn màn hình, chỉ lõi và các chấm** (anh yêu cầu): dùng toàn màn hình thật của trình duyệt khi được
+  phép, không được (iPhone) thì phủ kín cửa sổ; ẩn thanh chuyển, dải vùng, nút tốc độ, nhãn (rê chuột vẫn hiện tên); nhấp đúp lên
+  một chấm vẫn là mở ghi chú; thoát bằng nhấp đúp, Esc hoặc phím thoát toàn màn hình của trình duyệt. Tự đo nhấp đúp bằng
+  pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy). Kiểm trên trình duyệt: máy tính vào toàn màn hình
+  thật 1366×768, thoát bằng nhấp đúp và Esc đều được; điện thoại chạm đúp vào được.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

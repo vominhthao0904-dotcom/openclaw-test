@@ -72,6 +72,7 @@ let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
+let tapTrung = false;    // nhấp đúp: toàn màn hình, chỉ lõi và chấm
 let goc = 0;
 let hover = null;
 let chon = null;
@@ -375,7 +376,7 @@ function ve() {
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
-    if (!nb && toi) return;
+    if (!nb && (toi || tapTrung)) return;   // toàn màn hình: chỉ lõi và chấm, rê chuột mới hiện tên
     const p = diem.get(nd.note.id);
     const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
@@ -602,6 +603,57 @@ $('#cham').addEventListener('click', chinhToc(() => { mucToc = Math.max(0, mucTo
 $('#nhanh').addEventListener('click', chinhToc(() => { mucToc = Math.min(MUC_TOC.length - 1, mucToc + 1); quay = true; }));
 $('#dung').addEventListener('click', chinhToc(() => { quay = !quay; }));
 capNhatToc(false);
+
+/* Dải tên vùng và biểu tượng tốc độ tự ẩn sau một lúc không động vào màn hình — để đồ thị thoáng.
+   Rê chuột, chạm, cuộn hay gõ phím là hiện lại ngay. Đang dùng (đang chọn bằng bàn phím, bảng tốc độ đang mở) thì không ẩn. */
+const AN_SAU = 6000;
+let henAnDuoi = 0;
+function hienDuoi() {
+  document.body.classList.remove('lang-yen');
+  clearTimeout(henAnDuoi);
+  henAnDuoi = setTimeout(() => {
+    if (document.querySelector('.duoi:focus-within, .toc-do:focus-within') || !$('#tocBang').hidden) return hienDuoi();
+    document.body.classList.add('lang-yen');
+  }, AN_SAU);
+}
+['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll'].forEach((ev) =>
+  window.addEventListener(ev, hienDuoi, { passive: true, capture: true }));
+hienDuoi();
+
+/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình, chỉ còn lõi và các chấm.
+   Tự đo nhấp đúp bằng pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy).
+   Toàn màn hình thật (Fullscreen API) nếu trình duyệt cho; không cho (iPhone) thì phủ kín cửa sổ bằng CSS — vẫn dùng được. */
+let lanCham = { t: 0, x: 0, y: 0 };
+let henGoiY = 0;
+function datTapTrung(bat) {
+  if (bat === tapTrung) return;
+  tapTrung = bat;
+  document.body.classList.toggle('tap-trung', bat);
+  if (bat) {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => { /* không cho thì dùng chế độ phủ cửa sổ */ });
+    }
+    const g = $('#goiYThoat');
+    g.textContent = matchMedia('(pointer:coarse)').matches ? 'Chạm đúp để thoát' : 'Nhấp đúp hoặc Esc để thoát';
+    g.hidden = false;
+    clearTimeout(henGoiY);
+    henGoiY = setTimeout(() => { g.hidden = true; }, 2500);
+  } else {
+    $('#goiYThoat').hidden = true;
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }
+  requestAnimationFrame(coLai);
+}
+cv.addEventListener('pointerup', (e) => {
+  const b = cv.getBoundingClientRect();
+  const x = e.clientX - b.left, y = e.clientY - b.top;
+  const dup = e.timeStamp - lanCham.t < 350 && Math.hypot(x - lanCham.x, y - lanCham.y) < 30;
+  lanCham = dup ? { t: 0, x: 0, y: 0 } : { t: e.timeStamp, x, y };
+  if (dup && !timGan(x, y)) datTapTrung(!tapTrung);   // nhấp đúp lên một chấm là mở ghi chú, không phóng to
+});
+// thoát toàn màn hình bằng phím của trình duyệt (Esc, F11) thì cũng thoát chế độ này
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tapTrung) datTapTrung(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tapTrung && $('#chiTiet').hidden) datTapTrung(false); });
 
 /* ---------------- thẻ chi tiết ---------------- */
 function ngayDep(iso) {

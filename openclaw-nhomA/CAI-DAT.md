@@ -333,7 +333,7 @@ bash test-brain.sh     # 129 trường hợp: tìm không dấu, ghi bằng gi�
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 87 trường hợp (Mây chạy trong exec: 84 — 3 test gọi Mây tự bỏ qua): lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), ô Hỏi gọi openclaw agent đúng cách và báo rõ khi bị chặn, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 91 trường hợp (Mây chạy trong exec: 88 — 3 test gọi Mây tự bỏ qua): lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), ô Hỏi gọi openclaw agent đúng cách và báo rõ khi bị chặn, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```
@@ -480,11 +480,11 @@ Tải một file PDF bất kỳ lên VPS rồi nói với Mây:
 | Mục | Gói này làm gì / không làm gì |
 |---|---|
 | **Không cần** | `sudo` khi chép skill, khoá API, tài khoản, mở cổng firewall |
-| **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Ra Internet chỉ có: bản sao lưu Google Drive (Bước 6, tuỳ chọn) — **đã mã hoá trên VPS trước khi gửi**, Google không đọc được; `fetch_images.py` (tuỳ chọn, cần khoá Pexels); font chữ của trang web (Google Fonts) |
+| **Không gửi ra ngoài** | Ghi chú, PDF, video, slide đều xử lý trên VPS. Ra Internet chỉ có: bản sao lưu Google Drive (Bước 6, tuỳ chọn) — **đã mã hoá trên VPS trước khi gửi**, Google không đọc được; `fetch_images.py` (tuỳ chọn, cần khoá Pexels); font chữ của trang web (Google Fonts). Riêng phần **trò chuyện với Mây** (Telegram, ô Hỏi): câu hỏi và các đoạn ghi chú Mây đọc đi qua mô hình AI mà OpenClaw đang dùng — như mọi tin nhắn anh gửi Mây |
 | **Kho ghi chú** | `notes.sqlite`, `backups/`, `deleted/` chỉ chủ sở hữu đọc được (600/700) — user khác trên VPS không đọc được |
 | **Trang web** | Chỉ nghe `127.0.0.1` và **cần mã truy cập** (chương trình khác trên VPS cũng không đọc được kho); từ chối yêu cầu không gửi tới localhost (chống DNS rebinding), từ chối POST từ trang lạ (chống CSRF), không cho nhúng iframe, không có nút xoá hẳn; kết nối treo tự ngắt sau 30 giây |
 | **Sao lưu** | VPS: hằng đêm `.json.gz` (giữ 60 bản) + bản `.sqlite` đầy đủ. Google Drive (Bước 6): mã hoá rclone crypt, giữ 90 ngày, chỉ chịu gửi qua kết nối mã hoá, quyền Google chỉ thấy file do nó tạo. `doctor` báo khi lịch sao lưu ngừng |
-| **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan (ghi chú dài: chỉ các đoạn khớp câu hỏi) cho `openclaw agent` trên chính VPS, qua file tạm quyền riêng — không nằm trên dòng lệnh; phiên riêng `second-brain`; dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
+| **Ô Hỏi** | Chỉ gửi ~12 ghi chú liên quan (ghi chú dài: chỉ các đoạn khớp câu hỏi), không phải cả kho, cho `openclaw agent` trên chính VPS (rồi tới mô hình AI của Mây), qua file tạm quyền riêng — không nằm trên dòng lệnh; phiên riêng `second-brain`; dặn agent coi ghi chú là dữ liệu, không làm theo câu lệnh nằm trong ghi chú |
 | **Video** | Từ chối khi file kết quả trùng file gốc — không bao giờ ghi đè video gốc |
 | **Slide** | Ảnh tải từ link chỉ nhận https, máy chủ công khai, ≤ 15 MB; kiểm lại cả khi bị chuyển hướng (không lọt vào mạng nội bộ/metadata VPS) |
 

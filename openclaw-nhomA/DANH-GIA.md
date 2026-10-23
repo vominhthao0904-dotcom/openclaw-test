@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **129** |
-| Test `test-web.sh` | 30 | **87** |
+| Test `test-web.sh` | 30 | **91** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -471,6 +471,30 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   chỉ còn một khúc ngắn. Nay thêm **viền thân liền một nét** hai bên, từ dưới hàm xuống dốc vai tới cánh tay (mờ dần phía dưới
   như vân bên cạnh), và bỏ các mẩu ngắn kẹt sát mép; vân thân chạm mép thì gặp viền, đỉnh vai gọn. Quay đầu hai bên vẫn liền
   tai – hàm – cổ; tốc độ vẽ giữ ~55 khung hình/giây.
+
+## Rà soát kỹ toàn trang (sau "Kiểm tra rà soát thật kỹ để sửa cho dứt điểm lỗi")
+Chạy thật trên trình duyệt với kho giống của anh (18 ghi chú ở 5 vùng, bộ 26 trang PDF trong kho lưu, có việc quá hạn), máy
+tính 1366×768 và iPhone 390×844, Mây giả trả lời kiểu Markdown: 66 tình huống qua Thêm · Nạp · Tìm · Hỏi · Ôn/Kho lưu · Thư
+viện · Việc · Toàn cảnh · mặt A.I · thẻ chi tiết · menu chuột phải / chạm giữ. Thêm 737 yêu cầu dữ liệu sai kiểu vào mọi đường
+API. Tìm ra và đã sửa:
+- **Chuột phải vào ghi chú nằm sát mép khung: menu vừa hiện đã tắt.** Trình duyệt tự cuộn thẻ vào khung, mà cứ cuộn là menu
+  đóng. Nay bỏ qua cái cuộn nhỏ ngay lúc mở.
+- **iPhone chạm giữ không ra menu** (tài liệu có hứa): Safari trên iPhone không phát sự kiện chuột phải. Nay tự đếm 0,55 giây
+  chạm giữ (Android vẫn dùng của trình duyệt); mở menu kiểu này thì lúc nhấc tay không mở luôn ghi chú; kéo ngón tay để cuộn thì
+  không hiện menu; chạm giữ không bôi đen chữ.
+- **Ghi chú trong Kho lưu: menu vẫn là "Cất vào kho lưu"** (bấm thì không có gì xảy ra). Nay là **Lấy lại khỏi kho lưu**.
+- **Cất một ghi chú từ kết quả Tìm xong, nó vẫn nằm trong danh sách** (trông như chưa cất). Nay cất / lấy lại xong thì Tìm tự
+  chạy lại; các nút trỏ tới ghi chú đó trong kết quả Nạp, Hỏi mờ đi, gạch ngang, chuột phải thành *Lấy lại*.
+- **Bấm đúp "Nạp vào kho"**: gửi hai lần, dòng kết quả là của lần sau — *"Đã thêm 0 ghi chú · bỏ 1 bản trùng"*, tưởng không nạp
+  được. Nay khoá hai nút trong lúc chờ.
+- Chạy chồng: mở/đóng Kho lưu thật nhanh có lúc hiện danh sách dưới nút "xem lại"; bấm hai ghi chú liền nhau thì thẻ có thể hiện
+  ghi chú bấm trước; gõ Tìm nhanh thì kết quả của chữ gõ trước về muộn có thể đè kết quả mới. Nay chỉ lần sau cùng được vẽ.
+- Ô lọc vùng ở Tìm: vùng đang chọn vừa hết ghi chú thì ô trống trơn — nay về "Mọi vùng".
+- Máy chủ: mã ghi chú gửi lên dạng danh sách/object, câu hỏi dạng số, ký tự NUL trong ô tìm → lỗi 500. Nay báo lỗi gọn (737/737
+  yêu cầu sai kiểu không còn lỗi 500).
+- **Câu chữ riêng tư ô Hỏi**: trang ghi "Không gửi gì ra ngoài" — không đúng: câu hỏi và vài ghi chú liên quan đi tới Mây, tức
+  qua mô hình AI mà OpenClaw đang dùng (như mọi tin nhắn anh gửi Mây). Nay ghi đúng như vậy, cả ở bảng An toàn trong CAI-DAT.
+- +4 test web (91; exec 88), +1 test brain (129).
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

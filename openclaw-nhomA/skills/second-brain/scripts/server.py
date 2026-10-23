@@ -265,7 +265,7 @@ def api_archived(conn, _q, _body):
 
 def api_archive(conn, _q, body):
     """Cất kho thay vì xoá: ghi chú rời khỏi đồ thị và tìm kiếm, nhưng vẫn nằm trong file."""
-    nid, ve = body.get("id") or "", "active" if body.get("lay_lai") else "archived"
+    nid, ve = ma(body), "active" if body.get("lay_lai") else "archived"
     with _lock:
         cur = conn.execute("UPDATE notes SET status=?, updated_at=? WHERE id=?", (ve, brain.now(), nid))
         conn.commit()
@@ -287,8 +287,14 @@ def api_review(conn, q, _body):
     return {"ok": True, "notes": [note_row(r) for r in rows]}
 
 
+def ma(body):
+    """Mã ghi chú gửi lên: phải là chuỗi — kiểu khác (danh sách, object) coi như không có, không để sqlite lỗi 500."""
+    v = body.get("id")
+    return v if isinstance(v, str) else ""
+
+
 def api_reviewed(conn, _q, body):
-    nid = body.get("id") or ""
+    nid = ma(body)
     with _lock:
         cur = conn.execute("UPDATE notes SET reviewed_at=? WHERE id=?", (brain.now(), nid))
         conn.commit()
@@ -495,7 +501,7 @@ def relevant_notes(conn, question, limit=12):
 
 
 def api_ask(conn, _q, body):
-    question = (body.get("question") or "").strip()
+    question = body.get("question").strip() if isinstance(body.get("question"), str) else ""
     if not question:
         return {"ok": False, "error": "Chưa nhập câu hỏi"}
     found = relevant_notes(conn, question)

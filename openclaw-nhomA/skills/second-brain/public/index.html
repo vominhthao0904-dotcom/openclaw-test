@@ -128,7 +128,8 @@
         <textarea id="oHoi" rows="3" placeholder="Anh từng ghi gì về ảnh hero trên mobile?"></textarea>
       </label>
       <button class="go" id="nutHoi" type="button">Hỏi Mây</button>
-      <p class="hint">Mây chỉ trả lời từ ghi chú trong kho và dẫn nguồn từng ý. Không gửi gì ra ngoài.</p>
+      <p class="hint">Mây chỉ trả lời từ ghi chú trong kho và dẫn nguồn từng ý. Mây chỉ nhận câu hỏi và vài ghi chú liên quan
+        (không phải cả kho) — như một tin nhắn anh gửi Mây, đi qua mô hình AI mà Mây đang dùng.</p>
       <div id="traLoi" class="answer" role="status" aria-live="polite"></div>
     </section>
 
@@ -286,6 +287,7 @@
   <button type="button" role="menuitem" data-lam="mo">Mở</button>
   <button type="button" role="menuitem" data-lam="sua">Sửa</button>
   <button type="button" role="menuitem" data-lam="cat">Cất vào kho lưu <span>(xoá khỏi kho)</span></button>
+  <button type="button" role="menuitem" data-lam="lay" hidden>Lấy lại khỏi kho lưu</button>
   <p>Cất kho lấy lại được ở tab Ôn › Kho lưu. Xoá hẳn: nhờ Mây.</p>
 </div>
 <script src="app.js"></script>

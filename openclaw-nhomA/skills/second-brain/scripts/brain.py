@@ -589,6 +589,10 @@ def _tim(db, q, limit, ca_kho=False, category=None, kind=None):
     Nhờ vậy câu hỏi dài kiểu "anh từng ghi gì về lỗi phụ đề không hiện" vẫn ra kết quả,
     thay vì agent phải đoán lại từ khoá nhiều lần.
     """
+    # ký tự điều khiển (NUL…) dán lẫn vào ô tìm làm FTS báo "unterminated string" — đổi thành khoảng trắng
+    q = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", str(q or "")).strip()
+    if not q:
+        return [], "chinh_xac"
     them, tham = [], []
     loc_nhom(them, tham, category, "n.category")
     if kind:

@@ -162,7 +162,7 @@ function dienChon() {
   tn.innerHTML = '';
   tn.appendChild(new Option('Mọi vùng', ''));
   (DATA.cay || []).forEach((c) => { if (c.duong_dan) tn.appendChild(new Option(`${c.ten} (${c.so})`, c.duong_dan)); });
-  tn.value = cu;
+  tn.value = [...tn.options].some((o) => o.value === cu) ? cu : '';   // vùng vừa hết ghi chú: về "Mọi vùng", không để ô trống
 }
 
 /* ---------------- bố trí quỹ đạo ---------------- */
@@ -2016,9 +2016,11 @@ function ngayDep(iso) {
 // nút mở một ghi chú: mang id ghi chú, để menu chuột phải (Mở · Sửa · Cất vào kho lưu) biết đang trỏ vào ghi chú nào
 function ganMo(b, id) { b.dataset.ghiChu = id; b.addEventListener('click', () => moChiTiet(id)); }
 
+let luotMo = 0;
 async function moChiTiet(id) {
+  const lan = ++luotMo;
   const r = await api('/api/note?id=' + encodeURIComponent(id));
-  if (!r.ok) return;
+  if (lan !== luotMo || !r.ok) return;     // bấm nhanh hai ghi chú: trả lời về muộn của ghi chú trước không đè ghi chú sau
   const n = r.note;
   chon = nodes.find((x) => x.note.id === id) || null;
 
@@ -2195,59 +2197,102 @@ $('#ctCat').addEventListener('click', async (e) => {
   const r = await api('/api/archive', { id: e.target.dataset.id });
   if (!r.ok) return alert(r.error || 'Không cất được');
   dongChiTiet();
-  await sauKhiCat();
+  await sauKhiCat(e.target.dataset.id, true);
 });
-async function sauKhiCat() {               // ghi chú vừa cất kho: rời đồ thị, Thư viện, hàng ôn
+// ghi chú vừa cất kho (hoặc lấy lại): rời / về đồ thị, Thư viện, hàng ôn; kết quả Tìm chạy lại; các nút trỏ tới nó trong kết
+// quả Nạp / Hỏi đánh dấu "đã cất" (chuột phải thành Lấy lại). Trước đây cất từ kết quả Tìm xong vẫn thấy nằm trong danh sách.
+async function sauKhiCat(id, cat) {
   await nap();
   if (xem === 'thu-vien') napThuVien();
   if (!$('[data-pane="on"]').hidden) napHangOn();
+  if ($('#oTim').value.trim()) timNgay();
+  if (id) document.querySelectorAll(`#napKq [data-ghi-chu="${CSS.escape(id)}"], #traLoi [data-ghi-chu="${CSS.escape(id)}"]`)
+    .forEach((b) => { b.classList.toggle('da-cat', cat); if (cat) b.dataset.daCat = '1'; else delete b.dataset.daCat; });
 }
 
 /* Menu chuột phải trên một ghi chú — thẻ Thư viện, kết quả Tìm / Hỏi / Nạp, việc, chấm trên đồ thị: Mở · Sửa · Cất vào
    kho lưu. Điện thoại: chạm giữ. Trên web không có xoá hẳn (cất kho lấy lại được); xoá thật phải nhờ Mây / lệnh máy chủ. */
 const menuGc = $('#menuGc');
-let menuId = null;
+let menuId = null, moMenuLuc = 0;
 function dongMenu() { menuGc.hidden = true; menuId = null; }
-document.addEventListener('contextmenu', (e) => {
-  let id = e.target instanceof Element ? e.target.closest('[data-ghi-chu]')?.dataset.ghiChu : null;
-  if (!id && e.target === cv) {
+// mở menu cho ghi chú dưới phần tử t / điểm (x, y); không có ghi chú ở đó thì trả về false
+function moMenu(t, x, y) {
+  const o = t instanceof Element ? t.closest('[data-ghi-chu]') : null;
+  let id = o?.dataset.ghiChu;
+  if (!id && t === cv) {
     const b = cv.getBoundingClientRect();
-    id = timGan(e.clientX - b.left, e.clientY - b.top)?.note.id;
+    id = timGan(x - b.left, y - b.top)?.note.id;
   }
-  if (!id) { dongMenu(); return; }        // chỗ khác: để menu thường của trình duyệt
-  e.preventDefault();
+  if (!id) return false;
   menuId = id;
+  // ghi chú đang nằm trong kho lưu (danh sách Kho lưu, kết quả vừa cất): mục cuối là "Lấy lại", không phải "Cất" lần nữa
+  const daCat = o?.dataset.daCat === '1';
+  menuGc.querySelector('[data-lam="cat"]').hidden = daCat;
+  menuGc.querySelector('[data-lam="lay"]').hidden = !daCat;
   menuGc.hidden = false;
+  moMenuLuc = performance.now();
   const r = menuGc.getBoundingClientRect();
-  menuGc.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
-  menuGc.style.top = `${Math.max(8, Math.min(e.clientY, innerHeight - r.height - 8))}px`;
+  menuGc.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+  menuGc.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+  return true;
+}
+document.addEventListener('contextmenu', (e) => {
+  if (!moMenu(e.target, e.clientX, e.clientY)) { dongMenu(); return; }   // chỗ khác: để menu thường của trình duyệt
+  e.preventDefault();
 });
+// Chạm giữ trên điện thoại: Android tự phát contextmenu, còn iPhone (Safari) thì không — tự đếm 0,55 giây. Mở menu bằng
+// cách này thì cái "chạm" lúc nhấc tay bị bỏ, không mở luôn ghi chú. Kéo ngón tay (cuộn) thì thôi.
+let giu = null, boClick = false;
+document.addEventListener('pointerdown', (e) => {
+  boClick = false;
+  clearTimeout(giu?.hen);
+  if (e.pointerType !== 'touch') { giu = null; return; }
+  const t = e.target, x = e.clientX, y = e.clientY;
+  giu = { x, y, hen: setTimeout(() => { giu = null; if (menuGc.hidden && moMenu(t, x, y)) boClick = true; }, 550) };
+});
+['pointerup', 'pointercancel'].forEach((ev) => document.addEventListener(ev, () => { clearTimeout(giu?.hen); giu = null; }));
+document.addEventListener('pointermove', (e) => {
+  if (giu && Math.hypot(e.clientX - giu.x, e.clientY - giu.y) > 10) { clearTimeout(giu.hen); giu = null; }
+});
+window.addEventListener('click', (e) => {
+  if (!boClick) return;
+  boClick = false;
+  e.preventDefault(); e.stopImmediatePropagation();
+}, true);
 menuGc.addEventListener('click', async (e) => {
   const lam = e.target.closest('button')?.dataset.lam, id = menuId;
   if (!lam || !id) return;
   dongMenu();
   if (lam === 'mo') return moChiTiet(id);
   if (lam === 'sua') { await moChiTiet(id); if ($('#ctSua').hidden) $('#ctSuaMo').click(); return; }
+  if (lam === 'lay') {
+    const r = await api('/api/archive', { id, lay_lai: true });
+    if (!r.ok) return alert(r.error || 'Không lấy lại được');
+    await sauKhiCat(id, false);
+    if (!$('#chiTiet').hidden && $('#ctLay').dataset.id === id) await moChiTiet(id);
+    return;
+  }
   const ten = DATA.notes.find((x) => x.id === id)?.title;
   if (!confirm(`Cất ${ten ? `«${ten}»` : 'ghi chú này'} vào kho lưu?\n\nGhi chú rời khỏi đồ thị, Thư viện và tìm kiếm, `
     + 'nhưng không mất — lấy lại được ở tab Ôn › Kho lưu.')) return;
   const r = await api('/api/archive', { id });
   if (!r.ok) return alert(r.error || 'Không cất được');
   if (!$('#chiTiet').hidden && $('#ctCat').dataset.id === id) dongChiTiet();
-  await sauKhiCat();
+  await sauKhiCat(id, true);
 });
 document.addEventListener('click', (e) => { if (!menuGc.hidden && !menuGc.contains(e.target)) dongMenu(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') dongMenu(); });
-window.addEventListener('scroll', dongMenu, true);
+// cuộn thì đóng menu — trừ cái cuộn nhỏ ngay lúc mở (bấm chuột phải / chạm giữ vào thẻ nằm sát mép, trình duyệt tự cuộn thẻ
+// vào khung): trước đây menu vừa hiện đã tắt ngay
+window.addEventListener('scroll', () => { if (performance.now() - moMenuLuc > 400) dongMenu(); }, true);
 window.addEventListener('resize', dongMenu);
 
 $('#ctLay').addEventListener('click', async (e) => {
   const id = e.target.dataset.id;
   const r = await api('/api/archive', { id, lay_lai: true });
   if (!r.ok) return alert(r.error || 'Không lấy lại được');
-  await nap();
+  await sauKhiCat(id, false);
   await moChiTiet(id);
-  if (!$('[data-pane="on"]').hidden) napHangOn();
 });
 
 /* ---------------- các ô bên trái ---------------- */
@@ -2324,8 +2369,9 @@ function veHopCho() {
 /* Kho lưu: nơi ghi chú hết thời nằm lại, không bị xoá. */
 let moKhoLuu = false;
 
+let luotKho = 0;
 async function veKhoLuu() {
-  const box = $('#khoLuu');
+  const box = $('#khoLuu'), lan = ++luotKho;
   box.innerHTML = '';
   const n = DATA.trong_kho_luu || 0;
   if (!n) { moKhoLuu = false; return; }
@@ -2338,12 +2384,13 @@ async function veKhoLuu() {
   if (!moKhoLuu) return;
 
   const r = await api('/api/archived');
-  if (!r.ok) return;
+  if (lan !== luotKho || !r.ok) return;     // đã có lần vẽ mới hơn (bấm mở/đóng nhanh, vừa cất thêm) — để lần đó vẽ
   const dong = (x, trongBo) => {
     const b = el('button', 'hit' + (trongBo ? ' trong-bo' : ''));
     b.type = 'button';
     b.append(el('b', null, x.title), el('span', null, `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`));
     ganMo(b, x.id);
+    b.dataset.daCat = '1';
     return b;
   };
   // các trang của cùng một file ("<file> — trang N", thường là bản đã gộp) gom thành MỘT dòng, bấm để bung ra
@@ -2460,14 +2507,15 @@ function baoTrung(ds, loiDan, goiY = []) {
   box.hidden = false;
 }
 
-let hen;
+let hen, luotTim = 0;
 function timNgay() {
   clearTimeout(hen);
-  const q = $('#oTim').value.trim();
+  const q = $('#oTim').value.trim(), lan = ++luotTim;
   hen = setTimeout(async () => {
     const box = $('#ketQua');
     if (!q) { box.innerHTML = ''; return; }
     const r = await api('/api/search?' + new URLSearchParams({ q, kind: $('#timLoai').value, category: $('#timNhom').value }));
+    if (lan !== luotTim) return;           // anh đã gõ tiếp / đổi bộ lọc: kết quả cũ về muộn không đè kết quả mới
     if (!r.ok || !Array.isArray(r.notes)) {
       box.innerHTML = '';
       const p = document.createElement('p'); p.className = 'none';
@@ -2884,15 +2932,20 @@ const vung = $('#vungTha');
 ['dragleave', 'drop'].forEach((ev) => vung.addEventListener(ev, () => vung.classList.remove('keo')));
 vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer.files); });
 
+let dangNap = false;
 async function napVao(thu) {
   const out = $('#napKq');
   const chu = $('#napChu').value.trim();
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
+  if (dangNap) return;
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
+  // khoá hai nút trong lúc chờ: bấm đúp "Nạp vào kho" từng gửi hai lần — lần sau báo "Đã thêm 0 ghi chú · bỏ 1 bản trùng"
+  dangNap = true; $('#napThu').disabled = $('#napThat').disabled = true;
   const r = await api('/api/ingest', {
     files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value, tags: $('#napThe').value.trim(),
     tach: $('#napTach').value, title: $('#napTen').disabled ? '' : $('#napTen').value.trim(), dry_run: thu,
   });
+  dangNap = false; $('#napThu').disabled = $('#napThat').disabled = false;
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
   const so = thu ? r.se_them : r.da_them;

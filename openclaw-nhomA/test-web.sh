@@ -261,6 +261,11 @@ check "Thư viện mời gộp bộ trang" 'curl -sS "$U/api/library" | jq_ "d[\
 check "gộp trang qua web" 'post /api/gop-trang "{\"ten\":\"Tài liệu thử\"}" | jq_ "(d[\"ok\"], d[\"da_gop\"])"' "(True, 1)"
 check "gộp lại lần 2: báo rõ, không lỗi 500" 'post /api/gop-trang "{\"ten\":\"Tài liệu thử\"}" | jq_ "d[\"ok\"]"' "False"
 check "gộp trang: tên sai kiểu bị từ chối" 'post /api/gop-trang "{\"ten\":5}" | jq_ "d[\"ok\"]"' "False"
+# dữ liệu sai kiểu (trang không gửi, nhưng yêu cầu tự chế thì có thể): báo lỗi gọn, không lỗi 500
+check "cất kho: mã là danh sách → báo, không 500" 'post /api/archive "{\"id\":[1,2]}" | jq_ "(d[\"ok\"], \"Error\" in d.get(\"error\", \"\"))"' "(False, False)"
+check "nhớ rồi: mã là object → báo, không 500" 'post /api/reviewed "{\"id\":{\"a\":1}}" | jq_ "(d[\"ok\"], \"Error\" in d.get(\"error\", \"\"))"' "(False, False)"
+check "Hỏi: câu hỏi là số → báo, không 500" 'post /api/ask "{\"question\":5}" | jq_ "(d[\"ok\"], d[\"error\"])"' "(False, 'Chưa nhập câu hỏi')"
+check "Tìm: ký tự NUL trong ô tìm không lỗi" 'curl -sS "$U/api/search?q=%00" | jq_ "(d[\"ok\"], len(d[\"notes\"]))"' "(True, 0)"
 
 echo
 echo "7c. LÕI THÁI CỰC – TIÊN THIÊN BÁT QUÁI ĐÚNG KINH DỊCH"

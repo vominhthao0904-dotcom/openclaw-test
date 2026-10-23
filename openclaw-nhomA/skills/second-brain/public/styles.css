@@ -414,7 +414,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 
 /* tự ẩn khi không động vào màn hình */
 .duoi,.toc-do{transition:opacity .45s ease}
-body.lang-yen .duoi,body.lang-yen .toc-do,body.lang-yen .bat-ten{opacity:0;pointer-events:none}
+body.lang-yen .duoi,body.lang-yen .toc-do,body.lang-yen .bat-ten,body.lang-yen .bat-tieng{opacity:0;pointer-events:none}
 
 /* nhấp đúp: toàn màn hình, chỉ lõi và các chấm */
 #do{touch-action:manipulation}
@@ -432,3 +432,22 @@ body.tap-trung .che-do,body.tap-trung .duoi,body.tap-trung .toc-do,body.tap-trun
 .bat-ten{position:absolute;right:14px;bottom:14px;z-index:3;display:none;font:600 12px var(--ui);transition:opacity .45s ease}
 body.tap-trung .bat-ten{display:grid}
 .bat-ten[aria-pressed="false"]{color:var(--vang)}
+
+/* mặt A.I: phụ đề lời Mây — chữ xanh sáng như hologram, nằm dưới cằm, không chặn chuột */
+.loi-may{
+  position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4;margin:0;pointer-events:none;
+  max-width:min(640px,86%);width:max-content;text-align:center;padding:8px 16px;border-radius:12px;
+  background:rgba(8,18,36,.62);border:1px solid rgba(95,180,255,.35);backdrop-filter:blur(4px);
+  font:500 15px/1.5 var(--ui);color:#CFEFFF;text-shadow:0 0 10px rgba(120,220,255,.6)
+}
+body.tap-trung .loi-may{font-size:17px}
+/* mặt A.I: ẩn dải tên vùng cho thoáng; gợi ý thoát toàn màn hình lên trên để không đè phụ đề */
+body.mat-ai .duoi{display:none}
+body.mat-ai .goi-y-thoat{top:20px;bottom:auto}
+
+/* nút loa: chỉ có ở chế độ mặt A.I, góc trên bên phải; vàng khi đang tắt tiếng */
+.bat-tieng{position:absolute;top:16px;right:16px;z-index:3;display:none;transition:opacity .45s ease}
+body.mat-ai .bat-tieng{display:grid}
+.bat-tieng .i-tat,.bat-tieng[aria-pressed="false"] .i-co{display:none}
+.bat-tieng[aria-pressed="false"] .i-tat{display:block}
+.bat-tieng[aria-pressed="false"]{color:var(--vang);opacity:.8}

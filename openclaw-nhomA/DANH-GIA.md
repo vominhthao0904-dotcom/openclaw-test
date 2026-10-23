@@ -241,6 +241,32 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - Đo trên trình duyệt: khí đi qua đúng Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn → Chấn; 6 vòng tốc độ 0,139 / −0,096 /
   0,072 / −0,056 / 0,045 / −0,038 (trong → ngoài, dấu = chiều); ~60 khung hình/giây; máy bật "giảm chuyển động" thì đứng yên.
 
+## Rà ảnh chụp sau PR #12
+- **Xem một vùng: 4 chấm mà chỉ 2 chấm có tên.** Chấm nằm ngang hàng lõi, ở mép ngoài: tên dài không vừa phía ngoài thì bị
+  lật sang phía bên kia — tức ngang qua lõi Bát Quái — rồi đụng ô của lõi nên bị bỏ. Nay tên luôn quay ra ngoài, rút gọn kèm "…"
+  cho vừa; chỉ lật khi phía ngoài quá chật (< 140 px) và phía kia rộng hơn. Đo 5 thời điểm: bản cũ 2/4 2/4 2/4 4/4 4/4, bản sửa
+  4/4 cả 5. Xem toàn kho / toàn màn hình: số tên hiện như cũ (không thụt lùi).
+- **Thư viện lọc theo loại mà tiêu đề vẫn "Tất cả ghi chú · 1"** — dễ tưởng kho chỉ có 1 ghi chú. Nay "Tất cả ghi chú · Ý tưởng · 1".
+- **Tab Nạp, ô Loại bị cắt chữ** "Theo file (mặc…": nay "Theo file", rê chuột hiện giải thích (file không ghi loại thì là Kiến thức).
+
+## Chế độ mặt A.I (anh yêu cầu)
+- Nút ẩn: bấm lõi Bát Quái (hoặc phím M); bấm lại / M / Esc để về. Chấm bay từ quỹ đạo về (~1,25 giây, lệch nhịp từng chấm),
+  xếp đều theo chiều dài các nét khuôn mặt, mỗi vùng một đoạn liền mạch, giữ màu vùng; vòng quỹ đạo và nan hoa mờ dần.
+- Mặt nạ hologram 3D: khung lưới vàng kim (viền) / xanh (mặt nạ), mắt khe sáng, nền mờ, vòng HUD xoay ngược chiều, vệt quét
+  ngang. Chiều sâu lấy theo mặt elip của đầu, có phối cảnh — đầu quay (yaw ±0,42) và gật (pitch ±0,2) nhìn theo con trỏ;
+  điện thoại lắc nhẹ. Chớp mắt mỗi 2,5–5,5 giây. Lõi Bát Quái thành lò phản ứng trên ngực (thân đứng yên, chỉ đầu quay).
+- Nhép miệng + phụ đề chạy chữ khi: vào chế độ (chào, số ghi chú/vùng), bấm một chấm (đọc tên), trả lời ở tab Hỏi (câu đầu).
+- **Tiếng nói** (anh yêu cầu): Web Speech API, **chỉ giọng tiếng Việt cài sẵn trong máy** (`localService`) — giọng đọc qua mạng
+  như "Google Tiếng Việt" trên Chrome máy tính bị loại vì gửi nội dung lên máy chủ. Miệng mở từ lúc bắt đầu phát tới lúc đọc
+  xong, phụ đề theo chữ đang đọc (sự kiện `boundary`). Nút loa bật/tắt (nhớ trong trình duyệt), thoát chế độ thì dừng đọc.
+  Không có giọng tiếng Việt trong máy: báo một lần, chỉ phụ đề. Kiểm bằng giọng giả lập (máy thử không có loa): chọn đúng
+  giọng trong máy, bỏ giọng mạng và giọng tiếng Anh; tắt tiếng thì không phát nhưng vẫn phụ đề; tải lại vẫn nhớ; Esc dừng đọc.
+  **Chưa nghe thử bằng loa thật** — giọng thật tuỳ máy (Windows "Microsoft An", Android Google, iPhone "Linh").
+- Bố cục tự co theo khung (máy tính, toàn màn hình, điện thoại); phụ đề canh giữa theo mặt, không bị thẻ chi tiết che; dải tên
+  vùng ẩn trong chế độ này. Máy bật "giảm chuyển động": chuyển ngay, không lắc đầu / quét / nhép miệng, phụ đề hiện đủ.
+- Kiểm trên trình duyệt: vào/ra bằng bấm lõi, phím M, chạm lõi trên điện thoại; đầu nhìn theo chuột (yaw +0,36 / −0,36);
+  miệng mở khi nói; bấm chấm mở đúng ghi chú và đọc tên; toàn màn hình; ~61 khung hình/giây; không lỗi JS.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

@@ -886,8 +886,21 @@ function dungMoHinh() {
   duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.3, 2.0, 3.0],
     [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5], [0.62, 0.62], [-0.62, 0.62]]).forEach((d) => {
     const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
+    // mẩu ngắn kẹt giữa mép thân và đường kế bên (đỉnh dốc vai, góc dưới): đứng lẻ thành nét đứt (anh chụp gần thấy) — bỏ
+    const mep = ([x, y]) => Math.abs(x) > noiSuy(RONG_THAN, y) - 0.1 || y > 2.9;
+    if (ym > 0.6 && d.length * 0.008 < 0.3 && mep(d[0]) && mep(d[d.length - 1])) return;
     themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
   });
+  // viền thân hai bên: một nét liền từ cổ xuống dốc vai tới cánh tay — vân thân chạm mép thì gặp nét này, đỉnh vai không còn
+  // lởm chởm như răng lược. Chia đoạn để phía dưới mờ dần như các vân bên cạnh.
+  for (const b of [-1, 1]) {
+    for (let y0 = 1.0; y0 < 2.95; y0 += 0.25) {
+      const d = [];
+      for (let y = y0; y <= Math.min(2.97, y0 + 0.25) + 1e-9; y += 0.01) d.push([b * (noiSuy(RONG_THAN, y) - 0.008), y]);
+      const ym = y0 + 0.125;
+      themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
+    }
+  }
   manh.forEach((m) => {
     // mảnh vân cổ sát dưới hàm (có thể bị mặt che khi đầu quay): chỉ những mảnh này phải vẽ qua lớp che — lớp che tốn công
     m.sauMat = !m.laDau && m.pts.some(([x, y]) => y < 1.35 && Math.abs(x) < 0.95);
@@ -2798,8 +2811,8 @@ $('#vXong').addEventListener('change', napViec);
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file
-   một ghi chú. Một lần nạp là HOẶC file HOẶC chữ dán: đã chọn file thì ô dán mờ đi, không nạp — trước đây nạp cả hai
-   (thêm ghi chú lạ từ chữ sót trong ô dán) rồi hỏi qua hỏi lại, có lúc chặn luôn việc nạp. */
+   một ghi chú. Ô dán lúc nào cũng gõ được (từng bị tắt khi đã chọn file — bấm không vào, tưởng hỏng): có cả file lẫn chữ
+   dán thì nạp cả hai, chữ dán thành ghi chú riêng, và dòng nhắc nói trước điều đó — không hộp hỏi, không chặn. */
 let tepChon = [];
 const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
 const base64 = (buf) => {
@@ -2834,17 +2847,23 @@ async function docTep(files) {
       + (bo - tran ? ` · bỏ ${bo - tran} file không nhận được${doc}` : '')
     : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB, tổng một lần ~7 MB${doc}` : ''));
 }
-// Đã chọn file: ô dán mờ đi (không nạp), ghi rõ vì sao. Ô Tên chỉ bật khi lần nạp ra đúng một ghi chú.
+// Có file lẫn chữ dán: dòng nhắc nói trước sẽ ra thêm một ghi chú từ ô dán. Ô Tên đặt tên cho file (không có file thì
+// cho chữ dán), chỉ bật khi phần đó ra đúng một ghi chú; chữ mờ trong ô nói bỏ trống thì tên lấy từ đâu.
 function capNhatNap() {
-  const coTep = tepChon.length > 0, oDan = $('#napChu'), ten = $('#napTen');
-  oDan.disabled = coTep;
-  $('#napChuGhi').hidden = !(coTep && oDan.value.trim());
+  const chu = $('#napChu').value.trim(), coTep = tepChon.length > 0, coChu = !!chu, ten = $('#napTen'), ghi = $('#napChuGhi');
+  ghi.hidden = !(coTep && coChu);
+  if (!ghi.hidden) {                     // nêu tên ghi chú sẽ ra từ ô dán: chữ sót lại thì nhìn là thấy
+    const dau = chu.split('\n')[0].trim();
+    ghi.replaceChildren('Sẽ nạp ', el('b', null, 'cả file lẫn chữ dán'), ': chữ dán thành một ghi chú riêng (bắt đầu «'
+      + (dau.length > 50 ? dau.slice(0, 50) + '…' : dau) + '»). Chỉ muốn nạp file thì xoá chữ trong ô dán.');
+  }
   const mot = tepChon.length <= 1 && $('#napTach').value === 'khong';
   ten.disabled = !mot;
-  ten.placeholder = mot ? 'Hướng dẫn cài đặt OpenClaw trên VPS'
-    : tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng';
+  ten.placeholder = !mot ? (tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng')
+    : coTep ? 'Bỏ trống: lấy tên trong file' : coChu ? 'Bỏ trống: lấy dòng đầu ô dán' : 'vd: Quy trình bảo trì thang máy';
 }
 $('#napTach').addEventListener('change', capNhatNap);
+$('#napChu').addEventListener('input', capNhatNap);
 // danh sách file đã chọn + nút bỏ chọn (file chọn từ lần trước còn nằm đó thì lần nạp sau nạp luôn — dễ quên)
 function veDsTep(chu) {
   const d = $('#dsTep');
@@ -2867,7 +2886,7 @@ vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer
 
 async function napVao(thu) {
   const out = $('#napKq');
-  const chu = tepChon.length ? '' : $('#napChu').value.trim();   // đã chọn file: chỉ nạp file
+  const chu = $('#napChu').value.trim();
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
   const r = await api('/api/ingest', {

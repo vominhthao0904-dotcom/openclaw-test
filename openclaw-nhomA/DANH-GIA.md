@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **129** |
-| Test `test-web.sh` | 30 | **85** |
+| Test `test-web.sh` | 30 | **87** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -458,6 +458,19 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   danh sách), khối lệnh ```; mã ghi chú (cả dạng `[id1, id2]`) thành nút vàng mang tên ghi chú, bấm mở, chuột phải có menu; mã
   lạ giữ nguyên chữ. Câu Mây đọc to / phụ đề bỏ hết ký hiệu và mã. Thử trình duyệt 11 tình huống (kể cả thẻ `<img onerror>`
   chèn trong câu trả lời — hiện dạng chữ, không chạy): đạt cả.
+
+## Sau PR #18: chọn file thì không bấm được vào ô dán; vai có nét đứt
+- *"Thêm được 2 file, nhưng con trỏ không vào cho nhấp vào ô dán nội dung"* — rồi *"Nhập 1 file cũng bị"*. Bản trước cố ý tắt
+  ô dán khi đã chọn file (tránh lần nạp ra ghi chú lạ từ chữ sót), nhưng ô bị tắt thì chỉ thấy con trỏ cấm, tưởng hỏng. Nay ô
+  dán **luôn gõ được**; có cả file lẫn chữ dán thì nạp cả hai, chữ dán thành ghi chú riêng (tên lấy dòng đầu), và dòng vàng dưới
+  ô dán báo trước kèm chữ đầu đoạn dán — chữ sót nhìn là thấy, không hộp hỏi, không chặn. Ô Tên đặt cho file khi có file, không
+  có file thì cho chữ dán (máy chủ theo đúng quy ước này, không còn lỗi "ra 2 ghi chú"); chữ mờ trong ô Tên nói bỏ trống thì tên
+  lấy từ đâu (trước đây chữ mờ là một tên mẫu, trên ảnh trông như đã gõ sẵn). +2 test web (87; exec 84); thử trình duyệt 14 tình
+  huống (chọn 1 file rồi gõ vào ô dán, xem trước / nạp ra đúng 2 ghi chú đúng tên, chỉ dán + Tên, 2 file + dán…): đạt cả.
+- Ảnh chụp gần phần vai: trên đỉnh hai vai còn vài **mẩu vân ngắn đứng lẻ** — đường vân chạy chéo dốc vai, chạm mép hai đầu nên
+  chỉ còn một khúc ngắn. Nay thêm **viền thân liền một nét** hai bên, từ dưới hàm xuống dốc vai tới cánh tay (mờ dần phía dưới
+  như vân bên cạnh), và bỏ các mẩu ngắn kẹt sát mép; vân thân chạm mép thì gặp viền, đỉnh vai gọn. Quay đầu hai bên vẫn liền
+  tai – hàm – cổ; tốc độ vẽ giữ ~55 khung hình/giây.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

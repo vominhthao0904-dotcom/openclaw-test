@@ -68,7 +68,7 @@ Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `we
 
 ### Ba chế độ xem (nút trên cùng)
 
-- **Toàn cảnh** — lõi **Thái Cực – Tiên Thiên Bát Quái** ở giữa (xem mục dưới), mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
+- **Toàn cảnh** — lõi **Thái Cực – Tiên Thiên Bát Quái** ở giữa (xem mục dưới), mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó. Góc dưới bên phải chỉnh **tốc độ xoay**: **−** / **+** đổi giữa 5 mức (Rất chậm · Chậm · Vừa · Nhanh · Rất nhanh), **Dừng xoay** nếu thấy chóng mặt; trình duyệt nhớ lựa chọn cho lần mở sau. Đây là bức tranh chung, không phải mục lục.
 - **Thư viện** — chỗ truy xuất có hệ thống. Bên trái là **cây Vùng › Nhóm › Nhóm con** kèm số ghi chú (bấm ▸ để mở nhóm con; *Chưa xếp chỗ* màu vàng là chỗ cần dọn). Bên phải là các thẻ ghi chú, lọc nhanh bằng **chip loại** (Kiến thức, Quy trình, Khái niệm, Tài liệu…; số trên chip đếm trong nhóm đang xem), sắp theo mới sửa / mới tạo / cũ nhất / tên, bấm *Xem thêm* để xem tiếp. Mỗi thẻ ghi rõ loại, đường dẫn nhóm, có nguồn/trích dẫn không, hạn (nếu là việc).
 - **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ cam) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
 

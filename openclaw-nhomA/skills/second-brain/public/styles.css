@@ -177,7 +177,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .empty[hidden],.sheet[hidden]{display:none}
 /* chú giải nhóm — bấm để chỉ làm nổi một vòng */
 .duoi{
-  position:absolute;left:20px;bottom:16px;right:150px;
+  position:absolute;left:20px;bottom:16px;right:290px;
   display:flex;flex-direction:column;align-items:flex-start;gap:8px
 }
 .legend{display:flex;flex-wrap:wrap;gap:5px}
@@ -197,12 +197,21 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 }
 .con-lai[hidden]{display:none}
 
-.pause{
-  position:absolute;right:18px;bottom:16px;background:rgba(16,32,58,.82);
-  color:var(--trung-mo);border:1px solid var(--son-3);border-radius:999px;
-  font:500 12px var(--ui);padding:6px 13px;cursor:pointer;backdrop-filter:blur(4px)
+/* tốc độ xoay: − mức + · Dừng xoay */
+.toc-do{
+  position:absolute;right:18px;bottom:16px;display:flex;align-items:center;gap:2px;
+  background:rgba(16,32,58,.82);border:1px solid var(--son-3);border-radius:999px;
+  padding:3px;backdrop-filter:blur(4px);font:500 12px var(--ui);color:var(--trung-mo)
 }
-.pause:hover{color:var(--trung)}
+.toc-do button{
+  background:none;border:0;color:var(--trung-mo);font:inherit;cursor:pointer;border-radius:999px
+}
+.toc-do button:hover:not(:disabled){color:var(--trung);background:var(--son-3)}
+.toc-do button:disabled{opacity:.35;cursor:default}
+.toc-do button:focus-visible{outline:2px solid var(--vang);outline-offset:1px}
+.toc-do .nut-toc{width:26px;height:26px;font-size:16px;line-height:1}
+.toc-do #mucToc{min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
+.toc-do .dung{padding:5px 11px;border-left:1px solid var(--son-3);border-radius:0 999px 999px 0}
 
 /* ---------- thẻ chi tiết ---------- */
 .sheet{
@@ -370,6 +379,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .lien h3{font:600 12px var(--ui);letter-spacing:.06em;text-transform:uppercase;color:#8299B8;margin:0 0 8px}
 .lien .hit{width:100%}
 
+@media (max-width:600px){
+  /* màn hẹp: nút tốc độ một hàng riêng ở đáy, chú giải nằm ngay trên */
+  .duoi{right:20px;bottom:58px}
+}
 @media (max-width:900px){
   .stage{height:auto;min-height:62dvh}
   .xem{position:relative;inset:auto}

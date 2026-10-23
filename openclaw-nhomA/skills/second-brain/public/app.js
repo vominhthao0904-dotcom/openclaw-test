@@ -59,6 +59,17 @@ let chon = null;
 const itMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (itMotion) quay = false;
 
+// tốc độ xoay — 5 mức, "Vừa" là tốc độ mặc định. Trình duyệt này nhớ lựa chọn cho lần mở sau
+// (chặn lưu trữ, cửa sổ ẩn danh… thì dùng mặc định, trang vẫn chạy bình thường).
+const MUC_TOC = [['Rất chậm', 0.25], ['Chậm', 0.5], ['Vừa', 1], ['Nhanh', 1.75], ['Rất nhanh', 3]];
+let mucToc = 2;
+try {
+  const m = localStorage.getItem('sb.mucToc');
+  if (m !== null && /^[0-4]$/.test(m)) mucToc = Number(m);
+  const q = localStorage.getItem('sb.quay');
+  if (q === '0' || q === '1') quay = q === '1';
+} catch (_) { /* không lưu được thì thôi */ }
+
 /* ---------------- nạp dữ liệu ---------------- */
 async function nap() {
   const kq = await api('/api/notes');
@@ -344,13 +355,20 @@ function ve() {
     const toi = mo(nd);
     if (!nb && toi) return;
     const p = diem.get(nd.note.id);
-    const t = nd.note.title.length > 32 ? nd.note.title.slice(0, 31) + '…' : nd.note.title;
-    const w = cx.measureText(t).width;
+    let t = nd.note.title.length > 32 ? nd.note.title.slice(0, 31) + '…' : nd.note.title;
+    let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
     // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
     let trai = p.x < CX;
     if (trai && p.x - 10 - w < 8) trai = false;
     else if (!trai && p.x + 10 + w > phai) trai = true;
+    // màn hẹp (điện thoại): hai phía đều thiếu chỗ thì rút gọn nhãn cho vừa, không để chữ bị cắt ở mép
+    const cho = trai ? p.x - 18 : phai - p.x - 10;
+    if (w > cho) {
+      if (cho < 48 && !nb) return;
+      while (t.length > 4 && cx.measureText(t).width > cho) t = t.slice(0, -2).trimEnd() + '…';
+      w = cx.measureText(t).width;
+    }
     const x0 = trai ? p.x - 10 - w : p.x + 10;
     const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - 9, y1: p.y + 9 };
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
@@ -488,8 +506,13 @@ function veTenQue(R) {
   cx.fillText('Thái Cực · Tiên Thiên Bát Quái', CX, CY + R + 42);
 }
 
-function vong() {
-  if (quay) goc += 0.0022;
+let tCu = 0;
+function vong(t) {
+  // tính theo thời gian thật, không theo số khung hình: màn 120Hz không xoay nhanh gấp đôi màn 60Hz;
+  // chặn 100ms để quay lại tab đang ẩn thì không nhảy vọt
+  const dt = tCu && t ? Math.min(100, t - tCu) : 16.7;
+  tCu = t || 0;
+  if (quay) goc += 0.0022 * MUC_TOC[mucToc][1] * dt / 16.7;
   if (!itMotion && Math.abs(lechDen - lechDich) > 0.4) lechDich += (lechDen - lechDich) * 0.14;
   else lechDich = lechDen;
   CX = (W - lechDich) / 2;
@@ -521,11 +544,25 @@ cv.addEventListener('click', (e) => {
   if (nd) moChiTiet(nd.note.id);
 });
 
-$('#dung').addEventListener('click', (e) => {
-  quay = !quay;
-  e.target.textContent = quay ? 'Dừng xoay' : 'Xoay lại';
-  e.target.setAttribute('aria-pressed', String(!quay));
-});
+function capNhatToc(luu) {
+  $('#mucToc').textContent = MUC_TOC[mucToc][0];
+  $('#cham').disabled = mucToc === 0;
+  $('#nhanh').disabled = mucToc === MUC_TOC.length - 1;
+  const d = $('#dung');
+  d.textContent = quay ? 'Dừng xoay' : 'Xoay lại';
+  d.setAttribute('aria-pressed', String(!quay));
+  if (luu) {
+    try {
+      localStorage.setItem('sb.mucToc', String(mucToc));
+      localStorage.setItem('sb.quay', quay ? '1' : '0');
+    } catch (_) { /* không lưu được thì thôi */ }
+  }
+}
+// chỉnh tốc độ nghĩa là muốn xem xoay — đang dừng thì cho xoay lại luôn
+$('#cham').addEventListener('click', () => { mucToc = Math.max(0, mucToc - 1); quay = true; capNhatToc(true); });
+$('#nhanh').addEventListener('click', () => { mucToc = Math.min(MUC_TOC.length - 1, mucToc + 1); quay = true; capNhatToc(true); });
+$('#dung').addEventListener('click', () => { quay = !quay; capNhatToc(true); });
+capNhatToc(false);
 
 /* ---------------- thẻ chi tiết ---------------- */
 function ngayDep(iso) {

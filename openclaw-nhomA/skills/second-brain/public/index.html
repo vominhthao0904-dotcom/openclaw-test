@@ -147,7 +147,12 @@
         <div class="legend" id="chuGiai" aria-label="Các vùng kiến thức"></div>
         <p class="con-lai" id="conLai" hidden></p>
       </div>
-      <button class="pause" id="dung" type="button" aria-pressed="false" title="Dừng xoay">Dừng xoay</button>
+      <div class="toc-do" role="group" aria-label="Tốc độ xoay">
+        <button type="button" id="cham" class="nut-toc" aria-label="Xoay chậm hơn" title="Chậm hơn">−</button>
+        <span id="mucToc" aria-live="polite">Vừa</span>
+        <button type="button" id="nhanh" class="nut-toc" aria-label="Xoay nhanh hơn" title="Nhanh hơn">+</button>
+        <button type="button" id="dung" class="dung" aria-pressed="false" title="Dừng / xoay lại">Dừng xoay</button>
+      </div>
     </section>
 
     <section class="xem thu-vien" data-xem="thu-vien" hidden>

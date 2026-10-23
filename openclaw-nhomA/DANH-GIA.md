@@ -178,6 +178,12 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
   nhãn để chữ luôn nổi trên nền.
 
+- **Chỉnh tốc độ xoay** (anh yêu cầu): nút **−** / **+** đổi 5 mức (Rất chậm 0,25× · Chậm 0,5× · Vừa 1× · Nhanh 1,75× · Rất nhanh 3×)
+  cạnh nút Dừng xoay; chỉnh tốc độ khi đang dừng thì xoay lại luôn; trình duyệt nhớ lựa chọn (không lưu được thì dùng mặc định).
+  Tốc độ tính theo thời gian thật — trước đây tính theo khung hình nên màn 120 Hz xoay nhanh gấp đôi màn 60 Hz.
+  Đo trên trình duyệt: Rất nhanh = 3,05× Vừa, Rất chậm = 0,25×, Dừng = 0.
+- **Nhãn bị cắt chữ ở mép màn hình điện thoại**: hai phía đều thiếu chỗ thì nhãn tự rút gọn kèm "…" cho vừa.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

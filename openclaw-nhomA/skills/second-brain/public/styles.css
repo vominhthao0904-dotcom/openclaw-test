@@ -414,7 +414,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 
 /* tự ẩn khi không động vào màn hình */
 .duoi,.toc-do{transition:opacity .45s ease}
-body.lang-yen .duoi,body.lang-yen .toc-do,body.lang-yen .bat-ten,body.lang-yen .bat-tieng{opacity:0;pointer-events:none}
+body.lang-yen .duoi,body.lang-yen .toc-do,body.lang-yen .bat-ten,body.lang-yen .bat-tieng,body.lang-yen .noi-may{opacity:0;pointer-events:none}
 
 /* nhấp đúp: toàn màn hình, chỉ lõi và các chấm */
 #do{touch-action:manipulation}
@@ -442,6 +442,7 @@ body.tap-trung .bat-ten{display:grid}
   font:500 15px/1.5 var(--ui);color:#CFEFFF;text-shadow:0 0 10px rgba(120,220,255,.6)
 }
 body.tap-trung .loi-may{font-size:17px}
+.loi-may .con{color:transparent;text-shadow:none}   /* phần chưa đọc tới: giữ chỗ cho khung khỏi co giãn */
 /* mặt A.I: ẩn dải tên vùng cho thoáng */
 body.mat-ai .duoi{display:none}
 body.mat-ai .goi-y-thoat{bottom:78px}            /* trên phụ đề — không che các vòng vùng ở trên đầu */
@@ -456,3 +457,15 @@ body.mat-ai .bat-tieng{display:grid}
 /* bật tiếng mà máy chưa có giọng đọc: vàng + chấm cảnh báo — rê/bấm vào để xem lý do và cách nghe được */
 .bat-tieng.thieu-giong{color:var(--vang)}
 .bat-tieng.thieu-giong::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--do)}
+
+/* micro: nhập bằng giọng nói trong ô (góc phải ô) và "Nói với Mây" ở chế độ mặt A.I (cạnh nút loa); đang nghe thì cam, nhịp sáng */
+.co-mic{position:relative;display:block}
+.co-mic>input,.co-mic>textarea{padding-right:40px}
+.mic{position:absolute;right:6px;top:6px;width:30px;height:30px;display:grid;place-items:center;padding:0;border:0;
+  border-radius:50%;background:transparent;color:var(--trung-mo);cursor:pointer;opacity:.75}
+.mic:hover,.mic:focus-visible{opacity:1;background:rgba(255,255,255,.07)}
+.noi-may{position:absolute;top:16px;right:58px;z-index:3;display:none;transition:opacity .45s ease}
+body.mat-ai .noi-may{display:grid}
+.mic.dang-nghe,.noi-may.dang-nghe{color:#fff;background:var(--do);opacity:1;animation:nhip-mic 1.2s ease-in-out infinite}
+@keyframes nhip-mic{0%,100%{box-shadow:0 0 0 0 rgba(240,127,45,.55)}50%{box-shadow:0 0 0 8px rgba(240,127,45,0)}}
+@media (prefers-reduced-motion:reduce){.mic.dang-nghe,.noi-may.dang-nghe{animation:none}}

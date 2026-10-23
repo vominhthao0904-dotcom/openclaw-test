@@ -258,6 +258,49 @@ check "nạp lại: bỏ hết bản trùng" 'BR nap "$TMP/nap" | jq_ "(d[\"da_t
 check "bỏ qua file trong thư mục ẩn" 'BR search "an" --kind kien-thuc | jq_ "[n for n in d[\"notes\"] if n[\"title\"]==\"X\"]"' "[]"
 check "nạp từ stdin" 'echo "Dán nhanh vào kho từ chat" | BR nap - --title "Ghi chú dán" | jq_ "d[\"da_them\"]"' "1"
 check "đường dẫn không có báo lỗi rõ" 'BR nap "$TMP/khong-co" | jq_ "d[\"ok\"]"' "False"
+# Word .docx dựng ngay trong test (zip + XML): 2 tiêu đề Heading 1, một dòng lệnh mẫu mở đầu bằng "#", một dòng danh sách
+python3 - "$TMP/word.docx" <<'DOCX'
+import sys, zipfile
+W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+def p(t, kieu=None, ds=False):
+    pr = (f'<w:pStyle w:val="{kieu}"/>' if kieu else '') + ('<w:numPr><w:ilvl w:val="0"/></w:numPr>' if ds else '')
+    return f'<w:p>{"<w:pPr>" + pr + "</w:pPr>" if pr else ""}<w:r><w:t>{t}</w:t></w:r></w:p>'
+than = (p("Mục Word một", "Heading1") + p("Nội dung mục một của file Word.") + p("# chú thích trong lệnh mẫu")
+        + p("Mục Word hai", "Heading1") + p("Ý gạch đầu dòng", ds=True) + p("Nội dung mục hai."))
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
+    z.writestr("word/document.xml", f'<?xml version="1.0" encoding="UTF-8"?><w:document {W}><w:body>{than}</w:body></w:document>')
+DOCX
+check "nạp Word .docx: tách theo tiêu đề" 'BR nap "$TMP/word.docx" --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Mục Word một', 'Mục Word hai']"
+check "Word: dòng danh sách giữ gạch đầu dòng" \
+  'BR nap "$TMP/word.docx" >/dev/null; BR search "gạch đầu dòng" | jq_ "\"- Ý\" in d[\"notes\"][0][\"snippet\"].replace(\"«\",\"\").replace(\"»\",\"\")"' "True"
+printf 'day khong phai file zip' > "$TMP/cu.docx"
+check "Word hỏng / .doc đổi đuôi: báo lỗi rõ" 'BR nap "$TMP/cu.docx" | jq_ "(d[\"ok\"], \".docx\" in str(d[\"loi\"]))"' "(False, True)"
+if command -v pdftotext >/dev/null 2>&1 || python3 -c "import pypdf" 2>/dev/null; then
+  # PDF 2 trang tối giản viết tay (chữ Helvetica) — đủ để kiểm đọc chữ + tách trang
+  python3 - "$TMP/hai-trang.pdf" <<'PDF'
+import sys
+trang = ["Trang mot: noi dung kiem tra doc chu cua file PDF.", "Trang hai: noi dung kiem tra doc chu cua file PDF."]
+obj = ["<< /Type /Catalog /Pages 2 0 R >>",
+       "<< /Type /Pages /Kids [" + " ".join(f"{3 + 2 * i} 0 R" for i in range(2)) + "] /Count 2 >>"]
+for i, t in enumerate(trang):
+    obj.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 7 0 R >> >> /Contents {4 + 2 * i} 0 R >>")
+    luong = f"BT /F1 10 Tf 20 100 Td ({t}) Tj ET"
+    obj.append(f"<< /Length {len(luong)} >>\nstream\n{luong}\nendstream")
+obj.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+ra, vt = "%PDF-1.4\n", []
+for i, o in enumerate(obj, 1):
+    vt.append(len(ra))
+    ra += f"{i} 0 obj\n{o}\nendobj\n"
+x = len(ra)
+ra += f"xref\n0 {len(obj) + 1}\n0000000000 65535 f \n" + "".join(f"{v:010d} 00000 n \n" for v in vt)
+ra += f"trailer\n<< /Size {len(obj) + 1} /Root 1 0 R >>\nstartxref\n{x}\n%%EOF\n"
+open(sys.argv[1], "w").write(ra)
+PDF
+  check "nạp PDF: mỗi trang 1 ghi chú" 'BR nap "$TMP/hai-trang.pdf" --tach trang --dry-run | jq_ "len(d[\"ghi_chu\"])"' "2"
+else
+  echo "  (máy này chưa có pdftotext / pypdf — bỏ qua test PDF)"
+fi
 echo '["chuoi", 5, {"title":"Hợp lệ","content":"Nội dung hợp lệ"}]' > "$TMP/hong.json"
 check "JSON có phần tử rác: báo lỗi, không traceback" 'BR nap "$TMP/hong.json" 2>&1 | jq_ "(d[\"ok\"], len(d[\"loi\"]))"' "(False, 1)"
 echo '{"notes": "khong phai list"}' > "$TMP/hong2.json"

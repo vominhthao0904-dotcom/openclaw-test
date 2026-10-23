@@ -441,6 +441,12 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 - **Kho lưu liệt kê 25 trang đã gộp**: các trang của cùng một file gom thành một dòng "«tên file» — 25 trang", bấm để bung.
 - **Vòng trên đầu mặt A.I** (anh yêu cầu): 2 cung xanh → 3 cung nét đứt xanh lam / vàng kim / cam (màu luồng Dương và lõi), xoay
   xen kẽ chiều, nhanh chậm khác nhau; đậm hơn chút cho rõ trên màn sáng. Vẫn ~60 khung hình/giây.
+- **Quay đầu sang bên thì dưới tai – hàm phía bên kia đứt nét** (anh khoanh đỏ). Mô hình đầu chỉ có mặt trước, cổ chừa sẵn
+  vùng dưới hàm (nhìn thẳng bị mặt che): quay đầu là hở một mảng tối giữa tai, hàm và cổ. Sửa: vân cổ chạy liền lên dưới hàm và
+  lên tới sau tai; phần cổ phía trên hai bên lùi dần ra sau (gáy, cơ cổ — chuyển mượt, không gãy độ sâu) nên quay đầu thì phía
+  bên kia trượt ra ngoài mép hàm như đầu thật; mỗi khung hình che phần cổ nằm sau mặt theo đúng viền đầu lúc đó (chỉ 23/319
+  mảnh vân sát dưới hàm phải qua lớp che, đặt lớp che một lần). Nhìn thẳng giữ nguyên. Lần đầu che cả thân: tụt 60 → 40
+  khung/giây — đã tối ưu, còn ~57.
 - Thử trình duyệt: nạp file + chữ sót + Tên (đúng ảnh anh) → 1 ghi chú đúng tên, không hỏi; chọn nhiều file / cộng thêm / trùng
   tên / quá tổng; Kho lưu gọn và bung; tìm "kinh doanh" — đạt cả.
 

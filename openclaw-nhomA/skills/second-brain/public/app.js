@@ -137,7 +137,7 @@ async function nap() {
 /* Các ô chọn loại / vùng: đổ một lần, giữ lựa chọn đang có. */
 function dienChon() {
   const dem = Object.fromEntries((DATA.loai || []).map((x) => [x.kind, x.so]));
-  [['#chonLoai', false], ['#suaLoai', false], ['#napLoai', 'Theo file (mặc định: Kiến thức)'], ['#timLoai', 'Mọi loại']]
+  [['#chonLoai', false], ['#suaLoai', false], ['#napLoai', 'Theo file'], ['#timLoai', 'Mọi loại']]
     .forEach(([sel, dauTien]) => {
       const o = $(sel), cu = o.value;
       o.innerHTML = '';
@@ -450,12 +450,15 @@ function ve() {
     let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
     const cach = 6 + nd.r * toCham;     // khoảng cách chữ — chấm, theo cỡ chấm
-    // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
+    // Tên luôn quay RA NGOÀI (chấm bên trái lõi → tên bên trái), thiếu chỗ thì rút gọn kèm "…".
+    // Chỉ lật sang phía kia khi phía ngoài quá chật — trước đây tên dài bị lật ngang qua lõi Bát Quái,
+    // đụng ô của lõi nên bị bỏ: xem một vùng có 4 chấm mà chỉ 2 chấm có tên.
+    // Không tràn mép trái, không chui xuống dưới thẻ chi tiết.
+    const choTrai = p.x - cach - 8, choPhai = phai - p.x - cach;
     let trai = p.x < CX;
-    if (trai && p.x - cach - w < 8) trai = false;
-    else if (!trai && p.x + cach + w > phai) trai = true;
-    // màn hẹp (điện thoại): hai phía đều thiếu chỗ thì rút gọn nhãn cho vừa, không để chữ bị cắt ở mép
-    const cho = trai ? p.x - cach - 8 : phai - p.x - cach;
+    const choNgoai = trai ? choTrai : choPhai, choKia = trai ? choPhai : choTrai;
+    if (choNgoai < Math.min(w, 140) && choKia > choNgoai) trai = !trai;
+    const cho = trai ? choTrai : choPhai;
     if (w > cho) {
       if (cho < 48 && !nb) return;
       while (t.length > 4 && cx.measureText(t).width > cho) t = t.slice(0, -2).trimEnd() + '…';
@@ -1309,7 +1312,9 @@ async function napThuVien(themNua = false) {
 
   const c = LOC.category;
   $('#kDuong').textContent = c === '__chua__' ? 'Cần xếp chỗ' : c ? 'Toàn bộ kho › ' + duongDep(c) : 'Toàn bộ kho';
-  $('#kTieuDe').textContent = (c === '__chua__' ? 'Chưa xếp chỗ' : c ? c.split('/').pop() : 'Tất cả ghi chú') + ` · ${r.tong}`;
+  // đang lọc theo loại thì ghi rõ trên tiêu đề — "Tất cả ghi chú · 1" khi đang lọc Ý tưởng dễ hiểu nhầm là kho chỉ có 1
+  $('#kTieuDe').textContent = (c === '__chua__' ? 'Chưa xếp chỗ' : c ? c.split('/').pop() : 'Tất cả ghi chú')
+    + (LOC.kind ? ` · ${tenLoai(LOC.kind)}` : '') + ` · ${r.tong}`;
   const tt = $('#kThe');
   tt.hidden = !LOC.tag;
   if (LOC.tag) {

@@ -241,6 +241,14 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - Đo trên trình duyệt: khí đi qua đúng Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn → Chấn; 6 vòng tốc độ 0,139 / −0,096 /
   0,072 / −0,056 / 0,045 / −0,038 (trong → ngoài, dấu = chiều); ~60 khung hình/giây; máy bật "giảm chuyển động" thì đứng yên.
 
+## Rà ảnh chụp sau PR #12
+- **Xem một vùng: 4 chấm mà chỉ 2 chấm có tên.** Chấm nằm ngang hàng lõi, ở mép ngoài: tên dài không vừa phía ngoài thì bị
+  lật sang phía bên kia — tức ngang qua lõi Bát Quái — rồi đụng ô của lõi nên bị bỏ. Nay tên luôn quay ra ngoài, rút gọn kèm "…"
+  cho vừa; chỉ lật khi phía ngoài quá chật (< 140 px) và phía kia rộng hơn. Đo 5 thời điểm: bản cũ 2/4 2/4 2/4 4/4 4/4, bản sửa
+  4/4 cả 5. Xem toàn kho / toàn màn hình: số tên hiện như cũ (không thụt lùi).
+- **Thư viện lọc theo loại mà tiêu đề vẫn "Tất cả ghi chú · 1"** — dễ tưởng kho chỉ có 1 ghi chú. Nay "Tất cả ghi chú · Ý tưởng · 1".
+- **Tab Nạp, ô Loại bị cắt chữ** "Theo file (mặc…": nay "Theo file", rê chuột hiện giải thích (file không ghi loại thì là Kiến thức).
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

@@ -101,7 +101,14 @@ def api_notes(conn, _q, _body):
     cay, _ = brain.cay_nhom(conn)
     dem_loai = {r[0]: r[1] for r in conn.execute(
         f"SELECT kind, count(*) FROM notes WHERE {brain.CON} GROUP BY kind")}
+    # gợi ý cho ô Nguồn / Trích dẫn: những gì đã dùng trong TOÀN kho, mới dùng trước, kèm tên ghi chú dùng gần nhất
+    def da_dung(cot):
+        return [{"gia_tri": r[0], "so": r[1], "tieu_de": r[2]} for r in conn.execute(
+            f"SELECT {cot}, count(*), (SELECT title FROM notes x WHERE x.{cot}=n.{cot} AND x.{brain.CON} "
+            f"ORDER BY x.updated_at DESC LIMIT 1) FROM notes n WHERE n.{brain.CON} AND trim(coalesce({cot},''))<>'' "
+            f"GROUP BY {cot} ORDER BY max(updated_at) DESC LIMIT 200")]
     return {"ok": True, "notes": notes, "categories": cats, "links": links,
+            "nguon_da_dung": da_dung("url"), "trich_da_dung": da_dung("cite"),
             "tong_ghi_chu": tong, "da_cat_bot": max(0, tong - len(notes)),
             "cho_phan_loai": cho, "trong_kho_luu": kho, "cay": cay,
             "loai": [{"kind": k, "mo_ta": v, "so": dem_loai.get(k, 0)} for k, v in brain.KINDS.items()],

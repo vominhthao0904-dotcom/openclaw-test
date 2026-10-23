@@ -126,6 +126,18 @@ async function nap() {
     duyet(c.con || []);
   });
   duyet(DATA.cay || []);
+  // gợi ý ô Nguồn / Trích dẫn: nguồn đã dùng trong kho — bấm vào ô hoặc gõ vài chữ (một phần link) để chọn lại,
+  // khỏi chép tay; nhãn là tên ghi chú dùng nguồn đó gần nhất
+  [['#dsNguon', DATA.nguon_da_dung], ['#dsTrich', DATA.trich_da_dung]].forEach(([id, ds]) => {
+    const box = $(id);
+    box.innerHTML = '';
+    (ds || []).forEach((x) => {
+      const o = document.createElement('option');
+      o.value = x.gia_tri;
+      o.label = (x.tieu_de || '') + (x.so > 1 ? ` · ${x.so} ghi chú` : '');
+      box.appendChild(o);
+    });
+  });
   const v = DATA.viec_dang_mo || 0;
   $('#viecMo').textContent = v ? `${v} việc đang mở →` : '';
   $('#viecMo').hidden = !v;

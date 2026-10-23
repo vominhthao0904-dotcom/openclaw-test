@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **123** |
-| Test `test-web.sh` | 30 | **82** |
+| Test `test-web.sh` | 30 | **83** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -396,6 +396,10 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   trái hay nền Toàn cảnh (trừ lõi Bát Quái) — là đóng. Bấm nút, ô nhập, thẻ ghi chú khác thì vẫn làm việc của nó (mở ghi chú
   khác, không đóng rồi mở lại). Đang Sửa thì không tự đóng. Thử bằng trình duyệt thật 10 tình huống (mở, đổi ghi chú, bấm trong
   thẻ, chỗ trống, đang sửa, ×, Esc, chấm và chỗ trống trên đồ thị): đạt cả.
+- **Ô Nguồn phải gõ / dán tay** (anh hỏi "không cho truy tìm nguồn?"). Thêm gợi ý: ô Nguồn và Trích dẫn (cả form Thêm lẫn form
+  Sửa) hiện danh sách nguồn đã dùng trong toàn kho — mới dùng trước, tối đa 200, nhãn là tên ghi chú dùng gần nhất và số ghi
+  chú dùng chung; gõ vài chữ để lọc. Máy chủ tính trên toàn kho (không chỉ phần ghi chú gửi xuống trang). Không tra Internet —
+  trang không gửi gì ra ngoài. +1 test web (83; trong exec của Mây 80).
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

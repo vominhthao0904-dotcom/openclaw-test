@@ -45,6 +45,8 @@
           </label>
         </div>
         <datalist id="dsNhom"></datalist>
+        <datalist id="dsNguon"></datalist>
+        <datalist id="dsTrich"></datalist>
         <label>Thẻ <span class="phu">— ngăn bằng dấu phẩy</span>
           <input name="tags" maxlength="200" placeholder="landing, mobile, ux">
         </label>
@@ -55,10 +57,10 @@
           <input name="due" type="date">
         </label>
         <label class="theo-loai" data-loai="tai-lieu khai-niem" hidden>Trích dẫn
-          <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
+          <input name="cite" list="dsTrich" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
         </label>
         <label>Nguồn <span class="phu">(link bài viết, khoá học… để sau còn kiểm lại)</span>
-          <input name="url" type="url" maxlength="500" placeholder="https://…">
+          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link — hoặc gõ vài chữ để chọn nguồn đã dùng">
         </label>
         <input type="hidden" name="source" value="">
         <button class="go" type="submit">Lưu ghi chú</button>
@@ -248,11 +250,11 @@
           <input name="due" type="date">
         </label>
         <label>Nguồn
-          <input name="url" type="url" maxlength="500" placeholder="https://…">
+          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link, hoặc chọn nguồn đã dùng">
         </label>
       </div>
       <label>Trích dẫn
-        <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên. Nơi xuất bản, tr.">
+        <input name="cite" list="dsTrich" maxlength="300" placeholder="Tác giả (năm). Tên. Nơi xuất bản, tr.">
       </label>
       <label>Nội dung
         <textarea name="content" rows="10"></textarea>

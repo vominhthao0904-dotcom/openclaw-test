@@ -220,6 +220,10 @@ check "nạp: phần tử file sai kiểu bị bỏ, không lỗi 500" \
 check "thông tin chi tiết có ghi chú liên kết kèm tên" \
   'curl -sS "$U/api/note?id='"$VID"'" | jq_ "type(d[\"note\"][\"linked\"]).__name__"' "list"
 
+check "gợi ý ô Nguồn: link đã dùng kèm tên ghi chú" \
+  'curl -sS "$U/api/notes" | jq_ "[(x[\"gia_tri\"], x[\"tieu_de\"]) for x in d[\"nguon_da_dung\"] if \"example.com/bai\" in x[\"gia_tri\"]]"' \
+  "[('https://example.com/bai', 'Hero mobile contain')]"
+
 echo
 echo "7b2. Ô HỎI (openclaw agent) VÀ GỘP TRANG"
 if [ "${OPENCLAW_SHELL:-}" = exec ]; then

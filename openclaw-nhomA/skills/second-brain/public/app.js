@@ -2297,18 +2297,37 @@ async function veKhoLuu() {
 
   const r = await api('/api/archived');
   if (!r.ok) return;
-  r.notes.forEach((x) => {
-    const b = document.createElement('button');
-    b.className = 'hit';
+  const dong = (x, trongBo) => {
+    const b = el('button', 'hit' + (trongBo ? ' trong-bo' : ''));
     b.type = 'button';
-    const t = document.createElement('b'); t.textContent = x.title;
-    const s = document.createElement('span');
-    s.textContent = `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`;
-    b.append(t, s);
+    b.append(el('b', null, x.title), el('span', null, `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`));
     ganMo(b, x.id);
-    box.appendChild(b);
+    return b;
+  };
+  // các trang của cùng một file ("<file> — trang N", thường là bản đã gộp) gom thành MỘT dòng, bấm để bung ra
+  const bo = new Map(), le = [];
+  r.notes.forEach((x) => {
+    const m = /^(.+?) — trang (\d+)$/.exec(x.title);
+    if (!m) { le.push(x); return; }
+    if (!bo.has(m[1])) bo.set(m[1], []);
+    bo.get(m[1]).push({ ...x, so: +m[2] });
   });
+  bo.forEach((ds, ten) => {
+    if (ds.length < 2) { le.push(...ds); return; }
+    ds.sort((x, y) => x.so - y.so);
+    const mo = moBoKho.has(ten);
+    const nut = el('button', 'hit bo-kho');
+    nut.type = 'button';
+    nut.setAttribute('aria-expanded', String(mo));
+    nut.append(el('b', null, `${mo ? '▾' : '▸'} «${ten}» — ${ds.length} trang`),
+      el('span', null, `${duongDep(ds[0].category)} · cất ${ngayTu(ds[0].updated_at) || ''} · ${mo ? 'bấm để thu gọn' : 'bấm để xem từng trang'}`));
+    nut.addEventListener('click', () => { if (mo) moBoKho.delete(ten); else moBoKho.add(ten); veKhoLuu(); });
+    box.appendChild(nut);
+    if (mo) ds.forEach((x) => box.appendChild(dong(x, true)));
+  });
+  le.forEach((x) => box.appendChild(dong(x)));
 }
+const moBoKho = new Set();     // bộ trang đang bung trong Kho lưu
 
 async function napHangOn() {
   veHopCho();
@@ -2677,7 +2696,8 @@ $('#vXong').addEventListener('change', napViec);
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file
-   một ghi chú; chữ trong ô dán là thêm một nguồn riêng (thêm một ghi chú) — có cả hai thì hỏi trước khi nạp. */
+   một ghi chú. Một lần nạp là HOẶC file HOẶC chữ dán: đã chọn file thì ô dán mờ đi, không nạp — trước đây nạp cả hai
+   (thêm ghi chú lạ từ chữ sót trong ô dán) rồi hỏi qua hỏi lại, có lúc chặn luôn việc nạp. */
 let tepChon = [];
 const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
 const base64 = (buf) => {
@@ -2686,20 +2706,48 @@ const base64 = (buf) => {
   for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
   return btoa(s);
 };
+const TONG_TOI_DA = 7.5e6;      // một lần gửi lên máy chủ tối đa 8 MB (file Word/PDF gửi dạng base64, to hơn ~1/3)
 async function docTep(files) {
-  const ok = [...files].filter((f) => (LA_CHU.test(f.name) || LA_TEP.test(f.name)) && f.size < TOI_DA);
-  tepChon = await Promise.all(ok.map(async (f) => (LA_CHU.test(f.name)
+  files = [...files];                    // chép ra trước: xoá ô chọn file (bên dưới) làm trống luôn danh sách gốc
+  const ok = files.filter((f) => (LA_CHU.test(f.name) || LA_TEP.test(f.name)) && f.size < TOI_DA);
+  const moi = await Promise.all(ok.map(async (f) => (LA_CHU.test(f.name)
     ? { name: f.name, text: await f.text() } : { name: f.name, b64: base64(await f.arrayBuffer()) })));
-  const bo = files.length - ok.length;
-  const doc = [...files].some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
+  // chọn thêm lần nữa thì CỘNG vào danh sách (trước đây thay hẳn — chọn file thứ hai là mất file thứ nhất);
+  // trùng tên thì lấy bản mới; tổng quá giới hạn một lần gửi thì để file sau cho đợt sau
+  const coTep = (t) => (t.text || t.b64 || '').length;
+  tepChon = tepChon.filter((t) => !moi.some((m) => m.name === t.name));
+  let tong = tepChon.reduce((x, t) => x + coTep(t), 0), tran = 0;
+  moi.forEach((t) => { if (tong + coTep(t) <= TONG_TOI_DA) { tepChon.push(t); tong += coTep(t); } else tran++; });
+  $('#chonTep').value = '';              // chọn lại đúng file đó vẫn nhận
+  const bo = files.length - ok.length + tran;
+  const doc = files.some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
+  // chọn 1 file mà ô dán đang có đúng MỘT dòng ngắn, ô Tên trống: đó là tên anh gõ trước — chuyển sang ô Tên
+  const chu = $('#napChu').value.trim();
+  if (tepChon.length === 1 && chu && !chu.includes('\n') && chu.length <= 150 && !$('#napTen').value.trim()) {
+    $('#napTen').value = chu; $('#napChu').value = '';
+  }
   veDsTep(tepChon.length
-    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không nhận được${doc}` : '')
-    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB${doc}` : ''));
+    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 220)}`
+      + (tran ? ` · ${tran} file để đợt sau (một lần nạp tối đa ~7 MB)` : '')
+      + (bo - tran ? ` · bỏ ${bo - tran} file không nhận được${doc}` : '')
+    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB, tổng một lần ~7 MB${doc}` : ''));
 }
+// Đã chọn file: ô dán mờ đi (không nạp), ghi rõ vì sao. Ô Tên chỉ bật khi lần nạp ra đúng một ghi chú.
+function capNhatNap() {
+  const coTep = tepChon.length > 0, oDan = $('#napChu'), ten = $('#napTen');
+  oDan.disabled = coTep;
+  $('#napChuGhi').hidden = !(coTep && oDan.value.trim());
+  const mot = tepChon.length <= 1 && $('#napTach').value === 'khong';
+  ten.disabled = !mot;
+  ten.placeholder = mot ? 'Hướng dẫn cài đặt OpenClaw trên VPS'
+    : tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng';
+}
+$('#napTach').addEventListener('change', capNhatNap);
 // danh sách file đã chọn + nút bỏ chọn (file chọn từ lần trước còn nằm đó thì lần nạp sau nạp luôn — dễ quên)
 function veDsTep(chu) {
   const d = $('#dsTep');
   d.textContent = chu;
+  capNhatNap();
   if (!tepChon.length) return;
   const x = el('button', 'bo-tep', '× bỏ chọn');
   x.type = 'button';
@@ -2717,22 +2765,12 @@ vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer
 
 async function napVao(thu) {
   const out = $('#napKq');
-  let chu = $('#napChu').value.trim();
+  const chu = tepChon.length ? '' : $('#napChu').value.trim();   // đã chọn file: chỉ nạp file
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
-  // chọn 1 file mà ô dán chỉ có MỘT dòng ngắn: gần như chắc anh định đặt tên — hỏi, đúng thì chuyển sang ô Tên ghi chú
-  if (tepChon.length === 1 && chu && !chu.includes('\n') && chu.length <= 150 && !$('#napTen').value.trim()) {
-    if (!confirm(`Ô dán chỉ có một dòng: «${chu}».\n\nDùng dòng này làm TÊN cho ghi chú từ file «${tepChon[0].name}»?\n\n`
-      + 'OK = đặt tên, nạp thành 1 ghi chú.  Huỷ = dừng lại để anh sửa.')) return;
-    $('#napTen').value = chu; $('#napChu').value = ''; chu = '';
-  }
-  // có cả file lẫn chữ trong ô dán: ô dán thành thêm MỘT ghi chú riêng — hỏi trước, khỏi tưởng "cả file 1 ghi chú" sai
-  if (!thu && tepChon.length && chu && !confirm(`Ô "Hoặc dán nội dung" cũng đang có chữ (${chu.length} ký tự).\n\n`
-    + `Mỗi file thành 1 ghi chú, chữ trong ô dán thành thêm 1 ghi chú riêng — tổng ${tepChon.length + 1} nguồn.\n\n`
-    + 'OK = nạp cả file lẫn ô dán.  Huỷ = dừng lại (xoá chữ trong ô dán, hoặc bấm "× bỏ chọn" file, rồi nạp lại).')) return;
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
   const r = await api('/api/ingest', {
-    files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value,
-    tags: $('#napThe').value.trim(), tach: $('#napTach').value, title: $('#napTen').value.trim(), dry_run: thu,
+    files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value, tags: $('#napThe').value.trim(),
+    tach: $('#napTach').value, title: $('#napTen').disabled ? '' : $('#napTen').value.trim(), dry_run: thu,
   });
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
@@ -2752,11 +2790,12 @@ async function napVao(thu) {
     ds.appendChild(b);
   });
   out.appendChild(ds);
-  if (!thu && so) {
-    tepChon = []; $('#chonTep').value = ''; veDsTep(''); $('#napChu').value = ''; $('#napTen').value = '';
+  if (!thu) {                             // nạp xong (kể cả toàn bản trùng): bỏ chọn file, xoá ô dán
+    tepChon = []; $('#chonTep').value = ''; $('#napChu').value = ''; $('#napTen').value = ''; veDsTep('');
     await nap();
   }
 }
+capNhatNap();
 $('#napThu').addEventListener('click', () => napVao(true));
 $('#napThat').addEventListener('click', () => napVao(false));
 

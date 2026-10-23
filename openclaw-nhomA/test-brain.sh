@@ -379,8 +379,14 @@ KD_ID="$(BR add --title "Thẩm định móng cọc khoan nhồi" --content "Ki�
   --category "Kỹ thuật/Xây dựng" --tags "coc-khoan-nhoi" | jq_ 'd["id"]')"
 check "gõ không dấu vẫn ra (đủ mọi từ)" 'BR search "tham dinh mong coc" | jq_ "[n[\"id\"] for n in d[\"notes\"]]==[\"$KD_ID\"]"' "True"
 check "chữ đ gõ thành d vẫn ra" 'BR search "kiem dinh do sut" | jq_ "d[\"count\"]"' "1"
-check "đoạn trích giữ nguyên dấu, tô chỗ khớp" 'BR search "be tong tuoi" | jq_ "\"«bê» «tông» «tươi»\" in d[\"notes\"][0][\"snippet\"]"' "True"
+check "đoạn trích giữ nguyên dấu, tô cả cụm khớp" 'BR search "be tong tuoi" | jq_ "\"«bê tông tươi»\" in d[\"notes\"][0][\"snippet\"]"' "True"
 check "gõ lẫn có dấu/không dấu: báo khong_dau" 'BR search "bê tông truoc khi do" | jq_ "d[\"che_do\"]"' "khong_dau"
+# từ tiếng Việt nhiều âm tiết: tìm đúng CỤM trước — "cát vàng" không ra ghi chú chỉ có "cát" và "vàng" rời nhau
+CV_ID="$(BR add --title "Đề án khai thác cát vàng" --content "Khai thác cát vàng ở bãi bồi phải có giấy phép." | jq_ 'd["id"]')"
+BR add --title "Vật liệu làm kính" --content "Cát trắng nấu thuỷ tinh; khung mạ vàng." >/dev/null
+check "nhiều chữ: tìm đúng cụm liền nhau trước" 'BR search "cát vàng" | jq_ "[n[\"id\"] for n in d[\"notes\"]]==[\"$CV_ID\"]"' "True"
+check "cụm gõ không dấu cũng đúng" 'BR search "cat vang" | jq_ "[n[\"id\"] for n in d[\"notes\"]]==[\"$CV_ID\"]"' "True"
+check "chữ không liền nhau vẫn tìm được" 'BR search "cát giấy phép" | jq_ "[n[\"id\"] for n in d[\"notes\"]]==[\"$CV_ID\"]"' "True"
 check "có dấu đúng vẫn tìm chính xác như cũ" 'BR search "khoan nhồi" | jq_ "d[\"che_do\"]"' "chinh_xac"
 BR edit --id "$KD_ID" --title "Nghiệm thu móng cọc khoan nhồi" >/dev/null
 check "sửa tiêu đề: chỉ mục không dấu cập nhật" 'BR search "nghiem thu mong" | jq_ "d[\"count\"]"' "1"

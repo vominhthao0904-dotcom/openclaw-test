@@ -178,6 +178,33 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
   nhãn để chữ luôn nổi trên nền.
 
+- **Chỉnh tốc độ xoay** (anh yêu cầu): **−** / **+** đổi 5 mức (Rất chậm 0,25× · Chậm 0,5× · Vừa 1× · Nhanh 1,75× · Rất nhanh 3×)
+  và nút dừng. Theo ý anh, các nút **không bày ra màn hình**: chỉ còn một biểu tượng đồng hồ nhỏ, mờ ở góc; bấm mới hiện bảng,
+  bảng tự ẩn sau 5 giây / bấm ra ngoài / Esc; biểu tượng chuyển vàng khi đang dừng. Chỉnh tốc độ khi đang dừng thì xoay lại luôn;
+  trình duyệt nhớ lựa chọn (không lưu được thì dùng mặc định).
+  Tốc độ tính theo thời gian thật — trước đây tính theo khung hình nên màn 120 Hz xoay nhanh gấp đôi màn 60 Hz.
+  Đo trên trình duyệt: Rất nhanh = 3,05× Vừa, Rất chậm = 0,25×, Dừng = 0.
+- **Nhãn bị cắt chữ ở mép màn hình điện thoại**: hai phía đều thiếu chỗ thì nhãn tự rút gọn kèm "…" cho vừa.
+
+## Rà soát giao diện máy tính + điện thoại (kho thật 17 ghi chú và kho 220 ghi chú, 4 cỡ màn hình)
+Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
+- **Màu vùng trùng nhau**: bảng màu cũ chỉ có 3 tông lặp (vàng/vàng nhạt, xanh/xanh nhạt, cam/cam nhạt) nên từ vùng thứ 4 là
+  trùng (Học tập và Cá nhân cùng cam; Kinh doanh và "Chưa xếp chỗ" cùng vàng). Nay 8 màu tách bạch, **gắn với tên vùng** (vùng
+  tăng giảm ghi chú vẫn giữ màu), không trùng khi ≤ 8 vùng; "Chưa xếp chỗ" màu xám, luôn ở vòng ngoài cùng; cây Thư viện có
+  chấm màu cùng màu với vòng. Đo: 6/6 vùng khác màu ở cả hai kho.
+- **Điện thoại: thanh Toàn cảnh/Thư viện/Việc nổi đè lên thẻ chi tiết**, che nút Sửa/Đánh dấu xong. Thẻ chi tiết nay nằm trên cùng.
+- **"Xem thêm (0 ghi chú)" vẫn hiện ở cuối Thư viện**: quy tắc CSS khác ghi đè thuộc tính `hidden`. Nay `[hidden]` luôn ẩn.
+- **Nút quá nhỏ cho ngón tay** (thanh chuyển 28px, ô tích việc 13px, nút báo 16px): màn cảm ứng / điện thoại nay ≥ 36–44px.
+- **Điện thoại mở lần đầu là form Thêm dài cả màn hình**, đồ thị bị đẩy xuống: nay vào tab Tìm (gọn), trang nhớ tab dùng lần trước.
+- Rê chuột / chọn một chấm: nhãn hiện **đủ tên** (trước cắt ở 32 ký tự). Phím **/** nhảy vào ô Tìm. Gợi ý ô Tìm ngắn lại cho vừa điện thoại.
+- **Tự ẩn khi không dùng** (anh yêu cầu): dải tên vùng và biểu tượng tốc độ mờ dần sau 6 giây không động vào màn hình; rê chuột,
+  chạm, cuộn, gõ phím là hiện lại; đang chọn bằng bàn phím hoặc bảng tốc độ đang mở thì không ẩn.
+- **Nhấp đúp / chạm đúp → toàn màn hình, chỉ lõi và các chấm** (anh yêu cầu): dùng toàn màn hình thật của trình duyệt khi được
+  phép, không được (iPhone) thì phủ kín cửa sổ; ẩn thanh chuyển, dải vùng, nút tốc độ, nhãn (rê chuột vẫn hiện tên); nhấp đúp lên
+  một chấm vẫn là mở ghi chú; thoát bằng nhấp đúp, Esc hoặc phím thoát toàn màn hình của trình duyệt. Tự đo nhấp đúp bằng
+  pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy). Kiểm trên trình duyệt: máy tính vào toàn màn hình
+  thật 1366×768, thoát bằng nhấp đúp và Esc đều được; điện thoại chạm đúp vào được.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

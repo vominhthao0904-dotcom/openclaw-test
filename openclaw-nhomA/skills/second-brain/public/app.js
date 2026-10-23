@@ -23,7 +23,27 @@ const api = async (path, body) => {
 };
 
 /* màu vùng — họ xanh dương / vàng kim / cam, xen kẽ để hai vòng cạnh nhau luôn khác tông */
-const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#8EC1F5', '#F2C46D', '#F5A65B'];
+// 8 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 5 màu phân biệt.
+// Bản cũ chỉ có 3 tông lặp lại (vàng/vàng nhạt, xanh/xanh nhạt, cam/cam nhạt) nên từ vùng thứ 4 là trùng màu.
+const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5'];
+const MAU_CHUA = '#8A9BB5';   // "Chưa xếp chỗ" không phải một vùng — màu trung tính, nằm vòng ngoài cùng
+const CHUA = 'Chưa xếp chỗ';
+let mauVung = {};
+/* Màu GẮN VỚI TÊN vùng, không theo thứ tự đông/vắng: vùng tăng giảm ghi chú vẫn giữ màu của nó.
+   Băm tên ra một ô màu; ô đã có vùng khác thì lấy ô trống kế tiếp (không trùng khi ≤ 8 vùng). */
+function ganMau(dsTen) {
+  const ra = {}, dung = new Set();
+  [...dsTen].sort((a, b) => a.localeCompare(b, 'vi')).forEach((t) => {
+    let h = 0;
+    for (const ch of t.normalize('NFC')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    let i = h % MAU.length;
+    for (let k = 0; k < MAU.length && dung.has(i); k++) i = (i + 1) % MAU.length;
+    dung.add(i);
+    ra[t] = MAU[i];
+  });
+  return ra;
+}
+const mauCua = (vung) => (vung === CHUA ? MAU_CHUA : mauVung[vung] || MAU_CHUA);
 
 /* Loại kiến thức — trục phân loại thứ hai (nhóm = chủ đề, loại = dạng kiến thức). */
 const LOAI = {
@@ -52,12 +72,24 @@ let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
+let tapTrung = false;    // nhấp đúp: toàn màn hình, chỉ lõi và chấm
 let goc = 0;
 let hover = null;
 let chon = null;
 
 const itMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (itMotion) quay = false;
+
+// tốc độ xoay — 5 mức, "Vừa" là tốc độ mặc định. Trình duyệt này nhớ lựa chọn cho lần mở sau
+// (chặn lưu trữ, cửa sổ ẩn danh… thì dùng mặc định, trang vẫn chạy bình thường).
+const MUC_TOC = [['Rất chậm', 0.25], ['Chậm', 0.5], ['Vừa', 1], ['Nhanh', 1.75], ['Rất nhanh', 3]];
+let mucToc = 2;
+try {
+  const m = localStorage.getItem('sb.mucToc');
+  if (m !== null && /^[0-4]$/.test(m)) mucToc = Number(m);
+  const q = localStorage.getItem('sb.quay');
+  if (q === '0' || q === '1') quay = q === '1';
+} catch (_) { /* không lưu được thì thôi */ }
 
 /* ---------------- nạp dữ liệu ---------------- */
 async function nap() {
@@ -78,6 +110,7 @@ async function nap() {
   nut.hidden = !cho;
   vungSo = {};
   (DATA.cay || []).forEach((v) => { vungSo[v.ten] = v.so; });
+  mauVung = ganMau((DATA.cay || []).map((v) => v.ten).filter((t) => t && t !== CHUA));
   // gợi ý nhóm = mọi đường dẫn đã có, để chọn lại đúng nhóm cũ thay vì gõ ra nhóm mới gần giống
   const dl = $('#dsNhom');
   dl.innerHTML = '';
@@ -129,7 +162,8 @@ function dungQuyDao() {
   });
   // sắp theo số THẬT của vùng, không phải số đang có trong tay
   const soThat = (k) => vungSo[k] ?? nhom[k].length;
-  const tenDay = Object.keys(nhom).sort((a, b) => soThat(b) - soThat(a));
+  // vùng đông nằm vòng trong; "Chưa xếp chỗ" luôn ở vòng ngoài cùng
+  const tenDay = Object.keys(nhom).sort((a, b) => (a === CHUA) - (b === CHUA) || soThat(b) - soThat(a));
   const tongThat = DATA.notes.length;
 
   // cắt bớt cho vừa mắt — DATA.notes đã sắp theo updated_at giảm dần
@@ -159,7 +193,7 @@ function dungQuyDao() {
     // mỗi nhóm một vòng; nhóm đông nằm vòng trong
     const bk = 0.26 + (vi + 1) / (ten.length + 1) * 0.70;
     const lech = vi * 0.9;
-    const mau = MAU[vi % MAU.length];
+    const mau = mauCua(k);
     vongMau.push(mau);
     ds.forEach((note, i) => {
       nodes.push({
@@ -195,7 +229,7 @@ function veChuGiai(ten, nhom) {
     b.className = 'cg' + (noiBat === k ? ' on' : '');
     b.setAttribute('aria-pressed', String(noiBat === k));
     const d = document.createElement('i');
-    d.style.background = MAU[vi % MAU.length];
+    d.style.background = mauCua(k);
     const t = document.createElement('span');
     t.textContent = k;
     const s = document.createElement('u');
@@ -342,15 +376,23 @@ function ve() {
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
-    if (!nb && toi) return;
+    if (!nb && (toi || tapTrung)) return;   // toàn màn hình: chỉ lõi và chấm, rê chuột mới hiện tên
     const p = diem.get(nd.note.id);
-    const t = nd.note.title.length > 32 ? nd.note.title.slice(0, 31) + '…' : nd.note.title;
-    const w = cx.measureText(t).width;
+    const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
+    let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
+    let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
     // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
     let trai = p.x < CX;
     if (trai && p.x - 10 - w < 8) trai = false;
     else if (!trai && p.x + 10 + w > phai) trai = true;
+    // màn hẹp (điện thoại): hai phía đều thiếu chỗ thì rút gọn nhãn cho vừa, không để chữ bị cắt ở mép
+    const cho = trai ? p.x - 18 : phai - p.x - 10;
+    if (w > cho) {
+      if (cho < 48 && !nb) return;
+      while (t.length > 4 && cx.measureText(t).width > cho) t = t.slice(0, -2).trimEnd() + '…';
+      w = cx.measureText(t).width;
+    }
     const x0 = trai ? p.x - 10 - w : p.x + 10;
     const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - 9, y1: p.y + 9 };
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
@@ -488,8 +530,13 @@ function veTenQue(R) {
   cx.fillText('Thái Cực · Tiên Thiên Bát Quái', CX, CY + R + 42);
 }
 
-function vong() {
-  if (quay) goc += 0.0022;
+let tCu = 0;
+function vong(t) {
+  // tính theo thời gian thật, không theo số khung hình: màn 120Hz không xoay nhanh gấp đôi màn 60Hz;
+  // chặn 100ms để quay lại tab đang ẩn thì không nhảy vọt
+  const dt = tCu && t ? Math.min(100, t - tCu) : 16.7;
+  tCu = t || 0;
+  if (quay) goc += 0.0022 * MUC_TOC[mucToc][1] * dt / 16.7;
   if (!itMotion && Math.abs(lechDen - lechDich) > 0.4) lechDich += (lechDen - lechDich) * 0.14;
   else lechDich = lechDen;
   CX = (W - lechDich) / 2;
@@ -521,11 +568,92 @@ cv.addEventListener('click', (e) => {
   if (nd) moChiTiet(nd.note.id);
 });
 
-$('#dung').addEventListener('click', (e) => {
-  quay = !quay;
-  e.target.textContent = quay ? 'Dừng xoay' : 'Xoay lại';
-  e.target.setAttribute('aria-pressed', String(!quay));
+function capNhatToc(luu) {
+  $('#mucToc').textContent = MUC_TOC[mucToc][0];
+  $('#cham').disabled = mucToc === 0;
+  $('#nhanh').disabled = mucToc === MUC_TOC.length - 1;
+  const d = $('#dung');
+  d.setAttribute('aria-pressed', String(!quay));
+  d.setAttribute('aria-label', quay ? 'Dừng xoay' : 'Xoay lại');
+  d.title = quay ? 'Dừng xoay' : 'Xoay lại';
+  // biểu tượng nhỏ ở góc đổi màu vàng khi đang dừng — để biết vì sao đồ thị đứng yên
+  $('#moToc').classList.toggle('dang-dung', !quay);
+  $('#moToc').title = quay ? `Tốc độ xoay: ${MUC_TOC[mucToc][0]}` : 'Đang dừng xoay';
+  if (luu) {
+    try {
+      localStorage.setItem('sb.mucToc', String(mucToc));
+      localStorage.setItem('sb.quay', quay ? '1' : '0');
+    } catch (_) { /* không lưu được thì thôi */ }
+  }
+}
+// bảng chỉnh ẩn sẵn; bấm biểu tượng mới hiện, tự ẩn sau 5 giây không dùng, bấm ra ngoài hoặc Esc
+let henAn = 0;
+function moBangToc(mo) {
+  $('#tocBang').hidden = !mo;
+  $('#moToc').setAttribute('aria-expanded', String(mo));
+  clearTimeout(henAn);
+  if (mo) henAn = setTimeout(() => moBangToc(false), 5000);
+}
+$('#moToc').addEventListener('click', () => moBangToc($('#tocBang').hidden));
+document.addEventListener('click', (e) => { if (!$('#tocDo').contains(e.target)) moBangToc(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tocBang').hidden) moBangToc(false); });
+// chỉnh tốc độ nghĩa là muốn xem xoay — đang dừng thì cho xoay lại luôn
+const chinhToc = (f) => () => { f(); capNhatToc(true); moBangToc(true); };
+$('#cham').addEventListener('click', chinhToc(() => { mucToc = Math.max(0, mucToc - 1); quay = true; }));
+$('#nhanh').addEventListener('click', chinhToc(() => { mucToc = Math.min(MUC_TOC.length - 1, mucToc + 1); quay = true; }));
+$('#dung').addEventListener('click', chinhToc(() => { quay = !quay; }));
+capNhatToc(false);
+
+/* Dải tên vùng và biểu tượng tốc độ tự ẩn sau một lúc không động vào màn hình — để đồ thị thoáng.
+   Rê chuột, chạm, cuộn hay gõ phím là hiện lại ngay. Đang dùng (đang chọn bằng bàn phím, bảng tốc độ đang mở) thì không ẩn. */
+const AN_SAU = 6000;
+let henAnDuoi = 0;
+function hienDuoi() {
+  document.body.classList.remove('lang-yen');
+  clearTimeout(henAnDuoi);
+  henAnDuoi = setTimeout(() => {
+    if (document.querySelector('.duoi:focus-within, .toc-do:focus-within') || !$('#tocBang').hidden) return hienDuoi();
+    document.body.classList.add('lang-yen');
+  }, AN_SAU);
+}
+['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll'].forEach((ev) =>
+  window.addEventListener(ev, hienDuoi, { passive: true, capture: true }));
+hienDuoi();
+
+/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình, chỉ còn lõi và các chấm.
+   Tự đo nhấp đúp bằng pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy).
+   Toàn màn hình thật (Fullscreen API) nếu trình duyệt cho; không cho (iPhone) thì phủ kín cửa sổ bằng CSS — vẫn dùng được. */
+let lanCham = { t: 0, x: 0, y: 0 };
+let henGoiY = 0;
+function datTapTrung(bat) {
+  if (bat === tapTrung) return;
+  tapTrung = bat;
+  document.body.classList.toggle('tap-trung', bat);
+  if (bat) {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => { /* không cho thì dùng chế độ phủ cửa sổ */ });
+    }
+    const g = $('#goiYThoat');
+    g.textContent = matchMedia('(pointer:coarse)').matches ? 'Chạm đúp để thoát' : 'Nhấp đúp hoặc Esc để thoát';
+    g.hidden = false;
+    clearTimeout(henGoiY);
+    henGoiY = setTimeout(() => { g.hidden = true; }, 2500);
+  } else {
+    $('#goiYThoat').hidden = true;
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }
+  requestAnimationFrame(coLai);
+}
+cv.addEventListener('pointerup', (e) => {
+  const b = cv.getBoundingClientRect();
+  const x = e.clientX - b.left, y = e.clientY - b.top;
+  const dup = e.timeStamp - lanCham.t < 350 && Math.hypot(x - lanCham.x, y - lanCham.y) < 30;
+  lanCham = dup ? { t: 0, x: 0, y: 0 } : { t: e.timeStamp, x, y };
+  if (dup && !timGan(x, y)) datTapTrung(!tapTrung);   // nhấp đúp lên một chấm là mở ghi chú, không phóng to
 });
+// thoát toàn màn hình bằng phím của trình duyệt (Esc, F11) thì cũng thoát chế độ này
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tapTrung) datTapTrung(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tapTrung && $('#chiTiet').hidden) datTapTrung(false); });
 
 /* ---------------- thẻ chi tiết ---------------- */
 function ngayDep(iso) {
@@ -733,12 +861,30 @@ function ngayTu(iso) {
   return `${Math.floor(d / 365)} năm trước`;
 }
 
-function moTab(ten) {
+function moTab(ten, luu = true) {
   document.querySelectorAll('.tabs button').forEach((x) =>
     x.setAttribute('aria-selected', String(x.dataset.tab === ten)));
   document.querySelectorAll('.tab').forEach((p) => { p.hidden = p.dataset.pane !== ten; });
   if (ten === 'on') napHangOn();
+  if (luu) try { localStorage.setItem('sb.tab', ten); } catch (_) { /* không lưu được thì thôi */ }
 }
+// Mở lại đúng tab lần trước. Lần đầu trên điện thoại/máy tính bảng: mở tab Tìm (gọn) thay vì form Thêm dài
+// cả màn hình — ghi chú trên điện thoại thường nhắn qua Telegram, còn trang web dùng để tra và xem.
+{
+  let t = null;
+  try { t = localStorage.getItem('sb.tab'); } catch (_) { /* bỏ qua */ }
+  if (!t || !document.querySelector(`.tabs [data-tab="${t}"]`)) t = matchMedia('(max-width:900px)').matches ? 'tim' : null;
+  if (t && t !== 'them') moTab(t, false);
+}
+// phím / (khi không đang gõ chữ): nhảy tới ô Tìm
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  e.preventDefault();
+  moTab('tim');
+  $('#oTim').focus();
+});
 $('#choPhanLoai').addEventListener('click', () => moTab('on'));
 
 /* Ghi chú bắt vội, chưa có nhóm hoặc thẻ — xếp chỗ thì sau mới tìm lại được. */
@@ -1000,7 +1146,13 @@ function veCay() {
     mui.addEventListener('click', () => { if (mo) moRong.delete(duong); else moRong.add(duong); veCay(); });
     const b = el('button', 'nut-cay' + (LOC.category === duong ? ' on' : '') + (c.ten === 'Chưa xếp chỗ' ? ' chua' : ''));
     b.type = 'button';
-    b.append(el('span', null, c.ten), el('u', null, String(c.so)));
+    const ten = el('span', null, c.ten);
+    if (sau === 0 && c.ten !== CHUA) {   // chấm màu của vùng — cùng màu với vòng ở Toàn cảnh
+      const i = el('i', 'cham-vung');
+      i.style.background = mauCua(c.ten);
+      ten.prepend(i);
+    }
+    b.append(ten, el('u', null, String(c.so)));
     b.addEventListener('click', () => {
       LOC.category = duong; LOC.offset = 0;
       if (coCon) moRong.add(duong);

@@ -68,7 +68,7 @@ Tắt khi xem xong (tắt đi Mây vẫn ghi/tìm bình thường qua chat): `we
 
 ### Ba chế độ xem (nút trên cùng)
 
-- **Toàn cảnh** — lõi **Thái Cực – Tiên Thiên Bát Quái** ở giữa (xem mục dưới), mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…), mỗi chấm một ghi chú, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó; **Dừng xoay** nếu thấy chóng mặt. Đây là bức tranh chung, không phải mục lục.
+- **Toàn cảnh** — lõi **Thái Cực – Tiên Thiên Bát Quái** ở giữa (xem mục dưới), mỗi vòng quỹ đạo là một **vùng** (Kinh doanh, Kỹ thuật, Học tập…) với **màu riêng cố định** (cùng màu với chấm ở cây Thư viện; *Chưa xếp chỗ* màu xám, vòng ngoài cùng), mỗi chấm một ghi chú — rê chuột vào chấm để đọc đủ tên, đường nối là liên kết giữa các ghi chú. Bấm tên vùng ở dải dưới cùng để chỉ làm nổi vùng đó. **Tốc độ xoay**: bấm biểu tượng đồng hồ nhỏ, mờ ở góc dưới bên phải → hiện **−** / **+** (5 mức: Rất chậm · Chậm · Vừa · Nhanh · Rất nhanh) và **❚❚** dừng xoay; bảng tự ẩn sau vài giây. Biểu tượng chuyển vàng khi đang dừng. Trình duyệt nhớ lựa chọn cho lần mở sau. Dải tên vùng và biểu tượng tốc độ **tự ẩn sau 6 giây** không động vào màn hình — rê chuột hay chạm là hiện lại. **Nhấp đúp** (điện thoại: **chạm đúp**) vào chỗ trống của đồ thị → **toàn màn hình, chỉ còn lõi và các chấm** (rê chuột vào chấm vẫn hiện tên, bấm vẫn mở ghi chú); nhấp đúp lần nữa hoặc **Esc** để thoát. Đây là bức tranh chung, không phải mục lục.
 - **Thư viện** — chỗ truy xuất có hệ thống. Bên trái là **cây Vùng › Nhóm › Nhóm con** kèm số ghi chú (bấm ▸ để mở nhóm con; *Chưa xếp chỗ* màu vàng là chỗ cần dọn). Bên phải là các thẻ ghi chú, lọc nhanh bằng **chip loại** (Kiến thức, Quy trình, Khái niệm, Tài liệu…; số trên chip đếm trong nhóm đang xem), sắp theo mới sửa / mới tạo / cũ nhất / tên, bấm *Xem thêm* để xem tiếp. Mỗi thẻ ghi rõ loại, đường dẫn nhóm, có nguồn/trích dẫn không, hạn (nếu là việc).
 - **Việc** — việc cần làm xếp theo **Quá hạn** (đỏ cam) · **Hôm nay** · **7 ngày tới** · **Sau này** · **Không hạn**. Tích ô vuông là xong.
 
@@ -91,9 +91,12 @@ Lõi đồ thị là Thái Cực đồ với Bát Quái **Tiên Thiên (Phục H
 
 ### Cột trái
 
+Trang nhớ tab anh dùng lần trước. Mở lần đầu trên **điện thoại** thì vào thẳng tab **Tìm** (gọn), đồ thị nằm ngay bên dưới — ghi chú mới trên điện thoại nhắn qua Telegram tiện hơn.
+
+
 - **Thêm** — lưu ghi chú mới: chủ đề, **loại**, **nhóm** (gõ vài chữ là hiện các nhóm đã có — chọn lại nhóm cũ thay vì gõ ra nhóm mới gần giống), thẻ, nội dung. Chọn loại *Việc* thì hiện ô **Hạn**; chọn *Tài liệu* hay *Khái niệm* thì hiện ô **Trích dẫn**. Lưu bản y hệt ghi chú đã có thì bị chặn kèm nút mở bản cũ; gần giống thì được lưu nhưng có cảnh báo; gõ nhóm/thẻ thiếu dấu hay sai chính tả thì có gợi ý.
 - **Nạp** — kéo thả file **.md / .txt** (nhiều file một lúc) hoặc dán văn bản. Markdown có nhiều tiêu đề `#`/`##` được tách mỗi mục thành một ghi chú. Đặt nhóm, loại, thẻ chung cho cả lô; bấm **Xem trước** để thấy sẽ thêm gì, rồi **Nạp vào kho**. Bản trùng tự bỏ qua.
-- **Tìm** — tìm toàn văn tiếng Việt có dấu, lọc thêm theo **loại** và **vùng**. Khớp ở tiêu đề/thẻ được xếp trên. Gõ cả câu dài cũng được.
+- **Tìm** — tìm toàn văn tiếng Việt, **có dấu hay không dấu đều được**, lọc thêm theo **loại** và **vùng**. Khớp ở tiêu đề/thẻ được xếp trên. Gõ cả câu dài cũng được. Trên máy tính bấm phím **/** là nhảy ngay vào ô Tìm.
 - **Hỏi** — hỏi Mây dựa trên chính ghi chú trong kho; câu trả lời kèm danh sách ghi chú nguồn bấm được.
 - **Ôn** — *Chưa xếp chỗ*, *Kho lưu* (ghi chú đã cất, lấy lại được), và hàng chờ ôn lại (không gồm việc).
 

@@ -175,9 +175,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 }
 .empty span{font-size:14px;font-family:var(--ui)}
 .empty[hidden],.sheet[hidden]{display:none}
+/* phần tử có thuộc tính hidden luôn ẩn — kể cả khi một quy tắc khác đặt display (lỗi "Xem thêm (0 ghi chú)") */
+[hidden]{display:none!important}
 /* chú giải nhóm — bấm để chỉ làm nổi một vòng */
 .duoi{
-  position:absolute;left:20px;bottom:16px;right:150px;
+  position:absolute;left:20px;bottom:16px;right:60px;
   display:flex;flex-direction:column;align-items:flex-start;gap:8px
 }
 .legend{display:flex;flex-wrap:wrap;gap:5px}
@@ -197,16 +199,31 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 }
 .con-lai[hidden]{display:none}
 
-.pause{
-  position:absolute;right:18px;bottom:16px;background:rgba(16,32,58,.82);
-  color:var(--trung-mo);border:1px solid var(--son-3);border-radius:999px;
-  font:500 12px var(--ui);padding:6px 13px;cursor:pointer;backdrop-filter:blur(4px)
+/* tốc độ xoay: chỉ là một biểu tượng nhỏ, mờ ở góc — bấm mới hiện bảng − mức + ❚❚, tự ẩn khi không dùng */
+.toc-do{position:absolute;right:14px;bottom:14px;z-index:2;display:flex;align-items:center;gap:6px}
+.mo-toc{
+  width:28px;height:28px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;
+  background:rgba(16,32,58,.55);border:1px solid var(--son-3);color:var(--trung-mo);opacity:.5
 }
-.pause:hover{color:var(--trung)}
+.mo-toc:hover,.mo-toc[aria-expanded="true"],.mo-toc:focus-visible{opacity:1}
+.mo-toc.dang-dung{color:var(--vang)}
+.toc-bang{
+  display:flex;align-items:center;gap:1px;background:rgba(16,32,58,.9);border:1px solid var(--son-3);
+  border-radius:999px;padding:2px;font:500 11.5px var(--ui);color:var(--trung-mo);backdrop-filter:blur(4px)
+}
+.toc-bang[hidden]{display:none}
+.toc-bang button{background:none;border:0;color:var(--trung-mo);cursor:pointer;border-radius:999px}
+.toc-bang button:hover:not(:disabled){color:var(--trung);background:var(--son-3)}
+.toc-bang button:disabled{opacity:.35;cursor:default}
+.toc-do button:focus-visible{outline:2px solid var(--vang);outline-offset:1px}
+.nut-toc{width:24px;height:24px;display:grid;place-items:center;padding:0;font:500 15px/1 var(--ui)}
+#mucToc{min-width:56px;text-align:center}
+#dung .i-chay,#dung[aria-pressed="true"] .i-dung{display:none}
+#dung[aria-pressed="true"] .i-chay{display:block}
 
 /* ---------- thẻ chi tiết ---------- */
 .sheet{
-  position:absolute;top:0;right:0;width:min(520px,calc(100vw - var(--panel)));height:100dvh;
+  position:absolute;top:0;right:0;z-index:20;width:min(520px,calc(100vw - var(--panel)));height:100dvh;
   background:var(--son-2);border-left:1px solid var(--son-3);padding:30px 34px 26px;
   overflow-y:auto;box-shadow:-24px 0 60px rgba(0,0,0,.45);
 }
@@ -292,6 +309,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .nut-cay:hover{background:var(--son-2);color:var(--trung)}
 .nut-cay.on{background:var(--son-2);color:var(--trung);box-shadow:inset 2px 0 0 var(--vang)}
 .nut-cay.chua{color:#F2C46D}
+.cham-vung{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px}
 .cay > .nut-cay{width:100%;margin:0 0 6px}
 .ke{overflow-y:auto;padding:4px 28px 36px}
 .ke-dau{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}
@@ -379,4 +397,33 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   .ke{padding:12px 16px 28px}
   .viec-xem{padding:60px 16px 28px}
   .hai{grid-template-columns:1fr}
+}
+
+/* màn hình cảm ứng: nút đủ lớn để bấm bằng ngón tay (≥ 36–40px) */
+@media (pointer:coarse), (max-width:600px){
+  .che-do button{padding:10px 16px}
+  .cg{padding:8px 13px 8px 10px}
+  .cho-nut{padding:8px 0}
+  .mo-toc{width:38px;height:38px;opacity:.65}
+  .nut-toc{width:36px;height:36px}
+  input[type=checkbox]{width:22px;height:22px}
+  .chip{min-height:36px}
+  .nut-cay,.mui{min-height:38px}
+  .tabs button{min-height:44px}
+}
+
+/* tự ẩn khi không động vào màn hình */
+.duoi,.toc-do{transition:opacity .45s ease}
+body.lang-yen .duoi,body.lang-yen .toc-do{opacity:0;pointer-events:none}
+
+/* nhấp đúp: toàn màn hình, chỉ lõi và các chấm */
+#do{touch-action:manipulation}
+body.tap-trung{overflow:hidden}
+body.tap-trung .stage{position:fixed;inset:0;z-index:15;height:auto;min-height:0}
+body.tap-trung .xem[data-xem="do"]{position:absolute;inset:0;height:auto}
+body.tap-trung .che-do,body.tap-trung .duoi,body.tap-trung .toc-do,body.tap-trung .empty{display:none}
+.goi-y-thoat{
+  position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:4;margin:0;pointer-events:none;
+  background:rgba(16,32,58,.86);border:1px solid var(--son-3);border-radius:999px;padding:6px 14px;
+  font:500 12px var(--ui);color:var(--trung-mo);white-space:nowrap
 }

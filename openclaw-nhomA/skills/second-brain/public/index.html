@@ -106,7 +106,7 @@
 
     <section class="tab" data-pane="tim" hidden>
       <label class="only">Từ khoá
-        <input id="oTim" type="search" placeholder="hero mobile — có dấu hay không dấu đều được" autocomplete="off">
+        <input id="oTim" type="search" placeholder="Từ khoá — có dấu hay không đều được" autocomplete="off">
       </label>
       <div class="hai loc">
         <select id="timLoai" aria-label="Lọc theo loại"></select>
@@ -141,13 +141,27 @@
     </nav>
 
     <section class="xem" data-xem="do">
-      <canvas id="do" aria-label="Đồ thị ghi chú quanh lõi Brain"></canvas>
+      <canvas id="do" aria-label="Đồ thị ghi chú quanh lõi Brain. Nhấp đúp vào chỗ trống để xem toàn màn hình."></canvas>
       <p class="empty" id="trong" hidden>Kho đang trống.<br><span>Thêm ghi chú đầu tiên ở cột bên trái.</span></p>
       <div class="duoi">
         <div class="legend" id="chuGiai" aria-label="Các vùng kiến thức"></div>
         <p class="con-lai" id="conLai" hidden></p>
       </div>
-      <button class="pause" id="dung" type="button" aria-pressed="false" title="Dừng xoay">Dừng xoay</button>
+      <p class="goi-y-thoat" id="goiYThoat" hidden></p>
+      <div class="toc-do" id="tocDo">
+        <div class="toc-bang" id="tocBang" role="group" aria-label="Tốc độ xoay" hidden>
+          <button type="button" id="cham" class="nut-toc" aria-label="Xoay chậm hơn" title="Chậm hơn">−</button>
+          <span id="mucToc" aria-live="polite">Vừa</span>
+          <button type="button" id="nhanh" class="nut-toc" aria-label="Xoay nhanh hơn" title="Nhanh hơn">+</button>
+          <button type="button" id="dung" class="nut-toc" aria-pressed="false" aria-label="Dừng xoay" title="Dừng xoay">
+            <svg class="i-dung" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <svg class="i-chay" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 5l12 7-12 7z" fill="currentColor"/></svg>
+          </button>
+        </div>
+        <button type="button" id="moToc" class="mo-toc" aria-expanded="false" aria-controls="tocBang" aria-label="Chỉnh tốc độ xoay" title="Tốc độ xoay">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 16a8 8 0 1 1 16 0M12 16l4.5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </section>
 
     <section class="xem thu-vien" data-xem="thu-vien" hidden>

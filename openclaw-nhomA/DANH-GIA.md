@@ -439,6 +439,8 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   rồi bỏ dấu), không ra mới tìm chữ rời như cũ, câu dài vẫn ra theo số chữ khớp. Cụm khớp được tô cả cụm («bê tông tươi»).
   +3 test brain (cụm đúng, cụm không dấu, chữ rời vẫn ra); 2 test cũ đổi kỳ vọng tô sáng (cả cụm thay vì từng chữ).
 - **Kho lưu liệt kê 25 trang đã gộp**: các trang của cùng một file gom thành một dòng "«tên file» — 25 trang", bấm để bung.
+- **Vòng trên đầu mặt A.I** (anh yêu cầu): 2 cung xanh → 3 cung nét đứt xanh lam / vàng kim / cam (màu luồng Dương và lõi), xoay
+  xen kẽ chiều, nhanh chậm khác nhau; đậm hơn chút cho rõ trên màn sáng. Vẫn ~60 khung hình/giây.
 - Thử trình duyệt: nạp file + chữ sót + Tên (đúng ảnh anh) → 1 ghi chú đúng tên, không hỏi; chọn nhiều file / cộng thêm / trùng
   tên / quá tổng; Kho lưu gọn và bung; tìm "kinh doanh" — đạt cả.
 

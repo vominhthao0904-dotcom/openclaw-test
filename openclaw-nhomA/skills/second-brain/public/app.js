@@ -1486,16 +1486,17 @@ function veMat(tg, diem) {
     cx.fill(vien);
     cx.globalCompositeOperation = 'lighter';
     veNao(t, phu);
-    // vòng HUD — hai cung nét đứt xoay ngược chiều nhau
-    [[1.42, '95,180,255', 1], [1.55, '150,200,255', -1]].forEach(([r, mau, chieu]) => {
-      cx.setLineDash([3, 9]);
-      cx.lineDashOffset = itMotion ? 0 : chieu * tg * 24;
-      cx.beginPath();
-      cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
-      cx.strokeStyle = `rgba(${mau},${(0.3 * phu).toFixed(3)})`;
-      cx.lineWidth = 1.2;
-      cx.stroke();
-    });
+    // vòng HUD — ba cung nét đứt: xanh lam, vàng kim (màu luồng Dương), cam (màu lõi); xoay xen kẽ chiều, nhanh chậm khác nhau
+    [[1.38, '95,180,255', 1, 24, 0.45], [1.5, '230,196,106', -1, 18, 0.6], [1.62, '240,127,45', 1, 13, 0.58]]
+      .forEach(([r, mau, chieu, toc, dam]) => {
+        cx.setLineDash([4, 8]);
+        cx.lineDashOffset = itMotion ? 0 : chieu * tg * toc;
+        cx.beginPath();
+        cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
+        cx.strokeStyle = `rgba(${mau},${(dam * phu).toFixed(3)})`;
+        cx.lineWidth = 1.5;
+        cx.stroke();
+      });
     cx.setLineDash([]);
     veVung(phu, t, diem);
   }

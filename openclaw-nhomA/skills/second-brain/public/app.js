@@ -133,17 +133,23 @@ function dungQuyDao() {
   const tongThat = DATA.notes.length;
 
   // cắt bớt cho vừa mắt — DATA.notes đã sắp theo updated_at giảm dần
-  if (noiBat && nhom[noiBat]) {
-    nhom[noiBat] = nhom[noiBat].slice(0, TRAN_MOT_NHOM);
-    tenDay.forEach((k) => { if (k !== noiBat) nhom[k] = nhom[k].slice(0, 2); });
+  const xemVung = noiBat && nhom[noiBat] ? noiBat : null;
+  const tongVung = xemVung ? soThat(xemVung) : 0;
+  if (xemVung) {
+    nhom[xemVung] = nhom[xemVung].slice(0, TRAN_MOT_NHOM);
+    tenDay.forEach((k) => { if (k !== xemVung) nhom[k] = nhom[k].slice(0, 2); });
   } else if (tongThat > TRAN_NODE) {
     tenDay.forEach((k) => {
       const phan = Math.max(3, Math.round(TRAN_NODE * nhom[k].length / tongThat));
       nhom[k] = nhom[k].slice(0, phan);
     });
   }
-  // cộng cả phần máy chủ đã cắt trước khi gửi xuống
-  daBot = (DATA.tong_ghi_chu ?? tongThat) - tenDay.reduce((s, k) => s + nhom[k].length, 0);
+  // Đang xem một vùng: chỉ đếm ghi chú CỦA VÙNG ĐÓ không vẽ được. Vùng khác cố ý chỉ còn 2 chấm mờ làm nền —
+  // đếm cả chúng thì báo "còn N ghi chú khác" sai dù vùng đang xem đã vẽ đủ.
+  // Xem toàn kho: cộng cả phần máy chủ đã cắt trước khi gửi xuống.
+  daBot = xemVung
+    ? Math.max(0, tongVung - nhom[xemVung].length)
+    : (DATA.tong_ghi_chu ?? tongThat) - tenDay.reduce((s, k) => s + nhom[k].length, 0);
 
   const ten = tenDay;
   nodes = [];

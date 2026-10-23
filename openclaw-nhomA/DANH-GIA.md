@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **123** |
-| Test `test-web.sh` | 30 | **79** |
+| Test `test-brain.sh` | 50 | **126** |
+| Test `test-web.sh` | 30 | **85** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -379,6 +379,50 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 - Thêm 6 test brain (gộp trang: xem trước, thứ tự + thẻ, trang vào kho lưu, lần 2 không gộp; PDF mặc định 1 ghi chú, tên có
   dấu từ thông tin file) và 7 test web (chọn phiên + gửi qua file, đoạn liên quan của ghi chú dài, báo đúng lý do lỗi, Thư viện
   mời gộp, gộp qua web, gộp lần 2, tên sai kiểu).
+
+## Sau PR #16: ô Hỏi vẫn lỗi "Gateway agent from agent exec would lose inter-session attribution…"
+- Lỗi khác hẳn lỗi cũ: lệnh đã chọn phiên đúng, nhưng OpenClaw chặn. Mã nguồn 2026.9.6: `openclaw agent` chạy với biến
+  `OPENCLAW_SHELL=exec` thì từ chối gọi Gateway — chốt an toàn để lệnh trong exec của agent không tạo lượt hội thoại mới
+  mất dấu người gửi thật; thông báo dặn rõ *không gỡ dấu, không thử đường CLI khác*. Trang web được **Mây** bật lại lúc cập
+  nhật (bước `web.sh restart` trong hướng dẫn gửi Mây), nên tiến trình web và lệnh `openclaw agent` con mang dấu đó.
+- Cách sửa đúng: chủ kho tự bật trang web trong Termius. Không gỡ dấu trong code. Thêm: ô Hỏi gặp dấu này thì không chạy
+  lệnh vô ích mà báo tiếng Việt kèm đúng lệnh `web.sh restart`, vẫn liệt kê ghi chú liên quan; `web.sh start` (bật từ exec)
+  nhắc trước ô Hỏi sẽ bị chặn; `web.sh status` có dòng **Ô Hỏi: không bị chặn / BỊ CHẶN** (đọc biến môi trường của tiến trình
+  web). SKILL.md dặn Mây: cần ô Hỏi thì đưa lệnh cho người dùng tự chạy. Từ nay hướng dẫn cập nhật: Mây cài, **anh** khởi
+  động lại web.
+- `openclaw` giả trong test-web.sh thêm đúng chốt chặn này. Thêm 3 test (ô Hỏi báo cách sửa; `web.sh start` nhắc; `web.sh
+  status` chỉ ra bị chặn). Mây chạy bộ test trong exec thì 3 test gọi Mây tự bỏ qua (79), chạy từ terminal thì đủ 82.
+- **Thẻ chi tiết chỉ đóng bằng ×** (anh báo: bấm ra chỗ trống không tắt). Nay bấm chỗ trống ngoài thẻ — ở Thư viện, Việc, cột
+  trái hay nền Toàn cảnh (trừ lõi Bát Quái) — là đóng. Bấm nút, ô nhập, thẻ ghi chú khác thì vẫn làm việc của nó (mở ghi chú
+  khác, không đóng rồi mở lại). Đang Sửa thì không tự đóng. Thử bằng trình duyệt thật 10 tình huống (mở, đổi ghi chú, bấm trong
+  thẻ, chỗ trống, đang sửa, ×, Esc, chấm và chỗ trống trên đồ thị): đạt cả.
+- **Ô Nguồn phải gõ / dán tay** (anh hỏi "không cho truy tìm nguồn?"). Thêm gợi ý: ô Nguồn và Trích dẫn (cả form Thêm lẫn form
+  Sửa) hiện danh sách nguồn đã dùng trong toàn kho — mới dùng trước, tối đa 200, nhãn là tên ghi chú dùng gần nhất và số ghi
+  chú dùng chung; gõ vài chữ để lọc. Máy chủ tính trên toàn kho (không chỉ phần ghi chú gửi xuống trang). Không tra Internet —
+  trang không gửi gì ra ngoài. +1 test web (83; trong exec của Mây 80).
+- **"Chọn Cả file 1 ghi chú vẫn thêm 2 ghi chú"**: lần nạp đó có cả file lẫn chữ trong ô *Hoặc dán nội dung* — hai nguồn, mỗi
+  nguồn một ghi chú (ghi chú "Ghi chú dán vào" chỉ sinh ra từ ô dán). Đúng thiết kế nhưng trang không nói rõ. Nay: có cả hai thì
+  hỏi trước khi nạp (Huỷ = không nạp gì); kết quả / xem trước ghi rõ "từ file …" hay "từ ô dán" và đếm "(1 từ file, 1 từ ô
+  dán)"; thêm nút **× bỏ chọn** file (file chọn từ lần trước còn nằm đó dễ quên). Bài thử trình duyệt bắt được một lỗi trước khi
+  gửi: ô chọn file trong suốt phủ cả khung đè lên nút "× bỏ chọn" — bấm thì mở hộp chọn file; đã đưa nút nổi lên trên.
+- **Xoá ghi chú thế nào — chuột phải không có gì** (anh hỏi). Thêm menu chuột phải trên mọi chỗ hiện một ghi chú (thẻ Thư viện,
+  kết quả Tìm / Hỏi / Nạp, việc, ghi chú liên kết, chấm trên đồ thị; điện thoại: chạm giữ): **Mở · Sửa · Cất vào kho lưu (xoá
+  khỏi kho)**, có hỏi lại trước khi cất. Chỗ khác vẫn là menu thường của trình duyệt. Vẫn không có xoá hẳn trên web (cố ý). Cất
+  kho từ thẻ chi tiết nay cũng làm mới Thư viện ngay (trước đây thẻ đã cất còn nằm trong lưới tới khi tải lại). Thử trình duyệt
+  10 tình huống: đạt cả.
+- **Thư viện "các mục, tiêu đề hiện ra không khớp"** (anh gửi ảnh). Bốn nguyên nhân:
+  1. *Bộ lọc loại "dính"*: bấm chip Ý tưởng rồi đi nhóm khác vẫn lọc → cây "Phương pháp 3" mà danh sách "Ý tưởng · 0 —
+     không có ghi chú nào", "Tài chính 2" mà hiện 1. Nay đổi nhóm trên cây là bỏ lọc loại / thẻ.
+  2. *Thẻ bị băm*: không có dấu phẩy thì tách theo khoảng trắng — "Hướng dẫn cài đặt Openclaw" thành #hướng #dẫn #cài #đặt
+     #openclaw, "Khoa hoc Openclaw" thành #khoa #hoc #openclaw. Nay chỉ ngăn bằng dấu phẩy / chấm phẩy / xuống dòng / kiểu
+     "#a #b"; không dấu ngăn thì cả cụm là một thẻ. Thẻ cũ đã băm không tự ghép lại được — sửa tay vài ghi chú.
+  3. *Tên ghi chú cả file lấy mục đầu*: file mở đầu bằng "1. Cần chuẩn bị gì?" thì tên là "1. Cần chuẩn bị gì?". Nay mục đánh
+     số (1. / II) / Bước 2 / Chương 3…) không thành tên, lấy tên file.
+  4. *Không có chỗ đặt tên khi nạp*: anh gõ tên vào ô dán → thành ghi chú riêng "Ghi chú dán vào". Nay có ô **Tên ghi chú**;
+     ô dán chỉ một dòng mà chọn 1 file thì trang hỏi có dùng làm tên; chữ dán chỉ một dòng ngắn thì dòng đó là tên (không
+     còn "Ghi chú dán vào"). Ô Tên mà lần nạp ra nhiều ghi chú thì báo rõ, không đoán.
+  +3 test brain (thẻ một cụm, thẻ kiểu #, mục đánh số không thành tên, dán một dòng — 126), +2 test web (85; exec 82). Thử
+  trình duyệt: lọc dính, đặt tên từ ô dán, thẻ không băm — đạt.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

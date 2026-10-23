@@ -45,6 +45,8 @@
           </label>
         </div>
         <datalist id="dsNhom"></datalist>
+        <datalist id="dsNguon"></datalist>
+        <datalist id="dsTrich"></datalist>
         <label>Thẻ <span class="phu">— ngăn bằng dấu phẩy</span>
           <input name="tags" maxlength="200" placeholder="landing, mobile, ux">
         </label>
@@ -55,10 +57,10 @@
           <input name="due" type="date">
         </label>
         <label class="theo-loai" data-loai="tai-lieu khai-niem" hidden>Trích dẫn
-          <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
+          <input name="cite" list="dsTrich" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
         </label>
         <label>Nguồn <span class="phu">(link bài viết, khoá học… để sau còn kiểm lại)</span>
-          <input name="url" type="url" maxlength="500" placeholder="https://…">
+          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link — hoặc gõ vài chữ để chọn nguồn đã dùng">
         </label>
         <input type="hidden" name="source" value="">
         <button class="go" type="submit">Lưu ghi chú</button>
@@ -79,6 +81,9 @@
       <label>Hoặc dán nội dung
         <textarea id="napChu" rows="6" placeholder="Tiêu đề (dòng đầu)&#10;Nội dung…"></textarea>
       </label>
+      <label>Tên ghi chú <span class="phu">(tuỳ chọn — khi nạp 1 file; bỏ trống thì lấy tên trong file)</span>
+        <input id="napTen" maxlength="200" placeholder="Hướng dẫn cài đặt OpenClaw trên VPS">
+      </label>
       <div class="hai">
         <label>Nhóm cho tất cả
           <input id="napNhom" list="dsNhom" maxlength="150" placeholder="Học tập/Khoá học">
@@ -89,7 +94,7 @@
       </div>
       <div class="hai">
         <label>Thẻ thêm
-          <input id="napThe" maxlength="200" placeholder="khoa-hoc">
+          <input id="napThe" maxlength="200" placeholder="khoá học, openclaw" title="Ngăn các thẻ bằng dấu phẩy. Không có dấu phẩy thì cả cụm là một thẻ.">
         </label>
         <label>Tách
           <select id="napTach" title="Một file thường là một chủ đề — để cả file 1 ghi chú cho kho gọn; Mây vẫn tìm và hỏi đúng đoạn bên trong">
@@ -248,11 +253,11 @@
           <input name="due" type="date">
         </label>
         <label>Nguồn
-          <input name="url" type="url" maxlength="500" placeholder="https://…">
+          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link, hoặc chọn nguồn đã dùng">
         </label>
       </div>
       <label>Trích dẫn
-        <input name="cite" maxlength="300" placeholder="Tác giả (năm). Tên. Nơi xuất bản, tr.">
+        <input name="cite" list="dsTrich" maxlength="300" placeholder="Tác giả (năm). Tên. Nơi xuất bản, tr.">
       </label>
       <label>Nội dung
         <textarea name="content" rows="10"></textarea>
@@ -275,6 +280,12 @@
       Ở đây không có nút xoá hẳn — muốn xoá thật phải chạy lệnh trên máy chủ.</p>
   </article>
 
+</div>
+<div class="menu-gc" id="menuGc" role="menu" hidden>
+  <button type="button" role="menuitem" data-lam="mo">Mở</button>
+  <button type="button" role="menuitem" data-lam="sua">Sửa</button>
+  <button type="button" role="menuitem" data-lam="cat">Cất vào kho lưu <span>(xoá khỏi kho)</span></button>
+  <p>Cất kho lấy lại được ở tab Ôn › Kho lưu. Xoá hẳn: nhờ Mây.</p>
 </div>
 <script src="app.js"></script>
 </body>

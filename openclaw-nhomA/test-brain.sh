@@ -52,9 +52,12 @@ check "'bất động sản, vay ngân hàng' thành 2 thẻ" \
   'BR list --limit 1 | jq_ "len(d[\"notes\"][0][\"tags\"])"' "2"
 check "thẻ giữ nguyên nghĩa" \
   'BR list --limit 1 | jq_ "d[\"notes\"][0][\"tags\"][0]"' "bất-động-sản"
-check "không dấu phẩy thì tách theo khoảng trắng" \
-  'python3 -c "import sys;sys.path.insert(0,\"$(dirname "$BR_PY")\");import brain;print(brain.norm_tags(\"landing mobile ux\"))"' \
-  "landing,mobile,ux"
+check "không dấu phẩy: cả cụm là một thẻ (không băm chữ Việt)" \
+  'python3 -B -c "import sys;sys.path.insert(0,\"$(dirname "$BR_PY")\");import brain;print(brain.norm_tags(\"Hướng dẫn cài đặt Openclaw\"))"' \
+  "hướng-dẫn-cài-đặt-openclaw"
+check "viết kiểu #the1 #the2 thì tách theo dấu #" \
+  'python3 -B -c "import sys;sys.path.insert(0,\"$(dirname "$BR_PY")\");import brain;print(brain.norm_tags(\"#landing #mobile ux\"))"' \
+  "landing,mobile-ux"
 check "tìm được theo thẻ tiếng Việt" \
   'BR list --tag bất-động-sản | jq_ "d[\"count\"]"' "1"
 
@@ -284,6 +287,11 @@ check "nạp Word .docx: tách theo tiêu đề" 'BR nap "$TMP/word.docx" --dry-
 check "Word: dòng danh sách giữ gạch đầu dòng" \
   'BR nap "$TMP/word.docx" >/dev/null; BR search "gạch đầu dòng" | jq_ "\"- Ý\" in d[\"notes\"][0][\"snippet\"].replace(\"«\",\"\").replace(\"»\",\"\")"' "True"
 printf 'day khong phai file zip' > "$TMP/cu.docx"
+printf '# 1. Cần chuẩn bị gì?\nMột VPS Ubuntu.\n\n# 2. Cài đặt\nChạy lệnh cài.\n' > "$TMP/huong-dan-vps.md"
+check "cả file 1 ghi chú: mục đánh số không thành tên" \
+  'BR nap "$TMP/huong-dan-vps.md" --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Huong dan vps']"
+check "dán một dòng ngắn: dòng đó là tên" \
+  'printf "Hướng dẫn cài đặt trên VPS" | BR nap - --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Hướng dẫn cài đặt trên VPS']"
 check "Word hỏng / .doc đổi đuôi: báo lỗi rõ" 'BR nap "$TMP/cu.docx" | jq_ "(d[\"ok\"], \".docx\" in str(d[\"loi\"]))"' "(False, True)"
 if command -v pdftotext >/dev/null 2>&1 || python3 -c "import pypdf" 2>/dev/null; then
   # PDF 2 trang tối giản viết tay (chữ Helvetica) — đủ để kiểm đọc chữ + tách trang

@@ -43,7 +43,7 @@ BR="python3 {baseDir}/scripts/brain.py"
 1. **Luôn chạy `$BR categories` trước khi xếp nhóm** (một lần mỗi cuộc trò chuyện là đủ) và **dùng lại đúng đường dẫn đã có**. Chỉ tạo nhóm mới khi không nhóm nào hợp — và nói với người dùng "tạo nhóm mới X".
 2. Kho dưới ~50 ghi chú/nhóm thì đừng chia nhóm con. Nhóm con chỉ khi nhóm cha đã đông và có mảng rõ ràng.
 3. Không tự đoán khi người dùng chưa nói và kho chưa có nhóm hợp: hỏi một câu ngắn, hoặc để trống (ghi chú vào *Chưa xếp chỗ*, nhắc sau qua `inbox`).
-4. Thẻ: chữ thường, gạch nối, dùng lại thẻ cũ (`$BR tags`). Thẻ là thứ cắt ngang: tên người, sản phẩm, dự án, công cụ.
+4. Thẻ: chữ thường, gạch nối, **ngăn bằng dấu phẩy** (`--tags "khach-lan,bao-gia"`; không dấu phẩy thì cả cụm là một thẻ), dùng lại thẻ cũ (`$BR tags`). Thẻ là thứ cắt ngang: tên người, sản phẩm, dự án, công cụ.
 5. Script tự gộp cách viết khác hoa/thường/khoảng trắng/kiểu gõ dấu về nhóm đã có. Kết quả có `goi_y` (gõ thiếu dấu, sai chính tả, thẻ gần giống) → **đọc và sửa ngay** bằng `edit`.
 
 ## 2. Lưu một ghi chú — quy trình chuẩn
@@ -231,9 +231,13 @@ Làm khi người dùng mở lời, hoặc khi `stats` cho thấy kho lệch —
 ```bash
 bash {baseDir}/scripts/web.sh start      # bật chạy nền (chỉ nghe 127.0.0.1), in đường link có mã
 bash {baseDir}/scripts/web.sh link       # in lại đường link có mã
-bash {baseDir}/scripts/web.sh status     # đang chạy không, tốn bao nhiêu RAM
+bash {baseDir}/scripts/web.sh status     # đang chạy không, RAM, ô Hỏi có bị chặn không
 bash {baseDir}/scripts/web.sh stop       # tắt
 ```
+**Ô Hỏi cần trang web do chủ kho tự bật trong terminal của họ.** Web bật từ exec của agent mang `OPENCLAW_SHELL=exec`, và
+OpenClaw từ chối `openclaw agent` từ exec (chốt an toàn: lượt hỏi mất dấu người gửi thật) — ô Hỏi báo bị chặn, phần khác vẫn
+chạy. Không gỡ biến đó, không lách bằng đường CLI khác. Người dùng cần ô Hỏi, hoặc sau khi cập nhật skill cần khởi động lại web:
+gửi họ lệnh `bash {baseDir}/scripts/web.sh restart` để **tự chạy** trong Termius, thay vì tự chạy hộ.
 Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi Thái Cực – Tiên Thiên Bát Quái, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
 loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (quá hạn / hôm nay / sắp tới, tích xong).
 Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt/Word .docx/PDF hoặc dán, xem trước; mặc định mỗi file 1 ghi chú) ·

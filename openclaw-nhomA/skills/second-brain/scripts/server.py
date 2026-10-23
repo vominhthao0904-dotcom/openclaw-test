@@ -101,7 +101,14 @@ def api_notes(conn, _q, _body):
     cay, _ = brain.cay_nhom(conn)
     dem_loai = {r[0]: r[1] for r in conn.execute(
         f"SELECT kind, count(*) FROM notes WHERE {brain.CON} GROUP BY kind")}
+    # gợi ý cho ô Nguồn / Trích dẫn: những gì đã dùng trong TOÀN kho, mới dùng trước, kèm tên ghi chú dùng gần nhất
+    def da_dung(cot):
+        return [{"gia_tri": r[0], "so": r[1], "tieu_de": r[2]} for r in conn.execute(
+            f"SELECT {cot}, count(*), (SELECT title FROM notes x WHERE x.{cot}=n.{cot} AND x.{brain.CON} "
+            f"ORDER BY x.updated_at DESC LIMIT 1) FROM notes n WHERE n.{brain.CON} AND trim(coalesce({cot},''))<>'' "
+            f"GROUP BY {cot} ORDER BY max(updated_at) DESC LIMIT 200")]
     return {"ok": True, "notes": notes, "categories": cats, "links": links,
+            "nguon_da_dung": da_dung("url"), "trich_da_dung": da_dung("cite"),
             "tong_ghi_chu": tong, "da_cat_bot": max(0, tong - len(notes)),
             "cho_phan_loai": cho, "trong_kho_luu": kho, "cay": cay,
             "loai": [{"kind": k, "mo_ta": v, "so": dem_loai.get(k, 0)} for k, v in brain.KINDS.items()],
@@ -223,13 +230,20 @@ def api_ingest(conn, _q, body):
         ten = t.get("name") if isinstance(t.get("name"), str) else ""
         meta, than = brain._frontmatter(text)
         mac_dinh = meta.get("title") or (brain._tieu_de_tu_ten(ten) if ten else "") or \
-            (str(body.get("title") or "").strip()) or "Ghi chú dán vào"
+            (str(body.get("title") or "").strip()) or brain.TEN_DAN
         chung = {"category": meta.get("category") or meta.get("nhom") or "", "tags": meta.get("tags") or "",
                  "kind": meta.get("kind") or meta.get("loai"), "url": meta.get("url") or "",
                  "cite": meta.get("cite") or ""}
         for tieu_de, noi_dung in brain._tach_markdown(than, tach, mac_dinh,
                                                        dung_dong_dau=not meta.get("title") and not body.get("title")):
             muc.append({"title": tieu_de, "content": noi_dung, "_file": ten or "(dán vào)", **chung})
+    # ô "Tên ghi chú" của trang Nạp: đặt tên khi lần nạp ra đúng MỘT ghi chú (một file / một đoạn dán, cả file 1 ghi chú)
+    ten_moi = brain.gon(str(body.get("title") or ""))[:200]
+    if ten_moi:
+        if len(muc) != 1:
+            return {"ok": False, "error": f"Ô Tên ghi chú chỉ dùng khi nạp ra đúng 1 ghi chú — lần này ra {len(muc)}. "
+                                          "Bỏ trống ô Tên, hoặc nạp từng file một."}
+        muc[0]["title"] = ten_moi
     k = brain.chuan_kind(body.get("kind")) if body.get("kind") else None
     with _lock:
         return brain.nap_vao(conn, muc, str(body.get("category") or ""), str(body.get("tags") or ""), k,
@@ -423,6 +437,15 @@ def doan_lien_quan(content, words, toi_da=1500):
     return "\n…\n".join(khuc[i] for i in sorted(chon))
 
 
+def hoi_bi_chan():
+    """OpenClaw không cho `openclaw agent` chạy từ lệnh exec của agent (biến OPENCLAW_SHELL=exec): lượt hỏi sẽ mất dấu
+    người gửi thật. Trang web do Mây bật (web.sh trong exec) mang dấu đó → ô Hỏi bị chặn. Đây là chốt an toàn có chủ
+    đích — không gỡ dấu, không lách đường khác; chỉ báo rõ để chủ máy tự bật lại trang web từ terminal của mình."""
+    web = str(HERE / "web.sh").replace(str(Path.home()), "~", 1)
+    return ("Trang web đang chạy từ lệnh của Mây, nên OpenClaw chặn ô Hỏi gọi Mây — đây là chốt an toàn của "
+            f"OpenClaw, không phải lỗi kho. Cách sửa: anh tự chạy trong Termius:  bash {web} restart")
+
+
 def loi_openclaw(r):
     """Lý do thật khi `openclaw agent` lỗi. Dòng cuối thường chỉ là "[openclaw] Help: openclaw --help" —
     lý do nằm ở dòng "Reason:" (hoặc trong JSON khi có --json)."""
@@ -489,6 +512,8 @@ def api_ask(conn, _q, body):
     # openclaw agent bắt buộc chọn phiên (--to / --session-key / --session-id / --agent), thiếu thì từ chối.
     # Dùng phiên riêng "second-brain" của agent mặc định (hoặc BRAIN_AGENT) — câu hỏi từ web không lẫn vào
     # cuộc trò chuyện chính của Mây.
+    if os.environ.get("OPENCLAW_SHELL") == "exec":     # chạy thì chắc chắn bị từ chối — báo luôn cách sửa
+        return {"ok": False, "used": used, "error": hoi_bi_chan()}
     agent = (os.environ.get("BRAIN_AGENT") or "").strip()
     chon = ["--agent", agent, "--session-key", f"agent:{agent}:second-brain"] if agent else ["--session-key", "second-brain"]
     import tempfile
@@ -508,6 +533,8 @@ def api_ask(conn, _q, body):
         return {"ok": False, "error": f"Không chạy được lệnh openclaw: {e}", "used": used}
     if r.returncode != 0:
         ly_do = loi_openclaw(r)
+        if "from agent exec" in ly_do:
+            return {"ok": False, "used": used, "error": hoi_bi_chan()}
         return {"ok": False, "used": used,
                 "error": f"openclaw agent lỗi (mã {r.returncode})" + (f": {ly_do[:300]}" if ly_do else "")}
     return {"ok": True, "answer": extract_reply(r.stdout) or "(Mây không trả về nội dung)", "used": used}

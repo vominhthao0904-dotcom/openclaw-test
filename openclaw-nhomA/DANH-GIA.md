@@ -307,6 +307,19 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   bấm vòng đọc đúng "Vùng Kỹ thuật: 4 ghi chú", không mở thẻ, không phóng to; bấm nơ-ron mở đúng ghi chú và đọc tên; mở thẻ chi
   tiết thì mặt dịch trái vừa khung; "giảm chuyển động" vào/ra ngay; không lỗi JS.
 
+## Tiếng nói: "bật loa mà không nghe gì" (anh báo khi thử trên máy)
+- Nguyên nhân: anh mở bằng **Chrome trên Windows**. Chrome chỉ thấy giọng SAPI cũ của Windows (tiếng Anh: David, Zira, Mark);
+  giọng tiếng Việt cài trong Cài đặt Windows ("Microsoft An") chỉ Edge thấy, và danh sách giọng Google qua mạng của Chrome máy
+  tính không có tiếng Việt. Máy không có giọng nào để đọc; thông báo cũ chỉ hiện 6 giây một lần, lại nói chung chung → dễ bỏ qua.
+- Sửa: nút loa có trạng thái **"chưa nghe được"** (vàng, chấm đỏ); rê/bấm vào là thấy lý do đúng theo trình duyệt — Chrome trên
+  Windows: "mở bằng Microsoft Edge"; máy chưa cài giọng: cách cài. Máy không có giọng trong máy mà trình duyệt có giọng tiếng Việt
+  qua mạng (Edge: HoaiMy, NamMinh): bấm nút loa thì **hỏi rõ** có dùng không (chữ Mây đọc sẽ gửi lên máy chủ của hãng); mặc định
+  vẫn chỉ giọng trong máy, tắt tiếng là bỏ quyền, bật lại hỏi lại. Thêm hai cách chống lỗi Chrome làm tiếng không phát (kẹt trạng
+  thái tạm dừng; câu đang đọc bị thu hồi mất sự kiện kết thúc). Danh sách giọng nạp chậm vẫn bắt được.
+- Kiểm bằng giọng giả lập 5 tình huống: Chrome Windows (chỉ tiếng Anh) → nút vàng + chỉ mở bằng Edge, không hộp hỏi; Edge chưa cài
+  giọng → hỏi; đồng ý thì đọc bằng HoaiMy, tải lại vẫn nhớ, tắt tiếng thì bỏ quyền; từ chối thì chỉ phụ đề; Edge có Microsoft An →
+  đọc ngay, không hỏi; giọng nạp chậm → vẫn đọc. **Chưa nghe bằng loa thật** — cần anh thử trên Edge.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

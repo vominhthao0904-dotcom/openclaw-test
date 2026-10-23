@@ -453,3 +453,6 @@ body.mat-ai .bat-tieng{display:grid}
 .bat-tieng .i-tat,.bat-tieng[aria-pressed="false"] .i-co{display:none}
 .bat-tieng[aria-pressed="false"] .i-tat{display:block}
 .bat-tieng[aria-pressed="false"]{color:var(--vang);opacity:.8}
+/* bật tiếng mà máy chưa có giọng đọc: vàng + chấm cảnh báo — rê/bấm vào để xem lý do và cách nghe được */
+.bat-tieng.thieu-giong{color:var(--vang)}
+.bat-tieng.thieu-giong::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--do)}

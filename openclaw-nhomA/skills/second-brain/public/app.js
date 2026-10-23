@@ -844,28 +844,68 @@ function capNhatMat(tg) {
   LY = CY + (lo.y - CY) * e;
 }
 
-/* Tiếng nói: CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", giọng Google trên Android, iPhone "Linh").
-   Giọng đọc qua mạng (vd "Google Tiếng Việt" trên Chrome máy tính) gửi nội dung lên máy chủ — bị loại, đúng nguyên tắc
-   kho không gửi gì ra ngoài. Không có giọng tiếng Việt trong máy thì chỉ hiện phụ đề (báo một lần). */
+/* Tiếng nói. Mặc định CHỈ dùng giọng tiếng Việt cài sẵn trong máy (Windows "Microsoft An", Android Google, iPhone "Linh") —
+   không gửi gì ra ngoài. Máy không có giọng trong máy mà trình duyệt có giọng tiếng Việt qua mạng (Edge: HoaiMy, NamMinh)
+   thì chỉ dùng khi anh đồng ý rõ ràng (hộp hỏi khi bấm nút loa): chữ Mây đọc sẽ gửi lên máy chủ của hãng đó; tắt tiếng là
+   bỏ quyền này. Chrome trên Windows không thấy giọng của Windows (chỉ có giọng tiếng Anh) — nút loa chỉ cách mở bằng Edge.
+   Không đọc được thì nút loa chuyển vàng, rê/bấm vào là thấy lý do và cách sửa; Mây vẫn hiện phụ đề. */
 const coDocNoi = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-let coTieng = true, giongViet = null, daBaoThieuGiong = false;
-try { if (localStorage.getItem('sb.tieng') === '0') coTieng = false; } catch (_) { /* mặc định có tiếng */ }
+const chromeWin = /Windows/.test(navigator.userAgent) && /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+let coTieng = true, choMang = false, giongViet = null, giongMang = null, daBaoThieuGiong = false, cauDangDoc = null;
+try {
+  if (localStorage.getItem('sb.tieng') === '0') coTieng = false;
+  choMang = localStorage.getItem('sb.giongMang') === '1';
+} catch (_) { /* mặc định có tiếng, chỉ giọng trong máy */ }
+const giongVN = (ds) => ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
 function chonGiong() {
   if (!coDocNoi) return;
-  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang) && v.localService);
-  giongViet = ds.find((v) => /^vi[-_]VN$/i.test(v.lang)) || ds[0] || null;
+  const ds = speechSynthesis.getVoices().filter((v) => /^vi([-_]|$)/i.test(v.lang));
+  giongViet = giongVN(ds.filter((v) => v.localService));
+  giongMang = giongVN(ds.filter((v) => !v.localService));
+  capNhatLoa();
 }
-if (coDocNoi) {
-  chonGiong();
-  speechSynthesis.addEventListener?.('voiceschanged', chonGiong);
+const giongDung = () => giongViet || (choMang ? giongMang : null);
+function lyDoThieuGiong() {
+  if (!coDocNoi) return 'Trình duyệt này không đọc thành tiếng được — Mây chỉ hiện phụ đề.';
+  if (giongMang) return 'Máy chưa cài giọng tiếng Việt — bấm nút loa để chọn cách nghe.';
+  if (chromeWin) return 'Chrome trên Windows không dùng được giọng tiếng Việt của máy — mở trang này bằng Microsoft Edge để nghe Mây nói.';
+  return 'Máy chưa có giọng đọc tiếng Việt — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).';
+}
+function capNhatLoa() {
+  const b = $('#batTieng'), g = giongDung(), thieu = coTieng && !g;
+  b.setAttribute('aria-pressed', String(coTieng));
+  b.classList.toggle('thieu-giong', thieu);
+  b.title = !coTieng ? 'Đang tắt tiếng — bấm để bật'
+    : thieu ? `Chưa nghe được: ${lyDoThieuGiong()}`
+      : `Đang có tiếng — ${g.name}${g.localService ? '' : ' (giọng qua mạng)'} — bấm để tắt`;
 }
 function datTieng(bat) {
   coTieng = bat;
-  const b = $('#batTieng');
-  b.setAttribute('aria-pressed', String(bat));
-  b.title = bat ? 'Đang có tiếng — bấm để tắt' : 'Đang tắt tiếng — bấm để bật';
-  try { localStorage.setItem('sb.tieng', bat ? '1' : '0'); } catch (_) { /* không lưu được thì thôi */ }
+  if (!bat) choMang = false;               // tắt tiếng là bỏ quyền dùng giọng qua mạng — bật lại sẽ hỏi lại
+  try {
+    localStorage.setItem('sb.tieng', bat ? '1' : '0');
+    localStorage.setItem('sb.giongMang', choMang ? '1' : '0');
+  } catch (_) { /* không lưu được thì thôi */ }
   if (!bat && coDocNoi) speechSynthesis.cancel();
+  capNhatLoa();
+}
+if (coDocNoi) {
+  chonGiong();
+  speechSynthesis.addEventListener?.('voiceschanged', chonGiong);   // Chrome nạp danh sách giọng sau khi mở trang
+}
+// Đang bật tiếng mà chưa có giọng: bấm nút loa thì hỏi / chỉ cách (không tắt). Có giọng thì đọc thử một câu.
+function chonCachNghe() {
+  chonGiong();
+  if (!giongDung() && giongMang && confirm('Máy chưa cài giọng tiếng Việt trong máy.\n\n'
+    + `Bấm OK để dùng giọng đọc qua mạng "${giongMang.name}": chữ Mây đọc (lời chào, tên ghi chú, câu trả lời) `
+    + 'sẽ được gửi lên máy chủ của hãng để đọc. Tắt tiếng là bỏ quyền này.\n\n'
+    + 'Bấm Huỷ để giữ riêng tư: Mây chỉ hiện phụ đề — cài giọng tiếng Việt cho máy theo Hướng dẫn.')) {
+    choMang = true;
+    try { localStorage.setItem('sb.giongMang', '1'); } catch (_) { /* chỉ trong lần mở trang này */ }
+    capNhatLoa();
+  }
+  if (giongDung()) noi('Mây đây. Anh nghe rõ không?');
+  else baoNhanh(lyDoThieuGiong(), 9000);
 }
 
 function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + tiếng (chỉ khi đang ở chế độ mặt A.I)
@@ -875,22 +915,22 @@ function noi(chu) {              // "Mây nói": nhép miệng + phụ đề + t
   loiNoi = ln;
   if (!coTieng || !coDocNoi) return;
   speechSynthesis.cancel();
-  if (!giongViet) chonGiong();
-  if (!giongViet) {
-    if (!daBaoThieuGiong) {
-      daBaoThieuGiong = true;
-      baoNhanh('Máy chưa có giọng đọc tiếng Việt cài sẵn — Mây chỉ hiện phụ đề (cách thêm giọng: xem Hướng dẫn).', 6000);
-    }
+  if (!giongDung()) chonGiong();
+  const g = giongDung();
+  if (!g) {
+    if (!daBaoThieuGiong) { daBaoThieuGiong = true; baoNhanh(lyDoThieuGiong(), 9000); }
     return;
   }
   const u = new SpeechSynthesisUtterance(chu);
-  u.voice = giongViet;
-  u.lang = giongViet.lang;
+  u.voice = g;
+  u.lang = g.lang;
   u.rate = 1;
   // miệng và phụ đề bám theo tiếng thật: bắt đầu khi phát, tới đâu hiện chữ tới đó, dừng khi đọc xong
   u.onstart = () => { ln.t0 = giay(); ln.dai = 60; ln.tieng = true; };
   u.onboundary = (e) => { ln.chiSo = e.charIndex + (e.charLength || 0); };
   u.onend = u.onerror = () => { if (ln.tieng) ln.dai = giay() - ln.t0; ln.xong = true; };
+  cauDangDoc = u;                          // giữ tham chiếu: Chrome có lúc thu hồi câu đang đọc, mất sự kiện kết thúc
+  speechSynthesis.resume();                // Chrome đôi khi kẹt ở trạng thái tạm dừng — đọc mà không ra tiếng
   speechSynthesis.speak(u);
 }
 const cauDau = (s) => {
@@ -913,7 +953,7 @@ function datMat(bat) {
     if (coDocNoi) speechSynthesis.cancel();
   }
 }
-$('#batTieng').addEventListener('click', () => datTieng(!coTieng));
+$('#batTieng').addEventListener('click', () => { if (coTieng && !giongDung()) chonCachNghe(); else datTieng(!coTieng); });
 datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
   const a = document.activeElement;

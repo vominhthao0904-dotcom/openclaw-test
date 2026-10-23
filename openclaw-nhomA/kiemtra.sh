@@ -52,7 +52,9 @@ if command -v openclaw >/dev/null 2>&1; then
   DS="$(timeout 60 openclaw skills list 2>&1)"
   for s in "${NHOM_A[@]}"; do
     pad "  $s" 32
-    if printf '%s' "$DS" | grep -q -- "$s"; then ok
+    # so khớp ngay trong bash, không qua ống "printf | grep -q": danh sách dài (nhiều skill có sẵn) thì grep thấy
+    # tên rồi thoát sớm, printf dính SIGPIPE, pipefail coi cả ống là lỗi -> báo "chưa thấy" oan dù skill đã ready
+    if [[ "$DS" == *"$s"* ]]; then ok
     else hong "OpenClaw chưa thấy — thiếu gói phần mềm, hoặc chưa chạy: openclaw gateway restart"; fi
   done
 else

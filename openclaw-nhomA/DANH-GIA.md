@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **111** |
-| Test `test-web.sh` | 30 | **68** |
+| Test `test-web.sh` | 30 | **69** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -178,7 +178,7 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
   nhãn để chữ luôn nổi trên nền.
 
-- **Chỉnh tốc độ xoay** (anh yêu cầu): **−** / **+** đổi 5 mức (Rất chậm 0,25× · Chậm 0,5× · Vừa 1× · Nhanh 1,75× · Rất nhanh 3×)
+- **Chỉnh tốc độ xoay** (anh yêu cầu): **−** / **+** đổi 5 mức (dải tốc độ đã nới sau — xem mục "Góp ý sau khi dùng thật")
   và nút dừng. Theo ý anh, các nút **không bày ra màn hình**: chỉ còn một biểu tượng đồng hồ nhỏ, mờ ở góc; bấm mới hiện bảng,
   bảng tự ẩn sau 5 giây / bấm ra ngoài / Esc; biểu tượng chuyển vàng khi đang dừng. Chỉnh tốc độ khi đang dừng thì xoay lại luôn;
   trình duyệt nhớ lựa chọn (không lưu được thì dùng mặc định).
@@ -204,6 +204,42 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
   một chấm vẫn là mở ghi chú; thoát bằng nhấp đúp, Esc hoặc phím thoát toàn màn hình của trình duyệt. Tự đo nhấp đúp bằng
   pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy). Kiểm trên trình duyệt: máy tính vào toàn màn hình
   thật 1366×768, thoát bằng nhấp đúp và Esc đều được; điện thoại chạm đúp vào được.
+
+## Góp ý sau khi dùng thật (ảnh chụp màn hình của anh)
+- **"Rất nhanh" vẫn chậm**: đo lại thì vòng trong cùng mất ~6 phút một vòng ở tốc độ gốc, ~2 phút ở "Rất nhanh" cũ. Nới dải tốc độ:
+  Rất chậm = tốc độ gốc (~6 phút) · Chậm 2,5× · **Vừa 5× (mặc định, ~75 giây)** · Nhanh 10× · Rất nhanh 20× (~18 giây); vòng ngoài
+  chậm hơn vòng trong. Đo trên trình duyệt: Vừa 73 giây, Rất nhanh 18 giây, Rất chậm 367 giây một vòng.
+- **Toàn màn hình không hiện tên ghi chú**: nay hiện đủ tên (chữ 14px, to hơn thường), ẩn hết nút; đồ thị to hơn ~25% vì không còn
+  thanh trên/dưới chiếm chỗ.
+- Màn hình dựng đứng (điện thoại): quỹ đạo tròn đều thay vì dẹt, chấm trải theo chiều cao, đỡ chen nhau.
+- **Cỡ chữ theo số lượng** (anh yêu cầu): cỡ chữ, độ dài tên và cỡ chấm tính theo số ghi chú đang hiện (đang xem một vùng thì chỉ
+  đếm vùng đó) — ít thì to, nhiều thì nhỏ; toàn màn hình to thêm một bậc; điện thoại giới hạn để chừa chỗ ngang. Đo toàn màn hình
+  1366×768: 5 ghi chú → 18 px, 17 ghi chú → 15,5 px, 81 ghi chú → 12 px.
+- **Hai chế độ toàn màn hình: có tên / chỉ chấm** (anh yêu cầu): nhấp 1 lần (chạm 1 lần) vào chỗ trống, phím T, hoặc nút Aa nhỏ ở góc
+  (chỉ có khi toàn màn hình, tự ẩn khi không dùng, vàng khi đang tắt tên). Nhấp 1 lần chờ 0,33 giây để phân biệt với nhấp đúp
+  (thoát) — nhấp đúp không làm đổi chế độ tên. Trình duyệt nhớ lựa chọn. Kiểm trên trình duyệt: cả 3 cách đổi đều được, nhấp
+  đúp thoát mà giữ nguyên chế độ, tải lại trang vẫn nhớ; điện thoại chạm 1 lần đổi, chạm đúp thoát.
+
+## Vòng quỹ đạo sinh động hơn (anh yêu cầu)
+- Bao nhiêu vùng bấy nhiêu vòng (đã đúng từ trước) — nhưng vòng cũ gần như vô hình (nét 1px, độ đậm 11%, đứng yên).
+- **Màu**: mỗi vòng đúng màu vùng, rõ hơn (17–21%, vùng đang xem 45%) nhưng vẫn nhạt hơn chấm — chấm (ghi chú) luôn nổi nhất.
+  Bảng màu nới lên 12 màu, cách đều trên vòng màu, cùng độ sáng tương đối; từ vòng thứ 9 thêm nét đứt để 10–12 vòng vẫn tách bạch.
+- **Mã hoá dữ liệu**: nét vòng dày theo số ghi chú của vùng (1–2,4 px) — nhìn là biết vùng lớn/nhỏ.
+- **Chuyển động**: vòng "thở" rất nhẹ (bán kính ±0,4%, độ sáng ±4%), lệch nhịp giữa các vòng; mỗi vòng một **vệt sáng** chạy
+  dọc vòng cùng chiều chấm, nhanh hơn 1,8 lần — theo nút tốc độ, dừng xoay thì dừng; máy bật "giảm chuyển động" thì tắt hẳn.
+- Đo: kho 6 vùng và kho 10 vùng — đúng 6 và 10 vòng, 6/6 và 10/10 màu khác nhau, ~60 khung hình/giây, không lỗi JS.
+
+## Vận hành theo Bát Quái và vũ trụ (anh yêu cầu)
+- **Khí âm dương tiêu trưởng** quanh vành Bát Quái; Bát Quái vẫn đứng yên (Càn trên, đúng phương vị). Thứ tự Tiên Thiên: Chấn → Ly →
+  Đoài → Càn (dương trưởng) → Tốn → Khảm → Cấn → Khôn (âm trưởng) → Chấn — trên màn hình (Nam trên, Đông trái) là chiều kim đồng hồ,
+  khớp hướng đầu cá Dương/Âm của Thái Cực đã vẽ. Màu: nửa trái vàng kim mạnh dần tới Càn, nửa phải xanh mạnh dần tới Khôn; qua Càn
+  đổi xanh yếu (Dương cực Âm sinh), qua Khôn đổi vàng yếu (Âm cực Dương sinh). Theo nút tốc độ. Quầng Thái Cực "thở" ~9 giây/nhịp.
+- **Vũ trụ**: tốc độ góc ∝ bán kính^-1,5 (Kepler) — vòng trong nhanh, vòng ngoài chậm; vòng dương (1, 3, 5…) xoay thuận chiều khí,
+  vòng âm ngược chiều; vệt sáng mỗi vòng theo đúng tốc độ vòng đó; nền 110 ngôi sao lấp lánh nhẹ.
+- **Kiểm chứng tự động** (`test-web.sh`, khi có node): khí phải xuất phát ở Chấn và đi theo góc tăng; Chấn/Tốn là "mới sinh" (yếu),
+  Càn/Khôn là "cực thịnh"; Ly thuộc Dương, Khảm thuộc Âm. Thử cố tình đảo chiều âm dương → test báo HỎNG đủ 6 lỗi.
+- Đo trên trình duyệt: khí đi qua đúng Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn → Chấn; 6 vòng tốc độ 0,139 / −0,096 /
+  0,072 / −0,056 / 0,045 / −0,038 (trong → ngoài, dấu = chiều); ~60 khung hình/giây; máy bật "giảm chuyển động" thì đứng yên.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

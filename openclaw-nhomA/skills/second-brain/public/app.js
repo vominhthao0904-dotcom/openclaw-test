@@ -23,9 +23,11 @@ const api = async (path, body) => {
 };
 
 /* màu vùng — họ xanh dương / vàng kim / cam, xen kẽ để hai vòng cạnh nhau luôn khác tông */
-// 8 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 5 màu phân biệt.
-// Bản cũ chỉ có 3 tông lặp lại (vàng/vàng nhạt, xanh/xanh nhạt, cam/cam nhạt) nên từ vùng thứ 4 là trùng màu.
-const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5'];
+// 12 màu tách bạch trên nền xanh đậm: 3 màu chủ đạo (vàng kim, xanh dương, cam) + 9 màu phân biệt, cách đều
+// nhau trên vòng màu và cùng độ sáng tương đối (không vùng nào "nặng" hơn vùng nào). 8 màu đầu khác hẳn nhau;
+// từ vùng thứ 9 vòng vẽ thêm nét đứt để 10–12 vòng vẫn phân biệt được.
+const MAU = ['#D4AF37', '#3E8EDE', '#F07F2D', '#2EC4B6', '#A78BFA', '#E8708F', '#8BCB6B', '#7DCBF5',
+             '#D16BE0', '#5BE0A4', '#FF8A65', '#9AA8FF'];
 const MAU_CHUA = '#8A9BB5';   // "Chưa xếp chỗ" không phải một vùng — màu trung tính, nằm vòng ngoài cùng
 const CHUA = 'Chưa xếp chỗ';
 let mauVung = {};
@@ -70,9 +72,12 @@ let DATA = { notes: [], categories: {}, links: [], cay: [], loai: [] };
 let vungSo = {};          // số ghi chú THẬT của từng vùng (gồm mọi nhóm con)
 let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
+let tocVong = [];        // tốc độ góc theo thứ tự vòng (dấu = chiều xoay)
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
-let tapTrung = false;    // nhấp đúp: toàn màn hình, chỉ lõi và chấm
+let tapTrung = false;    // nhấp đúp: toàn màn hình — lõi, chấm và tên, ẩn mọi nút
+let hienTen = true;      // toàn màn hình: có tên / chỉ chấm (nhấp 1 lần, phím T, nút Aa) — trình duyệt nhớ
+try { if (localStorage.getItem('sb.hienTen') === '0') hienTen = false; } catch (_) { /* mặc định có tên */ }
 let goc = 0;
 let hover = null;
 let chon = null;
@@ -80,9 +85,10 @@ let chon = null;
 const itMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (itMotion) quay = false;
 
-// tốc độ xoay — 5 mức, "Vừa" là tốc độ mặc định. Trình duyệt này nhớ lựa chọn cho lần mở sau
+// tốc độ xoay — 5 mức, "Vừa" là mặc định. Hệ số nhân với tốc độ gốc (bản đầu: vòng trong cùng ~6 phút một vòng —
+// quá chậm, nay là mức "Rất chậm"). Vòng trong cùng hết một vòng: Vừa ≈ 75 giây, Rất nhanh ≈ 20 giây; vòng ngoài chậm hơn. Trình duyệt này nhớ lựa chọn cho lần mở sau
 // (chặn lưu trữ, cửa sổ ẩn danh… thì dùng mặc định, trang vẫn chạy bình thường).
-const MUC_TOC = [['Rất chậm', 0.25], ['Chậm', 0.5], ['Vừa', 1], ['Nhanh', 1.75], ['Rất nhanh', 3]];
+const MUC_TOC = [['Rất chậm', 1], ['Chậm', 2.5], ['Vừa', 5], ['Nhanh', 10], ['Rất nhanh', 20]];
 let mucToc = 2;
 try {
   const m = localStorage.getItem('sb.mucToc');
@@ -188,6 +194,7 @@ function dungQuyDao() {
   const ten = tenDay;
   nodes = [];
   vongMau = [];
+  tocVong = [];
   ten.forEach((k, vi) => {
     const ds = nhom[k];
     // mỗi nhóm một vòng; nhóm đông nằm vòng trong
@@ -195,11 +202,16 @@ function dungQuyDao() {
     const lech = vi * 0.9;
     const mau = mauCua(k);
     vongMau.push(mau);
+    // Vận hành như vũ trụ: vòng trong nhanh, vòng ngoài chậm (Kepler: tốc độ góc ∝ bán kính^-1,5).
+    // Âm dương đối đãi: vòng dương (1, 3, 5…) xoay thuận chiều khí Tiên Thiên (theo kim đồng hồ trên màn hình,
+    // Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn), vòng âm (2, 4, 6…) xoay ngược.
+    const toc = (vi % 2 ? -1 : 1) * 0.03 * Math.pow(bk, -1.5);
+    tocVong.push(toc);
     ds.forEach((note, i) => {
       nodes.push({
         note, nhom: k, vong: vi, mau,
         bk, pha: lech + (i / ds.length) * Math.PI * 2,
-        toc: (vi % 2 ? -1 : 1) * (0.26 / (vi + 2)),
+        toc,
         r: 3.4 + Math.min(3.2, (note.tags?.length || 0) * 0.7),
       });
     });
@@ -279,13 +291,16 @@ const rgba = (hex, a) => {
 };
 const mo = (nd) => !!noiBat && nd.nhom !== noiBat;   // nhóm bị làm mờ
 
-const banKinh = () => Math.min((W - lechDich) * 0.40, H * 0.46);
+// toàn màn hình: không còn thanh chuyển và dải vùng chiếm chỗ trên/dưới → đồ thị to hơn ~25%, dùng hết chiều cao
+const banKinh = () => Math.min((W - lechDich) * 0.40, H * (tapTrung ? 0.58 : 0.46));
+// độ dẹt của quỹ đạo: màn ngang dẹt cho vừa khung; màn dựng đứng (điện thoại) tròn đều để chấm trải theo chiều cao
+const det = () => (H > (W - lechDich) * 1.2 ? 1 : 0.74);
 
 /* Vòng quỹ đạo trong cùng luôn nằm NGOÀI lõi Bát Quái (màn hình hẹp thì lõi chiếm tỉ lệ lớn hơn):
    dồn dải bán kính 0.26–0.96 vào khoảng [mép lõi + khoảng thở, 0.96]. */
 function bkThat(bk) {
   const R = banKinh();
-  const dau = Math.min(0.6, Math.max(0.26, (banKinhLoi() + 14) / (R * 0.74)));
+  const dau = Math.min(0.6, Math.max(0.26, (banKinhLoi() + 14) / (R * det())));
   return dau + (bk - 0.26) * (0.96 - dau) / 0.70;
 }
 
@@ -293,25 +308,64 @@ function viTri(nd) {
   const R = banKinh();
   const a = nd.pha + goc * nd.toc;
   const b = bkThat(nd.bk);
-  return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * 0.74 };
+  return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * det() };
 }
+
+// nền sao: vị trí cố định (sinh một lần), lấp lánh rất nhẹ lệch nhịp — nền vũ trụ, không tranh chỗ với chấm
+const SAO = (() => {
+  let h = 20261023;
+  const nn = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
+  return Array.from({ length: 110 }, () => ({ x: nn(), y: nn(), r: 0.35 + nn() * 0.9, pha: nn() * 6.28, nhip: 0.4 + nn() * 1.2 }));
+})();
 
 function ve() {
   cx.clearRect(0, 0, W, H);
   const R = banKinh();
+  const tg = itMotion ? 0 : performance.now() / 1000;
+  cx.fillStyle = '#CFE0FF';
+  SAO.forEach((o) => {
+    cx.globalAlpha = 0.1 + 0.3 * (0.5 + 0.5 * Math.sin(tg * o.nhip + o.pha));
+    cx.beginPath(); cx.arc(o.x * W, o.y * H, o.r, 0, Math.PI * 2); cx.fill();
+  });
+  cx.globalAlpha = 1;
 
   // vòng quỹ đạo — mỗi nhóm một màu riêng
   const soVong = vongMau.length;
   const tenVong = [];
   nodes.forEach((n) => { tenVong[n.vong] = n.nhom; });
+  // Mỗi vòng: màu của vùng; nét dày theo số ghi chú (vùng lớn nét đậm hơn); "thở" rất nhẹ lệch nhịp nhau;
+  // một vệt sáng chạy dọc vòng cùng chiều các chấm, nhanh hơn chút — theo nút tốc độ, dừng xoay thì dừng.
+  // Vòng vẫn nhạt hơn chấm: chấm (ghi chú) luôn là thứ nổi nhất.
   for (let i = 0; i < soVong; i++) {
-    const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70);
-    const sang = noiBat ? (tenVong[i] === noiBat ? 0.3 : 0.04) : 0.11;
+    const ten = tenVong[i], mau = vongMau[i];
+    const noi = noiBat && ten === noiBat, toiV = noiBat && !noi;
+    const tho = itMotion ? 0 : Math.sin(tg * 0.9 + i * 1.3);
+    const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70) * (1 + 0.004 * tho);
+    const rx = R * bk, ry = rx * det();
+    const so = vungSo[ten] ?? nodes.filter((n) => n.vong === i).length;
+    const day = 1 + Math.min(1.4, so / 20);
+    cx.setLineDash(i >= 8 ? [6, 5] : []);
     cx.beginPath();
-    cx.ellipse(CX, CY, R * bk, R * bk * 0.74, 0, 0, Math.PI * 2);
-    cx.strokeStyle = rgba(vongMau[i], sang);
-    cx.lineWidth = 1;
+    cx.ellipse(CX, CY, rx, ry, 0, 0, Math.PI * 2);
+    cx.strokeStyle = rgba(mau, toiV ? 0.05 : noi ? 0.45 : 0.17 + 0.04 * tho);
+    cx.lineWidth = day;
     cx.stroke();
+    cx.setLineDash([]);
+    if (toiV || itMotion) continue;
+    // vệt sáng: 6 đoạn ngắn, đậm ở đầu, nhạt dần về đuôi
+    const huong = Math.sign(tocVong[i]) || 1;
+    const dau = goc * tocVong[i] * 1.8 + i * 0.9;
+    const doan = 0.07;
+    for (let k = 0; k < 6; k++) {
+      const a1 = dau - huong * (k + 1) * doan, a2 = dau - huong * k * doan;
+      cx.beginPath();
+      cx.ellipse(CX, CY, rx, ry, 0, Math.min(a1, a2), Math.max(a1, a2));
+      cx.strokeStyle = rgba(mau, (noi ? 0.95 : 0.6) * (1 - k / 6));
+      cx.lineWidth = day + 1.4;
+      cx.lineCap = 'round';
+      cx.stroke();
+    }
+    cx.lineCap = 'butt';
   }
 
   const diem = new Map();
@@ -346,12 +400,25 @@ function ve() {
   rkHienTai = itMotion ? dich : rkHienTai + (dich - rkHienTai) * 0.2;
   if (Math.abs(dich - rkHienTai) < 0.3) rkHienTai = dich;
   const RK = rkHienTai;
-  const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, RK * 1.75);
-  quang.addColorStop(0, 'rgba(240,127,45,.32)');
+  // quầng sáng quanh Thái Cực "thở" chậm (~9 giây một nhịp)
+  const tho = itMotion ? 0 : Math.sin(tg * 0.7);
+  const rq = RK * (1.75 + 0.12 * tho);
+  const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, rq);
+  quang.addColorStop(0, `rgba(240,127,45,${(0.3 + 0.07 * tho).toFixed(3)})`);
   quang.addColorStop(1, 'rgba(240,127,45,0)');
   cx.fillStyle = quang;
-  cx.beginPath(); cx.arc(CX, CY, RK * 1.75, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.arc(CX, CY, rq, 0, Math.PI * 2); cx.fill();
   // (Thái Cực vẽ sau cùng — nằm trên mọi chấm và nhãn)
+
+  // Cỡ chữ, độ dài tên và cỡ chấm theo SỐ GHI CHÚ ĐANG HIỆN: ít thì chữ to, tên dài, chấm to — dễ đọc;
+  // nhiều thì nhỏ lại cho đỡ chồng. Đang xem một vùng thì chỉ đếm vùng đó. Toàn màn hình to thêm một bậc.
+  const soHien = Math.max(1, nodes.filter((n) => !mo(n)).length);
+  const lnN = Math.log(soHien);
+  let coChu = Math.max(11, Math.min(17, 19.5 - 2 * lnN));
+  if (tapTrung) coChu *= 1.12;
+  if (W - lechDich < 520) coChu = Math.min(coChu, 13.5);          // điện thoại: chừa chỗ ngang cho tên
+  const tranTen = Math.round(Math.max(26, Math.min(46, 54 - 6 * lnN)));
+  const toCham = Math.max(1, Math.min(1.5, 2.2 - 0.3 * lnN));
 
   // các ghi chú — vẽ chấm trước, nhãn sau (node đang chọn được ưu tiên chỗ)
   nodes.forEach((nd) => {
@@ -359,7 +426,7 @@ function ve() {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
     cx.beginPath();
-    cx.arc(p.x, p.y, nb ? nd.r + 2.4 : nd.r, 0, Math.PI * 2);
+    cx.arc(p.x, p.y, (nb ? nd.r + 2.4 : nd.r) * toCham, 0, Math.PI * 2);
     cx.fillStyle = nd.mau;
     cx.globalAlpha = nb ? 1 : toi ? 0.2 : 0.85;
     cx.fill();
@@ -367,7 +434,7 @@ function ve() {
     cx.globalAlpha = 1;
   });
 
-  cx.font = '500 12.5px "Be Vietnam Pro",sans-serif';
+  cx.font = `500 ${coChu.toFixed(1)}px "Be Vietnam Pro",sans-serif`;
   cx.textBaseline = 'middle';
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
   const daVe = [{ x0: CX - RK - 6, x1: CX + RK + 6, y0: CY - RK - 6, y1: CY + RK + 6 }];
@@ -376,25 +443,27 @@ function ve() {
   uuTien.forEach((nd) => {
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
-    if (!nb && (toi || tapTrung)) return;   // toàn màn hình: chỉ lõi và chấm, rê chuột mới hiện tên
+    if (!nb && (toi || (tapTrung && !hienTen))) return;   // chế độ "chỉ chấm": rê chuột mới hiện tên
     const p = diem.get(nd.note.id);
-    const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
+    const tran = nb ? 90 : tranTen;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
     let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
+    const cach = 6 + nd.r * toCham;     // khoảng cách chữ — chấm, theo cỡ chấm
     // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
     let trai = p.x < CX;
-    if (trai && p.x - 10 - w < 8) trai = false;
-    else if (!trai && p.x + 10 + w > phai) trai = true;
+    if (trai && p.x - cach - w < 8) trai = false;
+    else if (!trai && p.x + cach + w > phai) trai = true;
     // màn hẹp (điện thoại): hai phía đều thiếu chỗ thì rút gọn nhãn cho vừa, không để chữ bị cắt ở mép
-    const cho = trai ? p.x - 18 : phai - p.x - 10;
+    const cho = trai ? p.x - cach - 8 : phai - p.x - cach;
     if (w > cho) {
       if (cho < 48 && !nb) return;
       while (t.length > 4 && cx.measureText(t).width > cho) t = t.slice(0, -2).trimEnd() + '…';
       w = cx.measureText(t).width;
     }
-    const x0 = trai ? p.x - 10 - w : p.x + 10;
-    const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - 9, y1: p.y + 9 };
+    const x0 = trai ? p.x - cach - w : p.x + cach;
+    const nua = coChu * 0.72;     // nửa chiều cao ô chữ, theo cỡ chữ
+    const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - nua, y1: p.y + nua };
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     cx.textAlign = 'left';
@@ -413,7 +482,43 @@ function ve() {
   const s = (RK * 2 + 4) / ((dungYen ? RK : banKinhLoiTo()) * 2 + 4);
   const w = hinh.width / DV * s;
   cx.drawImage(hinh, CX - w / 2, CY - w / 2, w, w);
+  if (!itMotion) veKhi(RK);
   if (hoverLoi && RK > banKinhLoiTo() - 1) veTenQue(RK);
+}
+
+/* Khí âm dương tiêu trưởng chạy quanh vành Bát Quái — Bát Quái đứng yên (Càn luôn ở trên), chỉ khí vận hành.
+   Thứ tự Tiên Thiên: Dương sinh ở Chấn (Đông Bắc) → Ly (Đông) → Đoài (Đông Nam) → cực thịnh ở Càn (Nam, trên);
+   Âm sinh ở Tốn (Tây Nam) → Khảm (Tây) → Cấn (Tây Bắc) → cực thịnh ở Khôn (Bắc, dưới) → về Chấn.
+   Với bố cục Nam ở trên, Đông bên trái, vòng này chạy THEO kim đồng hồ — khớp hướng đầu cá Dương (trên) và đầu cá Âm (dưới).
+   Màu: nửa trái (dương trưởng) vàng kim, mạnh dần từ Chấn tới Càn; nửa phải (âm trưởng) xanh, mạnh dần từ Tốn tới Khôn.
+   Qua Càn là đổi sang xanh yếu ("Dương cực thì Âm sinh"), qua Khôn đổi sang vàng yếu ("Âm cực thì Dương sinh"). Theo nút tốc độ. */
+function khiTai(a) {
+  const trai = Math.cos(a) < 0;                         // nửa trái màn hình = phía Đông = dương trưởng
+  const manh = (1 + (trai ? -Math.sin(a) : Math.sin(a))) / 2;   // 0 lúc mới sinh → 1 lúc cực thịnh
+  return { mau: trai ? '242,206,107' : '90,162,255', manh };
+}
+function veKhi(RK) {
+  const rv = RK + 3.5;
+  const dau = Math.PI * 0.75 + goc * 0.9;          // bắt đầu ở Chấn (135°), góc tăng = theo kim đồng hồ trên màn hình
+  const doan = 0.09;
+  cx.lineCap = 'round';
+  for (const [rong, dam] of [[7, 0.22], [2.6, 1]]) {     // lớp ngoài mờ rộng = quầng; lớp trong = lõi luồng khí
+    for (let k = 0; k < 9; k++) {
+      const a1 = dau - (k + 1) * doan, a2 = dau - k * doan;
+      const { mau, manh } = khiTai((a1 + a2) / 2);
+      cx.beginPath();
+      cx.arc(CX, CY, rv, a1, a2);
+      cx.strokeStyle = `rgba(${mau},${(dam * (0.35 + 0.65 * manh) * (1 - k / 9)).toFixed(3)})`;
+      cx.lineWidth = rong;
+      cx.stroke();
+    }
+  }
+  cx.lineCap = 'butt';
+  const { mau, manh } = khiTai(dau);
+  cx.beginPath();
+  cx.arc(CX + Math.cos(dau) * rv, CY + Math.sin(dau) * rv, 2.4 + 1.2 * manh, 0, Math.PI * 2);
+  cx.fillStyle = `rgba(${mau},${(0.6 + 0.4 * manh).toFixed(3)})`;
+  cx.fill();
 }
 
 /* ---------------- Thái Cực – Tiên Thiên Bát Quái (Phục Hy) ----------------
@@ -620,11 +725,27 @@ function hienDuoi() {
   window.addEventListener(ev, hienDuoi, { passive: true, capture: true }));
 hienDuoi();
 
-/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình, chỉ còn lõi và các chấm.
+/* Nhấp đúp (máy tính) / chạm đúp (điện thoại) vào chỗ trống của đồ thị: phóng toàn màn hình: lõi, các chấm và tên, ẩn mọi nút.
    Tự đo nhấp đúp bằng pointerup cho cả chuột lẫn cảm ứng (iPhone không phát dblclick tin cậy).
    Toàn màn hình thật (Fullscreen API) nếu trình duyệt cho; không cho (iPhone) thì phủ kín cửa sổ bằng CSS — vẫn dùng được. */
 let lanCham = { t: 0, x: 0, y: 0 };
 let henGoiY = 0;
+let henMotLan = 0;
+const cam = () => matchMedia('(pointer:coarse)').matches;
+function baoNhanh(chu, ms) {
+  const g = $('#goiYThoat');
+  g.textContent = chu;
+  g.hidden = false;
+  clearTimeout(henGoiY);
+  henGoiY = setTimeout(() => { g.hidden = true; }, ms);
+}
+function datHienTen(bat) {
+  hienTen = bat;
+  $('#batTen').setAttribute('aria-pressed', String(bat));
+  $('#batTen').title = bat ? 'Đang hiện tên — bấm để chỉ còn chấm (phím T)' : 'Chỉ chấm — bấm để hiện tên (phím T)';
+  try { localStorage.setItem('sb.hienTen', bat ? '1' : '0'); } catch (_) { /* không lưu được thì thôi */ }
+  if (tapTrung) baoNhanh(bat ? 'Hiện tên' : 'Chỉ chấm', 1200);
+}
 function datTapTrung(bat) {
   if (bat === tapTrung) return;
   tapTrung = bat;
@@ -633,11 +754,8 @@ function datTapTrung(bat) {
     if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => { /* không cho thì dùng chế độ phủ cửa sổ */ });
     }
-    const g = $('#goiYThoat');
-    g.textContent = matchMedia('(pointer:coarse)').matches ? 'Chạm đúp để thoát' : 'Nhấp đúp hoặc Esc để thoát';
-    g.hidden = false;
-    clearTimeout(henGoiY);
-    henGoiY = setTimeout(() => { g.hidden = true; }, 2500);
+    baoNhanh(cam() ? 'Chạm 1 lần: bật/tắt tên · Chạm đúp: thoát'
+      : 'Nhấp 1 lần (hoặc phím T): bật/tắt tên · Nhấp đúp hoặc Esc: thoát', 3500);
   } else {
     $('#goiYThoat').hidden = true;
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
@@ -649,8 +767,20 @@ cv.addEventListener('pointerup', (e) => {
   const x = e.clientX - b.left, y = e.clientY - b.top;
   const dup = e.timeStamp - lanCham.t < 350 && Math.hypot(x - lanCham.x, y - lanCham.y) < 30;
   lanCham = dup ? { t: 0, x: 0, y: 0 } : { t: e.timeStamp, x, y };
-  if (dup && !timGan(x, y)) datTapTrung(!tapTrung);   // nhấp đúp lên một chấm là mở ghi chú, không phóng to
+  if (timGan(x, y)) return;                // lên một chấm: là mở ghi chú, không phóng to / bật tắt tên
+  clearTimeout(henMotLan);
+  if (dup) { datTapTrung(!tapTrung); return; }
+  // toàn màn hình, nhấp 1 lần vào chỗ trống: bật/tắt tên — chờ một nhịp để phân biệt với nhấp đúp
+  if (tapTrung) henMotLan = setTimeout(() => datHienTen(!hienTen), 330);
 });
+$('#batTen').addEventListener('click', () => datHienTen(!hienTen));
+document.addEventListener('keydown', (e) => {
+  if (!tapTrung || (e.key !== 't' && e.key !== 'T') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  datHienTen(!hienTen);
+});
+datHienTen(hienTen);
 // thoát toàn màn hình bằng phím của trình duyệt (Esc, F11) thì cũng thoát chế độ này
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tapTrung) datTapTrung(false); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tapTrung && $('#chiTiet').hidden) datTapTrung(false); });

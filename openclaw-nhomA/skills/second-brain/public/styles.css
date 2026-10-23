@@ -169,7 +169,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .che-do button[aria-pressed="true"]{background:var(--do);color:#0A1424;font-weight:600}
 #do{display:block;width:100%;height:100%}
 .empty{
-  position:absolute;inset:0;display:grid;place-content:center;text-align:center;
+  /* chữ nằm DƯỚI lõi Bát Quái (lõi vẽ ở giữa khung, rê chuột thì nở tới Ø ~184px) — không đè lên nhau */
+  position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding-top:min(310px,54vh);
   color:var(--trung-mo);font-family:var(--doc);font-size:17px;margin:0;pointer-events:none
 }
 .empty span{font-size:14px;font-family:var(--ui)}

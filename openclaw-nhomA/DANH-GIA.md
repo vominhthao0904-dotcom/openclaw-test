@@ -450,6 +450,15 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
 - Thử trình duyệt: nạp file + chữ sót + Tên (đúng ảnh anh) → 1 ghi chú đúng tên, không hỏi; chọn nhiều file / cộng thêm / trùng
   tên / quá tổng; Kho lưu gọn và bung; tìm "kinh doanh" — đạt cả.
 
+## Sau PR #18: ô Hỏi chạy thật — câu trả lời hiện ký hiệu thô
+- Ô Hỏi đã trả lời được trên máy anh (lỗi "state-lifecycle" lần trước không lặp lại — nhiều khả năng bận nhất thời). Nhưng câu
+  trả lời hiện nguyên ký hiệu Markdown (`**Cài rclone trên VPS**`, dấu backtick) và mã nguồn `[63d7736d5d92]` chỉ là chữ.
+- Nay câu trả lời được dựng thành phần tử trang (không dùng innerHTML — câu trả lời chỉ là dữ liệu, chèn thẻ HTML không chạy):
+  **đậm**, `dòng lệnh`, danh sách đánh số / gạch đầu dòng (dòng thụt vào nối tiếp mục trên, dòng trống giữa các mục không cắt
+  danh sách), khối lệnh ```; mã ghi chú (cả dạng `[id1, id2]`) thành nút vàng mang tên ghi chú, bấm mở, chuột phải có menu; mã
+  lạ giữ nguyên chữ. Câu Mây đọc to / phụ đề bỏ hết ký hiệu và mã. Thử trình duyệt 11 tình huống (kể cả thẻ `<img onerror>`
+  chèn trong câu trả lời — hiện dạng chữ, không chạy): đạt cả.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

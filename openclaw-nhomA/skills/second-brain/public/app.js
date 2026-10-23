@@ -2487,6 +2487,79 @@ $('#oTim').addEventListener('input', timNgay);
 $('#timLoai').addEventListener('change', timNgay);
 $('#timNhom').addEventListener('change', timNgay);
 
+/* Câu trả lời của Mây viết kiểu Markdown (**đậm**, `lệnh`, danh sách, khối ```) và dẫn nguồn bằng mã ghi chú [63d7736d5d92].
+   Dựng thành phần tử DOM — không dùng innerHTML, câu trả lời chỉ là dữ liệu — để định dạng hiện đúng thay vì ký hiệu thô;
+   mã nguồn thành nút mang tên ghi chú, bấm là mở (chuột phải có menu như mọi ghi chú). */
+const MA_NGUON = /\[([0-9a-f]{12}(?:\s*[,;]\s*[0-9a-f]{12})*)\]/g;
+function veTraLoi(chu, used) {
+  const ten = new Map((used || []).map((u) => [u.id, u.title]));
+  const khung = el('div', 'tl');
+  const dong = (s, cha) => {                 // một dòng: **đậm**, `lệnh`, [mã ghi chú]
+    const re = /\*\*(.+?)\*\*|`([^`]+)`|\[([0-9a-f]{12}(?:\s*[,;]\s*[0-9a-f]{12})*)\]/g;
+    let i = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > i) cha.append(s.slice(i, m.index));
+      if (m[1] !== undefined) { const b = el('strong'); dong(m[1], b); cha.append(b); }
+      else if (m[2] !== undefined) cha.append(el('code', null, m[2]));
+      else m[3].split(/\s*[,;]\s*/).forEach((id) => {
+        if (!ten.has(id)) { cha.append(`[${id}]`); return; }
+        const t = ten.get(id);
+        const n = el('button', 'trich', t.length > 42 ? t.slice(0, 40).trimEnd() + '…' : t);
+        n.type = 'button';
+        n.title = `Mở ghi chú nguồn: ${t}`;
+        ganMo(n, id);
+        cha.append(n);
+      });
+      i = re.lastIndex;
+    }
+    if (i < s.length) cha.append(s.slice(i));
+  };
+  let ds = null, loaiDs = '', liCuoi = null, doan = null, khoi = null;
+  for (const l of String(chu || '').replace(/\r/g, '').split('\n')) {
+    if (khoi) { if (/^\s*```/.test(l)) khoi = null; else khoi.textContent += (khoi.textContent ? '\n' : '') + l; continue; }
+    if (/^\s*```/.test(l)) {
+      const pre = el('pre');
+      khoi = el('code');
+      pre.append(khoi);
+      khung.append(pre);
+      ds = liCuoi = doan = null;
+      continue;
+    }
+    if (!l.trim()) { doan = null; continue; }   // dòng trống: hết đoạn (danh sách vẫn nối tiếp nếu mục sau cũng là danh sách)
+    let m;
+    if ((m = l.match(/^\s*(\d+)[.)]\s+(.*)$/)) || (m = l.match(/^\s*[-*•]\s+()(.*)$/))) {
+      const loai = m[1] ? 'ol' : 'ul';
+      if (!ds || loaiDs !== loai) {
+        ds = el(loai);
+        if (m[1]) ds.start = +m[1];
+        loaiDs = loai;
+        khung.append(ds);
+      }
+      liCuoi = el('li');
+      dong(m[2], liCuoi);
+      ds.append(liCuoi);
+      doan = null;
+      continue;
+    }
+    if ((m = l.match(/^#{1,4}\s+(.*)$/))) {
+      const h = el('p', 'tl-de');
+      dong(m[1], h);
+      khung.append(h);
+      ds = liCuoi = doan = null;
+      continue;
+    }
+    if (/^\s/.test(l) && liCuoi) { liCuoi.append(el('br')); dong(l.trim(), liCuoi); continue; }   // dòng thụt vào: tiếp mục trên
+    ds = liCuoi = null;
+    if (doan) doan.append(el('br'));
+    else { doan = el('p'); khung.append(doan); }
+    dong(l.trim(), doan);
+  }
+  return khung;
+}
+// bản để đọc to / phụ đề: bỏ ký hiệu định dạng và mã ghi chú
+const chuTron = (s) => String(s || '').replace(MA_NGUON, '').replace(/```[a-z]*|\*\*|`/g, '')
+  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '');
+
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
   const out = $('#traLoi');
@@ -2501,8 +2574,8 @@ $('#nutHoi').addEventListener('click', async () => {
     out.textContent = r.error || 'Không hỏi được';
     noi('Em chưa hỏi được, anh xem dòng báo lỗi nhé.', "Sorry, I couldn't get an answer. Please see the error message.");
   } else {
-    out.appendChild(document.createTextNode(r.answer || r.note || ''));
-    noi(cauDau(r.answer || r.note || ''));
+    out.appendChild(veTraLoi(r.answer || r.note || '', r.used));
+    noi(cauDau(chuTron(r.answer || r.note || '')));
   }
   if (r.used?.length) {
     const d = document.createElement('div');

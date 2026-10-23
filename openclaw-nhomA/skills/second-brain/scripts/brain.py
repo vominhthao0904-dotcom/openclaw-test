@@ -616,6 +616,15 @@ def _tim(db, q, limit, ca_kho=False, category=None, kind=None):
     co_dau = qkd != q.lower()
     tu = [w for w in dict.fromkeys(_tu(q)) if w not in STOP]
     tu_kd = list(dict.fromkeys(bo_dau(w) for w in tu))
+    if len(_tu(q)) >= 2:
+        # 0. nhiều chữ: tìm đúng CỤM liền nhau trước. Từ tiếng Việt nhiều âm tiết — tìm từng chữ rời thì "kinh doanh" ra cả
+        # "kinh nghiệm … doanh thu", "kính … doanh nghiệp". Có ghi chú chứa đúng cụm thì chỉ lấy những ghi chú đó.
+        rows = chay(sql, '"' + " ".join(_tu(q)) + '"')
+        if rows:
+            return rows, "chinh_xac"
+        rows = chay(sql_kd, '"' + " ".join(_tu(qkd)) + '"')
+        if rows:
+            return kem_trich(rows, _tu(qkd)), ("khong_dau" if co_dau else "chinh_xac")
     if co_dau:                                          # 1. đúng từng chữ, đúng dấu
         rows = chay(sql, q)
         if rows:

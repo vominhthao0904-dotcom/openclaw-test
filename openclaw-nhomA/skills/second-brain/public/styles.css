@@ -291,6 +291,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .tha .bo-tep{position:relative;z-index:1;background:none;border:0;padding:0 2px;color:var(--vang);font:inherit;
   text-decoration:underline;cursor:pointer}   /* nổi trên ô chọn file trong suốt phủ cả khung */
 /* menu chuột phải trên một ghi chú */
+#napChu:disabled,#napTen:disabled{opacity:.45;cursor:not-allowed}
+.ghi-dan{margin:-6px 0 12px;color:var(--vang)}
+.ghi-dan[hidden]{display:none}
+.hit.trong-bo{margin-left:16px;border-left:2px solid var(--son-3);padding-left:12px}
 .menu-gc{position:fixed;z-index:80;min-width:220px;max-width:280px;padding:6px;background:var(--son-2);
   border:1px solid var(--son-3);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
 .menu-gc[hidden]{display:none}

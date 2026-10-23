@@ -800,6 +800,13 @@ function duongDong(trong, huong, dSep, buoc, [x0, y0, x1, y1], hat) {
 
 /* Dựng mô hình một lần (lần đầu bật mặt A.I): ~70 đường vân, não, mắt, hạt sáng của các sợi năng lượng. */
 let MH = null;
+// Độ nhô của vân thân. Cổ phía trên, hai bên (sau hàm, dưới tai) lùi dần ra SAU (gáy, cơ cổ): nhìn thẳng thì khuất sau má, hàm;
+// quay đầu sang bên thì các điểm phía sau ở bên xa trượt ra ngoài mép hàm — lộ ra, nối liền tai – hàm – cổ như đầu thật.
+// (Trước đây cổ chỉ có mặt trước, quay đầu là hở một mảng tối dưới tai — anh khoanh đỏ.) Chuyển mượt, không gãy độ sâu.
+function doSauCo(x, y) {
+  const w = em(0.42, 0.78, Math.abs(x)) * (1 - em(0.95, 1.15, y));
+  return (1 - w) * Math.max(0, doSauThan(x, y)) + w * -0.32;
+}
 function dungMoHinh() {
   let h = 20261024;
   const ngau = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
@@ -821,7 +828,7 @@ function dungMoHinh() {
     // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn một chút để thấy não
     let ht = null, lop = -1;
     ds.forEach(([x, y, s]) => {
-      const z = laDau ? Math.max(0, doSau(x, y)) : Math.max(0, doSauThan(x, y));
+      const z = laDau ? Math.max(0, doSau(x, y)) : doSauCo(x, y);
       const l = laDau ? Math.round(3 * em(-0.6, -0.1, y)) : 3;
       if (l !== lop) {
         if (ht) ht.pts.push([x, y, z, s]);
@@ -867,16 +874,23 @@ function dungMoHinh() {
   }
   themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 0.62, 0.6, true, false, 0.03);
   // cổ + vai + ngực liền một mạch với đầu: đường dòng theo (0,7·y − độ nhô) — trên cổ thành vòng ngang, xuống ngực loang
-  // rộng, tới mép uốn theo dốc vai. Chỉ trong thân và ngoài khuôn mặt (cổ khuất sau hàm). Thân đứng yên, cổ xoay theo đầu một phần.
-  const vThan = luoi((x, y) => 0.7 * y - doSauThan(x, y), -2.0, 0.55, 2.0, 3.0, 0.012);
-  const mThan = luoi((x, y) => (y > 0.6 && Math.abs(x) < noiSuy(RONG_THAN, y) - 0.012 && doSau(x, y) <= -0.002 ? 1 : 0),
-    -2.0, 0.55, 2.0, 3.0, 0.012);
-  duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
-    [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5]]).forEach((d) => {
+  // rộng, tới mép uốn theo dốc vai. Thân đứng yên, cổ xoay theo đầu một phần. Vân cổ chạy LIỀN lên tận dưới hàm; lúc vẽ,
+  // phần nằm sau mặt bị che theo đường viền đầu của khung hình đó — đầu quay sang bên thì cổ lộ ra tới đâu có vân tới đó
+  // (trước đây chừa sẵn vùng dưới hàm, quay đầu là hở một khoảng trống, đứt nét giữa hàm và cổ).
+  // Thêm mặt bên cổ chạy lên sau tai (cơ cổ) — chỉ phần nằm trong viền đầu nên nhìn thẳng thì khuất sau má, hàm; quay đầu
+  // sang bên thì phía bên kia lộ ra, nối liền tai – hàm – cổ (mô hình đầu chỉ có mặt trước, thiếu phần này là hở một mảng).
+  const coBen = (x, y) => y > 0.32 && y < 1.05 && Math.abs(x) > 0.3 && Math.abs(x) < 0.9 && doSau(x, y) > 0.002;
+  const vThan = luoi((x, y) => 0.7 * y - doSauThan(x, y), -2.0, 0.3, 2.0, 3.0, 0.012);
+  const mThan = luoi((x, y) => ((y > 0.6 && Math.abs(x) < noiSuy(RONG_THAN, y) - 0.012) || coBen(x, y) ? 1 : 0),
+    -2.0, 0.3, 2.0, 3.0, 0.012);
+  duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.3, 2.0, 3.0],
+    [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5], [0.62, 0.62], [-0.62, 0.62]]).forEach((d) => {
     const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
     themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
   });
   manh.forEach((m) => {
+    // mảnh vân cổ sát dưới hàm (có thể bị mặt che khi đầu quay): chỉ những mảnh này phải vẽ qua lớp che — lớp che tốn công
+    m.sauMat = !m.laDau && m.pts.some(([x, y]) => y < 1.35 && Math.abs(x) < 0.95);
     const n = m.pts.length;
     m.d = new Float32Array(n * 5);
     m.pts.forEach(([x, y, z, s], i) => {
@@ -1471,6 +1485,9 @@ function veMat(tg, diem) {
       if (i) vien.lineTo(b[i * 2], b[i * 2 + 1]); else vien.moveTo(b[0], b[1]);
     }
     vien.closePath(); }
+  const ngoaiDau = new Path2D();         // cả khung trừ phần trong viền đầu (tô evenodd) — để che vân cổ nằm sau mặt
+  ngoaiDau.rect(-W, -H, 3 * W, 3 * H);
+  ngoaiDau.addPath(vien);
   const tam = chieuDiem(0, -0.1, 0, 1);
   if (phu > 0) {
     // quầng xanh sau đầu, kính trong suốt, não bên trong
@@ -1486,16 +1503,17 @@ function veMat(tg, diem) {
     cx.fill(vien);
     cx.globalCompositeOperation = 'lighter';
     veNao(t, phu);
-    // vòng HUD — hai cung nét đứt xoay ngược chiều nhau
-    [[1.42, '95,180,255', 1], [1.55, '150,200,255', -1]].forEach(([r, mau, chieu]) => {
-      cx.setLineDash([3, 9]);
-      cx.lineDashOffset = itMotion ? 0 : chieu * tg * 24;
-      cx.beginPath();
-      cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
-      cx.strokeStyle = `rgba(${mau},${(0.3 * phu).toFixed(3)})`;
-      cx.lineWidth = 1.2;
-      cx.stroke();
-    });
+    // vòng HUD — ba cung nét đứt: xanh lam, vàng kim (màu luồng Dương), cam (màu lõi); xoay xen kẽ chiều, nhanh chậm khác nhau
+    [[1.38, '95,180,255', 1, 24, 0.45], [1.5, '230,196,106', -1, 18, 0.6], [1.62, '240,127,45', 1, 13, 0.58]]
+      .forEach(([r, mau, chieu, toc, dam]) => {
+        cx.setLineDash([4, 8]);
+        cx.lineDashOffset = itMotion ? 0 : chieu * tg * toc;
+        cx.beginPath();
+        cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
+        cx.strokeStyle = `rgba(${mau},${(dam * phu).toFixed(3)})`;
+        cx.lineWidth = 1.5;
+        cx.stroke();
+      });
     cx.setLineDash([]);
     veVung(phu, t, diem);
   }
@@ -1524,7 +1542,7 @@ function veMat(tg, diem) {
     }
   }
   // các đường vân: lúc chuyển cảnh còn là sợi trong hai luồng, gỡ dần (lệch nhịp: viền đầu trước, chóp mũi sau) thành đường vân
-  const bo = [[], [], [], [], []];
+  const bo = Array.from({ length: 10 }, () => []);   // theo 5 mức sáng: 0–4 vẽ thẳng, 5–9 vân cổ sát dưới hàm (qua lớp che)
   MH.cha.forEach((c, ci) => {
     const ds = MH.theoCha[ci], mo = xong ? 1 : em(c.bd, c.bd + 0.24, k);
     const al = soi * 0.45 * (1 - mo) + c.sang * mo;
@@ -1544,7 +1562,7 @@ function veMat(tg, diem) {
           b[i * 2 + 1] = sy + (b[i * 2 + 1] - sy) * mo;
         }
       }
-      if (xong) bo[Math.min(4, Math.floor(m.sang * 5.5))].push(m);
+      if (xong) bo[Math.min(4, Math.floor(m.sang * 5.5)) + (m.sauMat ? 5 : 0)].push(m);
     }
     if (xong) return;
     // còn đang chuyển cảnh: cả sợi một nét (mọi mảnh của sợi cùng màu, cùng độ gỡ). Còn trong luồng thì vẽ thường (không
@@ -1552,34 +1570,45 @@ function veMat(tg, diem) {
     cx.globalCompositeOperation = mo < 0.5 ? 'source-over' : 'lighter';
     const [r0, g0, b0] = c.mau;
     const mau = `${Math.round(r0 + (130 - r0) * mo)},${Math.round(g0 + (215 - g0) * mo)},${Math.round(b0 + (255 - b0) * mo)}`;
-    cx.beginPath();
-    for (const m of ds) {
-      const b = m.b;
-      cx.moveTo(b[0], b[1]);
-      for (let i = 1; i < b.length / 2; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+    for (const che of [false, true]) {
+      cx.beginPath();
+      let co = false;
+      for (const m of ds) {
+        if (!!m.sauMat !== che) continue;
+        const b = m.b;
+        cx.moveTo(b[0], b[1]);
+        for (let i = 1; i < b.length / 2; i++) cx.lineTo(b[i * 2], b[i * 2 + 1]);
+        co = true;
+      }
+      if (!co) continue;
+      if (che) { cx.save(); cx.clip(ngoaiDau, 'evenodd'); }      // vân cổ sau mặt: che theo viền đầu
+      cx.strokeStyle = `rgba(${mau},${(al * 0.22).toFixed(3)})`;
+      cx.lineWidth = 3;
+      cx.stroke();
+      cx.strokeStyle = `rgba(${mau},${al.toFixed(3)})`;
+      cx.lineWidth = 1;
+      cx.stroke();
+      if (che) cx.restore();
     }
-    cx.strokeStyle = `rgba(${mau},${(al * 0.22).toFixed(3)})`;
-    cx.lineWidth = 3;
-    cx.stroke();
-    cx.strokeStyle = `rgba(${mau},${al.toFixed(3)})`;
-    cx.lineWidth = 1;
-    cx.stroke();
   });
   cx.globalCompositeOperation = 'lighter';
   // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một nét mảnh (thêm lớp quầng mờ thì máy yếu còn ~26 khung/giây)
+  let daChe = false;
   bo.forEach((ds, i) => {
     if (!ds.length) return;
-    const al = (i + 0.5) / 5.5;
+    const al = (i % 5 + 0.5) / 5.5;
     cx.beginPath();
     ds.forEach((m) => {
       const b = m.b;
       cx.moveTo(b[0], b[1]);
       for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
     });
+    if (i >= 5 && !daChe) { cx.save(); cx.clip(ngoaiDau, 'evenodd'); daChe = true; }   // vân cổ sau mặt: che theo viền đầu, một lần
     cx.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
     cx.lineWidth = 1;                    // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
     cx.stroke();
   });
+  if (daChe) cx.restore();
   // hạt sáng trôi dọc hai luồng
   if (soi > 0 && !xong) {
     cx.fillStyle = '#FFF6DA';
@@ -2297,18 +2326,37 @@ async function veKhoLuu() {
 
   const r = await api('/api/archived');
   if (!r.ok) return;
-  r.notes.forEach((x) => {
-    const b = document.createElement('button');
-    b.className = 'hit';
+  const dong = (x, trongBo) => {
+    const b = el('button', 'hit' + (trongBo ? ' trong-bo' : ''));
     b.type = 'button';
-    const t = document.createElement('b'); t.textContent = x.title;
-    const s = document.createElement('span');
-    s.textContent = `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`;
-    b.append(t, s);
+    b.append(el('b', null, x.title), el('span', null, `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`));
     ganMo(b, x.id);
-    box.appendChild(b);
+    return b;
+  };
+  // các trang của cùng một file ("<file> — trang N", thường là bản đã gộp) gom thành MỘT dòng, bấm để bung ra
+  const bo = new Map(), le = [];
+  r.notes.forEach((x) => {
+    const m = /^(.+?) — trang (\d+)$/.exec(x.title);
+    if (!m) { le.push(x); return; }
+    if (!bo.has(m[1])) bo.set(m[1], []);
+    bo.get(m[1]).push({ ...x, so: +m[2] });
   });
+  bo.forEach((ds, ten) => {
+    if (ds.length < 2) { le.push(...ds); return; }
+    ds.sort((x, y) => x.so - y.so);
+    const mo = moBoKho.has(ten);
+    const nut = el('button', 'hit bo-kho');
+    nut.type = 'button';
+    nut.setAttribute('aria-expanded', String(mo));
+    nut.append(el('b', null, `${mo ? '▾' : '▸'} «${ten}» — ${ds.length} trang`),
+      el('span', null, `${duongDep(ds[0].category)} · cất ${ngayTu(ds[0].updated_at) || ''} · ${mo ? 'bấm để thu gọn' : 'bấm để xem từng trang'}`));
+    nut.addEventListener('click', () => { if (mo) moBoKho.delete(ten); else moBoKho.add(ten); veKhoLuu(); });
+    box.appendChild(nut);
+    if (mo) ds.forEach((x) => box.appendChild(dong(x, true)));
+  });
+  le.forEach((x) => box.appendChild(dong(x)));
 }
+const moBoKho = new Set();     // bộ trang đang bung trong Kho lưu
 
 async function napHangOn() {
   veHopCho();
@@ -2677,7 +2725,8 @@ $('#vXong').addEventListener('change', napViec);
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file
-   một ghi chú; chữ trong ô dán là thêm một nguồn riêng (thêm một ghi chú) — có cả hai thì hỏi trước khi nạp. */
+   một ghi chú. Một lần nạp là HOẶC file HOẶC chữ dán: đã chọn file thì ô dán mờ đi, không nạp — trước đây nạp cả hai
+   (thêm ghi chú lạ từ chữ sót trong ô dán) rồi hỏi qua hỏi lại, có lúc chặn luôn việc nạp. */
 let tepChon = [];
 const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
 const base64 = (buf) => {
@@ -2686,20 +2735,48 @@ const base64 = (buf) => {
   for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
   return btoa(s);
 };
+const TONG_TOI_DA = 7.5e6;      // một lần gửi lên máy chủ tối đa 8 MB (file Word/PDF gửi dạng base64, to hơn ~1/3)
 async function docTep(files) {
-  const ok = [...files].filter((f) => (LA_CHU.test(f.name) || LA_TEP.test(f.name)) && f.size < TOI_DA);
-  tepChon = await Promise.all(ok.map(async (f) => (LA_CHU.test(f.name)
+  files = [...files];                    // chép ra trước: xoá ô chọn file (bên dưới) làm trống luôn danh sách gốc
+  const ok = files.filter((f) => (LA_CHU.test(f.name) || LA_TEP.test(f.name)) && f.size < TOI_DA);
+  const moi = await Promise.all(ok.map(async (f) => (LA_CHU.test(f.name)
     ? { name: f.name, text: await f.text() } : { name: f.name, b64: base64(await f.arrayBuffer()) })));
-  const bo = files.length - ok.length;
-  const doc = [...files].some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
+  // chọn thêm lần nữa thì CỘNG vào danh sách (trước đây thay hẳn — chọn file thứ hai là mất file thứ nhất);
+  // trùng tên thì lấy bản mới; tổng quá giới hạn một lần gửi thì để file sau cho đợt sau
+  const coTep = (t) => (t.text || t.b64 || '').length;
+  tepChon = tepChon.filter((t) => !moi.some((m) => m.name === t.name));
+  let tong = tepChon.reduce((x, t) => x + coTep(t), 0), tran = 0;
+  moi.forEach((t) => { if (tong + coTep(t) <= TONG_TOI_DA) { tepChon.push(t); tong += coTep(t); } else tran++; });
+  $('#chonTep').value = '';              // chọn lại đúng file đó vẫn nhận
+  const bo = files.length - ok.length + tran;
+  const doc = files.some((f) => /\.doc$/i.test(f.name)) ? ' (file Word .doc đời cũ: mở bằng Word, Lưu thành .docx)' : '';
+  // chọn 1 file mà ô dán đang có đúng MỘT dòng ngắn, ô Tên trống: đó là tên anh gõ trước — chuyển sang ô Tên
+  const chu = $('#napChu').value.trim();
+  if (tepChon.length === 1 && chu && !chu.includes('\n') && chu.length <= 150 && !$('#napTen').value.trim()) {
+    $('#napTen').value = chu; $('#napChu').value = '';
+  }
   veDsTep(tepChon.length
-    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 160)}` + (bo ? ` · bỏ ${bo} file không nhận được${doc}` : '')
-    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB${doc}` : ''));
+    ? `${tepChon.length} file: ${tepChon.map((t) => t.name).join(', ').slice(0, 220)}`
+      + (tran ? ` · ${tran} file để đợt sau (một lần nạp tối đa ~7 MB)` : '')
+      + (bo - tran ? ` · bỏ ${bo - tran} file không nhận được${doc}` : '')
+    : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB, tổng một lần ~7 MB${doc}` : ''));
 }
+// Đã chọn file: ô dán mờ đi (không nạp), ghi rõ vì sao. Ô Tên chỉ bật khi lần nạp ra đúng một ghi chú.
+function capNhatNap() {
+  const coTep = tepChon.length > 0, oDan = $('#napChu'), ten = $('#napTen');
+  oDan.disabled = coTep;
+  $('#napChuGhi').hidden = !(coTep && oDan.value.trim());
+  const mot = tepChon.length <= 1 && $('#napTach').value === 'khong';
+  ten.disabled = !mot;
+  ten.placeholder = mot ? 'Hướng dẫn cài đặt OpenClaw trên VPS'
+    : tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng';
+}
+$('#napTach').addEventListener('change', capNhatNap);
 // danh sách file đã chọn + nút bỏ chọn (file chọn từ lần trước còn nằm đó thì lần nạp sau nạp luôn — dễ quên)
 function veDsTep(chu) {
   const d = $('#dsTep');
   d.textContent = chu;
+  capNhatNap();
   if (!tepChon.length) return;
   const x = el('button', 'bo-tep', '× bỏ chọn');
   x.type = 'button';
@@ -2717,22 +2794,12 @@ vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer
 
 async function napVao(thu) {
   const out = $('#napKq');
-  let chu = $('#napChu').value.trim();
+  const chu = tepChon.length ? '' : $('#napChu').value.trim();   // đã chọn file: chỉ nạp file
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
-  // chọn 1 file mà ô dán chỉ có MỘT dòng ngắn: gần như chắc anh định đặt tên — hỏi, đúng thì chuyển sang ô Tên ghi chú
-  if (tepChon.length === 1 && chu && !chu.includes('\n') && chu.length <= 150 && !$('#napTen').value.trim()) {
-    if (!confirm(`Ô dán chỉ có một dòng: «${chu}».\n\nDùng dòng này làm TÊN cho ghi chú từ file «${tepChon[0].name}»?\n\n`
-      + 'OK = đặt tên, nạp thành 1 ghi chú.  Huỷ = dừng lại để anh sửa.')) return;
-    $('#napTen').value = chu; $('#napChu').value = ''; chu = '';
-  }
-  // có cả file lẫn chữ trong ô dán: ô dán thành thêm MỘT ghi chú riêng — hỏi trước, khỏi tưởng "cả file 1 ghi chú" sai
-  if (!thu && tepChon.length && chu && !confirm(`Ô "Hoặc dán nội dung" cũng đang có chữ (${chu.length} ký tự).\n\n`
-    + `Mỗi file thành 1 ghi chú, chữ trong ô dán thành thêm 1 ghi chú riêng — tổng ${tepChon.length + 1} nguồn.\n\n`
-    + 'OK = nạp cả file lẫn ô dán.  Huỷ = dừng lại (xoá chữ trong ô dán, hoặc bấm "× bỏ chọn" file, rồi nạp lại).')) return;
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
   const r = await api('/api/ingest', {
-    files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value,
-    tags: $('#napThe').value.trim(), tach: $('#napTach').value, title: $('#napTen').value.trim(), dry_run: thu,
+    files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value, tags: $('#napThe').value.trim(),
+    tach: $('#napTach').value, title: $('#napTen').disabled ? '' : $('#napTen').value.trim(), dry_run: thu,
   });
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
@@ -2752,11 +2819,12 @@ async function napVao(thu) {
     ds.appendChild(b);
   });
   out.appendChild(ds);
-  if (!thu && so) {
-    tepChon = []; $('#chonTep').value = ''; veDsTep(''); $('#napChu').value = ''; $('#napTen').value = '';
+  if (!thu) {                             // nạp xong (kể cả toàn bản trùng): bỏ chọn file, xoá ô dán
+    tepChon = []; $('#chonTep').value = ''; $('#napChu').value = ''; $('#napTen').value = ''; veDsTep('');
     await nap();
   }
 }
+capNhatNap();
 $('#napThu').addEventListener('click', () => napVao(true));
 $('#napThat').addEventListener('click', () => napVao(false));
 

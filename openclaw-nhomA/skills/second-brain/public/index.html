@@ -75,12 +75,14 @@
         Bản trùng y hệt tự bỏ qua. CSV, cả thư mục: nhờ Mây hoặc chạy <code>brain.py nap</code>.</p>
       <label class="tha" id="vungTha">
         <input id="chonTep" type="file" accept=".md,.markdown,.txt,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
-        <span>Kéo thả file vào đây, hoặc <u>chọn file</u></span>
+        <span>Kéo thả file vào đây, hoặc <u>chọn file</u> — chọn nhiều file một lúc (giữ Ctrl), hoặc chọn thêm lần nữa để cộng thêm</span>
         <em id="dsTep"></em>
       </label>
       <label>Hoặc dán nội dung
         <textarea id="napChu" rows="6" placeholder="Tiêu đề (dòng đầu)&#10;Nội dung…"></textarea>
       </label>
+      <p class="hint ghi-dan" id="napChuGhi" hidden>Đang nạp file nên chữ trong ô dán <b>không</b> được nạp.
+        Muốn nạp chữ dán: bấm "× bỏ chọn" file ở trên.</p>
       <label>Tên ghi chú <span class="phu">(tuỳ chọn — khi nạp 1 file; bỏ trống thì lấy tên trong file)</span>
         <input id="napTen" maxlength="200" placeholder="Hướng dẫn cài đặt OpenClaw trên VPS">
       </label>

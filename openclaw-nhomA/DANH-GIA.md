@@ -10,7 +10,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **126** |
+| Test `test-brain.sh` | 50 | **129** |
 | Test `test-web.sh` | 30 | **85** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
@@ -423,6 +423,32 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
      còn "Ghi chú dán vào"). Ô Tên mà lần nạp ra nhiều ghi chú thì báo rõ, không đoán.
   +3 test brain (thẻ một cụm, thẻ kiểu #, mục đánh số không thành tên, dán một dòng — 126), +2 test web (85; exec 82). Thử
   trình duyệt: lọc dính, đặt tên từ ô dán, thẻ không băm — đạt.
+
+## Sau PR #17: nạp bị chặn, tìm ra ghi chú lạ, Kho lưu dài, chọn nhiều file (anh gửi ảnh)
+- **"Bấm Nạp ra bảng hỏi và chưa thấy nạp"**: anh chọn 1 file, gõ Tên ghi chú, ô dán còn sót "Bảo trì". Trang hỏi nạp cả hai
+  → OK → máy chủ thấy ra 2 ghi chú mà ô Tên chỉ dùng cho 1 → từ chối, không nạp gì. Hai lớp "an toàn" chặn đúng việc anh cần.
+  Nay một lần nạp là **file HOẶC chữ dán**: đã chọn file thì ô dán mờ đi kèm dòng nhắc, không nạp; không còn hộp hỏi nào. Ô
+  Tên tự tắt khi nạp nhiều file hoặc tách nhỏ (không bao giờ gặp lỗi "ra 2 ghi chú"). Gõ tên vào ô dán rồi mới chọn 1 file thì
+  dòng đó tự chuyển sang ô Tên. Nạp xong (kể cả toàn bản trùng) thì bỏ chọn file.
+- **"Không cho chọn nhiều file?"**: ô chọn file vốn nhận nhiều file (giữ Ctrl), nhưng bấm *chọn file* lần hai thì thay hẳn
+  danh sách cũ. Nay cộng thêm (trùng tên lấy bản mới); tổng một lần ~7 MB (giới hạn 8 MB của máy chủ, file Word/PDF gửi dạng
+  base64), quá thì báo file nào để đợt sau. Bài thử bắt được lỗi đếm "bỏ -1 file" (xoá ô chọn file làm trống luôn danh sách
+  gốc) — đã sửa trước khi gửi.
+- **Tìm "kinh doanh" ra ghi chú khác**: không dấu nên dùng chỉ mục bỏ dấu và chỉ đòi đủ hai chữ ở bất kỳ đâu — "kinh nghiệm…
+  doanh thu", "kính… doanh nghiệp" cũng khớp. Từ tiếng Việt nhiều âm tiết: nay tìm **đúng cụm liền nhau** trước (chỉ mục có dấu
+  rồi bỏ dấu), không ra mới tìm chữ rời như cũ, câu dài vẫn ra theo số chữ khớp. Cụm khớp được tô cả cụm («bê tông tươi»).
+  +3 test brain (cụm đúng, cụm không dấu, chữ rời vẫn ra); 2 test cũ đổi kỳ vọng tô sáng (cả cụm thay vì từng chữ).
+- **Kho lưu liệt kê 25 trang đã gộp**: các trang của cùng một file gom thành một dòng "«tên file» — 25 trang", bấm để bung.
+- **Vòng trên đầu mặt A.I** (anh yêu cầu): 2 cung xanh → 3 cung nét đứt xanh lam / vàng kim / cam (màu luồng Dương và lõi), xoay
+  xen kẽ chiều, nhanh chậm khác nhau; đậm hơn chút cho rõ trên màn sáng. Vẫn ~60 khung hình/giây.
+- **Quay đầu sang bên thì dưới tai – hàm phía bên kia đứt nét** (anh khoanh đỏ). Mô hình đầu chỉ có mặt trước, cổ chừa sẵn
+  vùng dưới hàm (nhìn thẳng bị mặt che): quay đầu là hở một mảng tối giữa tai, hàm và cổ. Sửa: vân cổ chạy liền lên dưới hàm và
+  lên tới sau tai; phần cổ phía trên hai bên lùi dần ra sau (gáy, cơ cổ — chuyển mượt, không gãy độ sâu) nên quay đầu thì phía
+  bên kia trượt ra ngoài mép hàm như đầu thật; mỗi khung hình che phần cổ nằm sau mặt theo đúng viền đầu lúc đó (chỉ 23/319
+  mảnh vân sát dưới hàm phải qua lớp che, đặt lớp che một lần). Nhìn thẳng giữ nguyên. Lần đầu che cả thân: tụt 60 → 40
+  khung/giây — đã tối ưu, còn ~57.
+- Thử trình duyệt: nạp file + chữ sót + Tên (đúng ảnh anh) → 1 ghi chú đúng tên, không hỏi; chọn nhiều file / cộng thêm / trùng
+  tên / quá tổng; Kho lưu gọn và bung; tìm "kinh doanh" — đạt cả.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

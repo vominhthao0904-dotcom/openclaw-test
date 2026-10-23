@@ -147,7 +147,7 @@ echo
 echo "6. TÌM KIẾM VÀ SỐ ĐẾM"
 check "tìm tiếng Việt có dấu" 'curl -sS "$U/api/search?q=%C4%91%E1%BB%99ng" -o /dev/null -w "%{http_code}"' "200"
 check "ô Tìm gõ không dấu vẫn ra" \
-  'curl -sS "$U/api/search?q=anh%20hero%20ngang%20tren" | jq_ "len(d[\"notes\"])>=1 and \"«trên»\" in d[\"notes\"][0].get(\"snippet\",\"\")"' "True"
+  'curl -sS "$U/api/search?q=anh%20hero%20ngang%20tren" | jq_ "len(d[\"notes\"])>=1 and \"ngang trên»\" in d[\"notes\"][0].get(\"snippet\",\"\")"' "True"
 check "cú pháp FTS sai không làm chết server" \
   'curl -sS "$U/api/search?q=AND%20OR%20(((" | jq_ "d[\"ok\"]"' "True"
 check "đếm số ghi chú chưa xếp chỗ" 'curl -sS "$U/api/notes" | jq_ "d[\"cho_phan_loai\"] >= 1"' "True"

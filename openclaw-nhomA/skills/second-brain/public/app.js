@@ -133,17 +133,23 @@ function dungQuyDao() {
   const tongThat = DATA.notes.length;
 
   // cắt bớt cho vừa mắt — DATA.notes đã sắp theo updated_at giảm dần
-  if (noiBat && nhom[noiBat]) {
-    nhom[noiBat] = nhom[noiBat].slice(0, TRAN_MOT_NHOM);
-    tenDay.forEach((k) => { if (k !== noiBat) nhom[k] = nhom[k].slice(0, 2); });
+  const xemVung = noiBat && nhom[noiBat] ? noiBat : null;
+  const tongVung = xemVung ? soThat(xemVung) : 0;
+  if (xemVung) {
+    nhom[xemVung] = nhom[xemVung].slice(0, TRAN_MOT_NHOM);
+    tenDay.forEach((k) => { if (k !== xemVung) nhom[k] = nhom[k].slice(0, 2); });
   } else if (tongThat > TRAN_NODE) {
     tenDay.forEach((k) => {
       const phan = Math.max(3, Math.round(TRAN_NODE * nhom[k].length / tongThat));
       nhom[k] = nhom[k].slice(0, phan);
     });
   }
-  // cộng cả phần máy chủ đã cắt trước khi gửi xuống
-  daBot = (DATA.tong_ghi_chu ?? tongThat) - tenDay.reduce((s, k) => s + nhom[k].length, 0);
+  // Đang xem một vùng: chỉ đếm ghi chú CỦA VÙNG ĐÓ không vẽ được. Vùng khác cố ý chỉ còn 2 chấm mờ làm nền —
+  // đếm cả chúng thì báo "còn N ghi chú khác" sai dù vùng đang xem đã vẽ đủ.
+  // Xem toàn kho: cộng cả phần máy chủ đã cắt trước khi gửi xuống.
+  daBot = xemVung
+    ? Math.max(0, tongVung - nhom[xemVung].length)
+    : (DATA.tong_ghi_chu ?? tongThat) - tenDay.reduce((s, k) => s + nhom[k].length, 0);
 
   const ten = tenDay;
   nodes = [];
@@ -350,6 +356,11 @@ function ve() {
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     cx.textAlign = 'left';
+    // viền tối quanh chữ: chấm và nan hoa đang quay chạy ngang qua nhãn thì chữ vẫn đọc rõ
+    cx.lineJoin = 'round';
+    cx.lineWidth = 4;
+    cx.strokeStyle = 'rgba(10,20,36,.85)';
+    cx.strokeText(t, x0, p.y);
     cx.fillStyle = nb ? TRUNG : 'rgba(238,243,250,.62)';
     cx.fillText(t, x0, p.y);
   });

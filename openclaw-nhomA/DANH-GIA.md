@@ -171,6 +171,13 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   Sửa: đẩy chữ xuống dưới lõi, đủ xa để không đè cả khi rê chuột (lõi nở to, hiện tên 8 quẻ). Đã chụp kiểm ở laptop 1366×640,
   màn thấp 1280×520 và điện thoại 390×760.
 
+- **Toàn cảnh, bấm xem một vùng: báo "còn 3 ghi chú khác" dù vùng đã vẽ đủ** (thấy trên ảnh chụp kho thật 14 ghi chú, vùng
+  Kỹ thuật 4/4). Khi xem một vùng, các vùng khác cố ý chỉ vẽ 2 chấm mờ làm nền, nhưng số "còn lại" lại tính trên cả kho nên
+  cộng nhầm phần của vùng khác. Sửa: chỉ đếm ghi chú của vùng đang xem. Tái hiện bằng kho cùng phân bố: bản cũ báo "3 ghi chú
+  khác" ở cả Kỹ thuật lẫn Học tập; bản sửa không báo; vùng 65 ghi chú báo đúng "5 ghi chú khác" (vẽ 60).
+- **Nhãn ghi chú bị chấm và nan hoa đang quay chạy ngang qua chữ** (cũng thấy trên ảnh kho thật). Thêm viền tối mỏng quanh chữ
+  nhãn để chữ luôn nổi trên nền.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **123** |
-| Test `test-web.sh` | 30 | **83** |
+| Test `test-brain.sh` | 50 | **126** |
+| Test `test-web.sh` | 30 | **85** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -410,6 +410,19 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   khỏi kho)**, có hỏi lại trước khi cất. Chỗ khác vẫn là menu thường của trình duyệt. Vẫn không có xoá hẳn trên web (cố ý). Cất
   kho từ thẻ chi tiết nay cũng làm mới Thư viện ngay (trước đây thẻ đã cất còn nằm trong lưới tới khi tải lại). Thử trình duyệt
   10 tình huống: đạt cả.
+- **Thư viện "các mục, tiêu đề hiện ra không khớp"** (anh gửi ảnh). Bốn nguyên nhân:
+  1. *Bộ lọc loại "dính"*: bấm chip Ý tưởng rồi đi nhóm khác vẫn lọc → cây "Phương pháp 3" mà danh sách "Ý tưởng · 0 —
+     không có ghi chú nào", "Tài chính 2" mà hiện 1. Nay đổi nhóm trên cây là bỏ lọc loại / thẻ.
+  2. *Thẻ bị băm*: không có dấu phẩy thì tách theo khoảng trắng — "Hướng dẫn cài đặt Openclaw" thành #hướng #dẫn #cài #đặt
+     #openclaw, "Khoa hoc Openclaw" thành #khoa #hoc #openclaw. Nay chỉ ngăn bằng dấu phẩy / chấm phẩy / xuống dòng / kiểu
+     "#a #b"; không dấu ngăn thì cả cụm là một thẻ. Thẻ cũ đã băm không tự ghép lại được — sửa tay vài ghi chú.
+  3. *Tên ghi chú cả file lấy mục đầu*: file mở đầu bằng "1. Cần chuẩn bị gì?" thì tên là "1. Cần chuẩn bị gì?". Nay mục đánh
+     số (1. / II) / Bước 2 / Chương 3…) không thành tên, lấy tên file.
+  4. *Không có chỗ đặt tên khi nạp*: anh gõ tên vào ô dán → thành ghi chú riêng "Ghi chú dán vào". Nay có ô **Tên ghi chú**;
+     ô dán chỉ một dòng mà chọn 1 file thì trang hỏi có dùng làm tên; chữ dán chỉ một dòng ngắn thì dòng đó là tên (không
+     còn "Ghi chú dán vào"). Ô Tên mà lần nạp ra nhiều ghi chú thì báo rõ, không đoán.
+  +3 test brain (thẻ một cụm, thẻ kiểu #, mục đánh số không thành tên, dán một dòng — 126), +2 test web (85; exec 82). Thử
+  trình duyệt: lọc dính, đặt tên từ ô dán, thẻ không băm — đạt.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

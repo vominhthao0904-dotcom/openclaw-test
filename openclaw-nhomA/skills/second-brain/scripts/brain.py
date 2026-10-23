@@ -314,16 +314,19 @@ def loc_nhom(where, params, category, cot="category"):
 
 
 def norm_tags(s):
-    """Chuẩn hoá thẻ.
-
-    Có dấu phẩy  -> tách theo dấu phẩy, khoảng trắng bên trong thành gạch nối:
-                    "bất động sản, vay" -> "bất-động-sản,vay"
-    Không dấu phẩy -> tách theo khoảng trắng như cũ: "landing mobile" -> "landing,mobile"
-    Trước đây luôn tách theo khoảng trắng nên thẻ tiếng Việt nhiều chữ bị băm nhỏ.
+    """Chuẩn hoá thẻ: ngăn bằng dấu phẩy (hoặc chấm phẩy, xuống dòng, hoặc viết kiểu "#the1 #the2"); khoảng trắng bên
+    trong một thẻ thành gạch nối: "bất động sản, vay" -> "bất-động-sản,vay".
+    Không có dấu ngăn nào thì cả cụm là MỘT thẻ: "Khoa học OpenClaw" -> "khoa-học-openclaw". Trước đây không dấu phẩy
+    thì tách theo khoảng trắng — chữ tiếng Việt nhiều âm tiết bị băm: "Hướng dẫn cài đặt" -> #hướng #dẫn #cài #đặt.
     """
     if not s:
         return ""
-    tho = s.split(",") if "," in s else re.split(r"\s+", s)
+    if re.search(r"[,;\n]", s):
+        tho = re.split(r"[,;\n]", s)
+    elif re.search(r"(?:^|\s)#\S", s):
+        tho = re.split(r"(?:^|\s)#", s)
+    else:
+        tho = [s]
     parts = []
     for t in tho:
         t = re.sub(r"\s+", "-", t.strip().lstrip("#").lower()).strip("-")
@@ -1363,6 +1366,11 @@ def _tieu_de_tu_ten(path):
     return t[:1].upper() + t[1:] if t else "Không tên"
 
 
+TEN_DAN = "Ghi chú dán vào"                 # tên mặc định của chữ dán (không có tên file, không có tiêu đề)
+# tiêu đề mục đánh số — "1. Cần chuẩn bị gì?", "II) …", "Bước 2 …", "Chương 3" — là mục đầu tiên, không phải tên cả tài liệu
+SO_MUC = re.compile(r"(?i)^(?:\d+(?:[.)]|\s)|[ivxlc]+[.)]\s|(?:phần|chương|bước|mục|bài|part|chapter|step|section)\s+\d)")
+
+
 def _tach_markdown(text, tach, mac_dinh_tieu_de, dung_dong_dau=False):
     """Tách Markdown theo tiêu đề # / ##. Mỗi mục có nội dung thành một ghi chú."""
     dong = text.splitlines()
@@ -1370,17 +1378,22 @@ def _tach_markdown(text, tach, mac_dinh_tieu_de, dung_dong_dau=False):
     if not vi_tri or tach == "khong" or (tach != "heading" and len(vi_tri) < 2):
         tieu_de = mac_dinh_tieu_de
         if vi_tri and vi_tri[0] < 3:            # tiêu đề nằm ngay đầu file thì dùng làm tên ghi chú
-            tieu_de = re.sub(r"^#+\s*", "", dong[vi_tri[0]]).strip()
-            dong = dong[:vi_tri[0]] + dong[vi_tri[0] + 1:]
+            dau = re.sub(r"^#+\s*", "", dong[vi_tri[0]]).strip()
+            if not SO_MUC.match(dau):           # mục đánh số: giữ trong nội dung, tên lấy tên file / tên tài liệu
+                tieu_de = dau
+                dong = dong[:vi_tri[0]] + dong[vi_tri[0] + 1:]
         elif dung_dong_dau:
             # văn bản thường: dòng đầu ngắn, không kết thúc bằng dấu câu -> đó là tên (giữ được dấu tiếng Việt,
             # tên file thường bị bỏ dấu)
             dau = next((i for i, l in enumerate(dong) if l.strip()), None)
             if dau is not None and len(dong[dau].strip()) <= 100 and not dong[dau].strip().endswith((".", ",", ";", ":")) \
-                    and any(l.strip() for l in dong[dau + 1:]):
+                    and not SO_MUC.match(dong[dau].strip()) and any(l.strip() for l in dong[dau + 1:]):
                 tieu_de = dong[dau].strip()
                 dong = dong[dau + 1:]
-        return [(tieu_de, "\n".join(dong).strip())]
+        noi_dung = "\n".join(dong).strip()
+        if tieu_de == TEN_DAN and "\n" not in noi_dung and 0 < len(noi_dung) <= 100:
+            tieu_de = noi_dung                  # chữ dán chỉ có một dòng ngắn: dòng đó vừa là tên vừa là nội dung
+        return [(tieu_de, noi_dung)]
     ra = []
     dau = "\n".join(dong[:vi_tri[0]]).strip()
     if len(dau) > 40:
@@ -1600,7 +1613,7 @@ def cmd_nap(a, db):
                 text = sys.stdin.read()
                 meta, than = _frontmatter(text)
                 ds = [{"title": t, "content": c} for t, c in
-                      _tach_markdown(than, a.tach, meta.get("title") or a.title or "Ghi chú dán vào")]
+                      _tach_markdown(than, a.tach, meta.get("title") or a.title or TEN_DAN)]
                 ten_f = "(dán vào)"
             else:
                 ds, ten_f = doc_nguon(f, a.tach), str(f)

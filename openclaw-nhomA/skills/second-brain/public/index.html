@@ -81,6 +81,9 @@
       <label>Hoặc dán nội dung
         <textarea id="napChu" rows="6" placeholder="Tiêu đề (dòng đầu)&#10;Nội dung…"></textarea>
       </label>
+      <label>Tên ghi chú <span class="phu">(tuỳ chọn — khi nạp 1 file; bỏ trống thì lấy tên trong file)</span>
+        <input id="napTen" maxlength="200" placeholder="Hướng dẫn cài đặt OpenClaw trên VPS">
+      </label>
       <div class="hai">
         <label>Nhóm cho tất cả
           <input id="napNhom" list="dsNhom" maxlength="150" placeholder="Học tập/Khoá học">
@@ -91,7 +94,7 @@
       </div>
       <div class="hai">
         <label>Thẻ thêm
-          <input id="napThe" maxlength="200" placeholder="khoa-hoc">
+          <input id="napThe" maxlength="200" placeholder="khoá học, openclaw" title="Ngăn các thẻ bằng dấu phẩy. Không có dấu phẩy thì cả cụm là một thẻ.">
         </label>
         <label>Tách
           <select id="napTach" title="Một file thường là một chủ đề — để cả file 1 ghi chú cho kho gọn; Mây vẫn tìm và hỏi đúng đoạn bên trong">

@@ -2501,7 +2501,9 @@ function veCay() {
   const tatCa = el('button', 'nut-cay' + (!LOC.category ? ' on' : ''));
   tatCa.type = 'button';
   tatCa.append(el('span', null, 'Toàn bộ kho'), el('u', null, String(DATA.tong_ghi_chu ?? '')));
-  tatCa.addEventListener('click', () => { LOC.category = ''; LOC.offset = 0; veCay(); napThuVien(); });
+  // đổi nhóm trên cây thì bỏ lọc loại / thẻ: số bên cây (cả nhóm) mới khớp số trong danh sách. Trước đây bấm chip "Ý tưởng"
+  // một lần rồi đi nhóm khác vẫn dính lọc → "Phương pháp 3" mà danh sách "Ý tưởng · 0 — không có ghi chú nào"
+  tatCa.addEventListener('click', () => { Object.assign(LOC, { category: '', kind: '', tag: '', offset: 0 }); veCay(); napThuVien(); });
   box.appendChild(tatCa);
   const ve = (ds, sau, cha) => ds.forEach((c) => {
     const duong = c.duong_dan || '__chua__';
@@ -2523,7 +2525,7 @@ function veCay() {
     }
     b.append(ten, el('u', null, String(c.so)));
     b.addEventListener('click', () => {
-      LOC.category = duong; LOC.offset = 0;
+      Object.assign(LOC, { category: duong, kind: '', tag: '', offset: 0 });
       if (coCon) moRong.add(duong);
       veCay(); napThuVien();
     });
@@ -2715,8 +2717,14 @@ vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer
 
 async function napVao(thu) {
   const out = $('#napKq');
-  const chu = $('#napChu').value.trim();
+  let chu = $('#napChu').value.trim();
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
+  // chọn 1 file mà ô dán chỉ có MỘT dòng ngắn: gần như chắc anh định đặt tên — hỏi, đúng thì chuyển sang ô Tên ghi chú
+  if (tepChon.length === 1 && chu && !chu.includes('\n') && chu.length <= 150 && !$('#napTen').value.trim()) {
+    if (!confirm(`Ô dán chỉ có một dòng: «${chu}».\n\nDùng dòng này làm TÊN cho ghi chú từ file «${tepChon[0].name}»?\n\n`
+      + 'OK = đặt tên, nạp thành 1 ghi chú.  Huỷ = dừng lại để anh sửa.')) return;
+    $('#napTen').value = chu; $('#napChu').value = ''; chu = '';
+  }
   // có cả file lẫn chữ trong ô dán: ô dán thành thêm MỘT ghi chú riêng — hỏi trước, khỏi tưởng "cả file 1 ghi chú" sai
   if (!thu && tepChon.length && chu && !confirm(`Ô "Hoặc dán nội dung" cũng đang có chữ (${chu.length} ký tự).\n\n`
     + `Mỗi file thành 1 ghi chú, chữ trong ô dán thành thêm 1 ghi chú riêng — tổng ${tepChon.length + 1} nguồn.\n\n`
@@ -2724,7 +2732,7 @@ async function napVao(thu) {
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
   const r = await api('/api/ingest', {
     files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value,
-    tags: $('#napThe').value.trim(), tach: $('#napTach').value, dry_run: thu,
+    tags: $('#napThe').value.trim(), tach: $('#napTach').value, title: $('#napTen').value.trim(), dry_run: thu,
   });
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
@@ -2745,7 +2753,7 @@ async function napVao(thu) {
   });
   out.appendChild(ds);
   if (!thu && so) {
-    tepChon = []; $('#chonTep').value = ''; veDsTep(''); $('#napChu').value = '';
+    tepChon = []; $('#chonTep').value = ''; veDsTep(''); $('#napChu').value = ''; $('#napTen').value = '';
     await nap();
   }
 }

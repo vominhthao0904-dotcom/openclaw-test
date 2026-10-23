@@ -43,7 +43,7 @@ BR="python3 {baseDir}/scripts/brain.py"
 1. **Luôn chạy `$BR categories` trước khi xếp nhóm** (một lần mỗi cuộc trò chuyện là đủ) và **dùng lại đúng đường dẫn đã có**. Chỉ tạo nhóm mới khi không nhóm nào hợp — và nói với người dùng "tạo nhóm mới X".
 2. Kho dưới ~50 ghi chú/nhóm thì đừng chia nhóm con. Nhóm con chỉ khi nhóm cha đã đông và có mảng rõ ràng.
 3. Không tự đoán khi người dùng chưa nói và kho chưa có nhóm hợp: hỏi một câu ngắn, hoặc để trống (ghi chú vào *Chưa xếp chỗ*, nhắc sau qua `inbox`).
-4. Thẻ: chữ thường, gạch nối, dùng lại thẻ cũ (`$BR tags`). Thẻ là thứ cắt ngang: tên người, sản phẩm, dự án, công cụ.
+4. Thẻ: chữ thường, gạch nối, **ngăn bằng dấu phẩy** (`--tags "khach-lan,bao-gia"`; không dấu phẩy thì cả cụm là một thẻ), dùng lại thẻ cũ (`$BR tags`). Thẻ là thứ cắt ngang: tên người, sản phẩm, dự án, công cụ.
 5. Script tự gộp cách viết khác hoa/thường/khoảng trắng/kiểu gõ dấu về nhóm đã có. Kết quả có `goi_y` (gõ thiếu dấu, sai chính tả, thẻ gần giống) → **đọc và sửa ngay** bằng `edit`.
 
 ## 2. Lưu một ghi chú — quy trình chuẩn

@@ -207,6 +207,10 @@ DOCX
 W64="$(python3 -c 'import base64,sys;print(base64.b64encode(open(sys.argv[1],"rb").read()).decode())' "$TMP/w.docx")"
 check "nạp Word .docx gửi từ trình duyệt" \
   'post /api/ingest "{\"files\":[{\"name\":\"tai-lieu.docx\",\"b64\":\"$W64\"}],\"dry_run\":true}" | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Mục Word một', 'Mục Word hai']"
+check "ô Tên ghi chú: đặt tên khi nạp ra 1 ghi chú" \
+  'post /api/ingest "{\"files\":[{\"name\":\"tai-lieu.docx\",\"b64\":\"$W64\"}],\"tach\":\"khong\",\"title\":\"Tài liệu Word thử\",\"dry_run\":true}" | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Tài liệu Word thử']"
+check "ô Tên ghi chú mà ra nhiều ghi chú: báo rõ" \
+  'post /api/ingest "{\"files\":[{\"name\":\"tai-lieu.docx\",\"b64\":\"$W64\"}],\"tach\":\"heading\",\"title\":\"X\",\"dry_run\":true}" | jq_ "(d[\"ok\"], \"đúng 1 ghi chú\" in d[\"error\"])"' "(False, True)"
 check "file nhị phân đuôi lạ bị từ chối" \
   'post /api/ingest "{\"files\":[{\"name\":\"x.exe\",\"b64\":\"QUJD\"}]}" | jq_ "d[\"ok\"]"' "False"
 check "base64 hỏng: báo lỗi, không lỗi 500" \

@@ -230,13 +230,20 @@ def api_ingest(conn, _q, body):
         ten = t.get("name") if isinstance(t.get("name"), str) else ""
         meta, than = brain._frontmatter(text)
         mac_dinh = meta.get("title") or (brain._tieu_de_tu_ten(ten) if ten else "") or \
-            (str(body.get("title") or "").strip()) or "Ghi chú dán vào"
+            (str(body.get("title") or "").strip()) or brain.TEN_DAN
         chung = {"category": meta.get("category") or meta.get("nhom") or "", "tags": meta.get("tags") or "",
                  "kind": meta.get("kind") or meta.get("loai"), "url": meta.get("url") or "",
                  "cite": meta.get("cite") or ""}
         for tieu_de, noi_dung in brain._tach_markdown(than, tach, mac_dinh,
                                                        dung_dong_dau=not meta.get("title") and not body.get("title")):
             muc.append({"title": tieu_de, "content": noi_dung, "_file": ten or "(dán vào)", **chung})
+    # ô "Tên ghi chú" của trang Nạp: đặt tên khi lần nạp ra đúng MỘT ghi chú (một file / một đoạn dán, cả file 1 ghi chú)
+    ten_moi = brain.gon(str(body.get("title") or ""))[:200]
+    if ten_moi:
+        if len(muc) != 1:
+            return {"ok": False, "error": f"Ô Tên ghi chú chỉ dùng khi nạp ra đúng 1 ghi chú — lần này ra {len(muc)}. "
+                                          "Bỏ trống ô Tên, hoặc nạp từng file một."}
+        muc[0]["title"] = ten_moi
     k = brain.chuan_kind(body.get("kind")) if body.get("kind") else None
     with _lock:
         return brain.nap_vao(conn, muc, str(body.get("category") or ""), str(body.get("tags") or ""), k,

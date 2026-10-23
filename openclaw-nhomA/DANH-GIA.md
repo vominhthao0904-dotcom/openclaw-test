@@ -156,6 +156,13 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
 - Chỉ mục mới tự dựng khi mở kho cũ, tự cập nhật khi thêm/sửa/xoá; sửa kho bằng công cụ khác thì `doctor` phát hiện, `doctor --fix` dựng lại. Đo trên kho 5.000 ghi chú: mở kho 0,02 giây, tìm 0,02 giây; kho to thêm khoảng bằng phần chữ của ghi chú.
 - 11 test mới (brain 111, web 68).
 
+## Sửa sau khi cài thật trên VPS
+- **`deepcheck.py` báo thiếu python-pptx dù máy đã cài** (Mây phát hiện khi nghiệm thu). Nguyên nhân: để không đụng dữ liệu thật,
+  `deepcheck.py` chạy script với HOME giả — mà thư viện cài bằng `pip install --user` (cách `CAI-DAT.md` hướng dẫn) nằm dưới
+  HOME thật (`~/.local`), nên Python không thấy; `install.sh` gọi `deepcheck.py` nên cũng dừng oan. Máy thử trước đây cài
+  python-pptx cho toàn hệ thống nên không lộ lỗi. Sửa: giữ đường dẫn thư viện của user (`PYTHONUSERBASE`) khi đổi HOME.
+  Đã tái hiện lỗi bằng một skill thử chỉ có thư viện trong `~/.local`: bản cũ báo LỖI, bản sửa 0 lỗi.
+
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.
 - Ô **Hỏi** truyền câu hỏi + ghi chú liên quan cho `openclaw agent` qua tham số dòng lệnh; trên VPS nhiều người dùng, user khác có thể thấy trong `ps` lúc lệnh đang chạy. VPS một người dùng thì không ảnh hưởng. (Chưa đổi vì chưa xác minh được `openclaw agent` có nhận nội dung qua stdin hay không.)

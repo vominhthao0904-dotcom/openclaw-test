@@ -344,10 +344,10 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   Giới hạn thân yêu cầu nâng 4 → 8 MB (file ~4 MB gửi dạng base64). Thử file hướng dẫn thật: Word → 16 ghi chú theo tiêu đề,
   PDF 27 trang → 27 ghi chú. Thêm 4 test brain (Word tách mục, giữ gạch đầu dòng, Word hỏng báo rõ, PDF tách trang) và 3 test web.
 
-- **Vẫn chưa đạt so với ảnh mẫu** (anh gửi lại ảnh): vân đường dòng liền nhưng tròn đều như bản đồ địa hình, chóp mũi / môi /
-  cằm thành vòng tròn đồng tâm như bia bắn. Thêm **chất mê cung**: từng mảng xen kẽ (theo một trường sóng chậm) vân rẽ vuông góc —
-  đường vẫn liền, cách đều, có góc rẽ vuông và đầu cụt như đường mạch; quanh mắt giữ vòng, cổ giữ vòng ngang; chóp mũi đi dọc,
-  môi và cằm đi ngang.
+- **Vẫn chưa đạt so với ảnh mẫu** (anh gửi lại ảnh): vân đường dòng liền nhưng chóp mũi / môi / cằm thành vòng tròn đồng tâm
+  như bia bắn. Nay chóp mũi đi dọc, môi và cằm đi ngang (trộn dần vào hướng đồng mức). Thử thêm chất mê cung (từng mảng rẽ vuông
+  góc): thành nhiều đoạn ngắn như nét gạch — anh chê *rời rạc, xấu* — đã bỏ, giữ đường vân dài liền. Thử thêm lớp quầng mờ quanh
+  vân: máy yếu tụt còn ~26 khung/giây — bỏ; nét giữ đúng 1px (1,1px làm trình duyệt bỏ đường vẽ nhanh, chậm gấp đôi).
 - **Mục 8 — chuyển cảnh chỉ còn 2 luồng Âm Dương** (anh yêu cầu): bỏ hai quả cầu và các sợi nhiều màu. Từ lõi tuôn ra luồng Dương
   vàng kim và luồng Âm xanh lam — hai cánh xoắn ốc như Thái Cực, nhấp nhô ngược pha nên cắt đan qua nhau; mỗi luồng là một bó
   60 sợi mảnh (mỗi đường vân của đầu nằm trên một đoạn luồng dài tương ứng — trải hết luồng thì thành nét thẳng cắt ngang).

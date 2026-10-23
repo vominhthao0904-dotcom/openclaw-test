@@ -814,15 +814,8 @@ function dungMoHinh() {
      mũi, môi, tai; dọc má; ngang trán), cách nhau đều ~0,034 bán kính đầu; đường dài, liền, chỗ hai dòng gặp nhau thì
      đường dừng gọn — ra chất vân tay / mê cung liền mạch, không đứt vụn. */
   const vDau = luoi(doSau, -1.14, -1.36, 1.14, 1.2, 0.01);
-  // Chất MÊ CUNG như ảnh mẫu: từng mảng xen kẽ (theo một trường sóng chậm) vân rẽ vuông góc — đường vẫn liền, cách đều, chỉ có
-  // góc rẽ vuông và đầu cụt như đường mạch. Quanh mắt giữ vòng tròn, cổ giữ vòng ngang. Chóp mũi đi dọc, môi và cằm đi ngang
-  // (trộn dần vào hướng đồng mức) để không thành các vòng tròn đồng tâm như bia bắn.
-  const songMC = Array.from({ length: 4 }, () => { const a = ngau() * Math.PI * 2; return [Math.cos(a) * 19, Math.sin(a) * 19, ngau() * 6.28]; });
-  const meCung = (x, y) => songMC.reduce((t, [kx, ky, ph]) => t + Math.sin(kx * x + ky * y + ph), 0) / Math.SQRT2;
-  const reVuong = (huong, duocRe) => (x, y) => {
-    const [hx, hy] = huong(x, y);
-    return duocRe(x, y) && meCung(x, y) > 0.5 ? [-hy, hx] : [hx, hy];
-  };
+  // Chóp mũi đi dọc, môi và cằm đi ngang (trộn dần vào hướng đồng mức) — không thành các vòng tròn đồng tâm như bia bắn.
+  // (Đã thử chất mê cung — từng mảng rẽ vuông góc: thành nhiều đoạn ngắn như nét gạch, anh chê rời rạc, nên bỏ.)
   const tron = (h, gx, gy, w) => {         // trộn hướng h với hướng dẫn (gx, gy) theo trọng số w — hướng không dấu nên lật cho cùng chiều
     if (h[0] * gx + h[1] * gy < 0) { gx = -gx; gy = -gy; }
     const x = h[0] * (1 - w) + gx * w, y = h[1] * (1 - w) + gy * w, l = Math.hypot(x, y) || 1;
@@ -836,8 +829,7 @@ function dungMoHinh() {
     h = tron(h, 1, 0, 0.85 * Math.max(g2(ax, y, 0, 0.76, 0.2, 0.09), g2(ax, y, 0, 0.98, 0.18, 0.08)));   // môi, cằm: ngang
     return h;
   };
-  const ngoaiMat = (x, y) => g2(Math.abs(x), y, 0.34, 0.02, 0.22, 0.15) < 0.35;
-  duongDong((x, y) => vDau(x, y) > 0.004, reVuong(huongDau, ngoaiMat), 0.034, 0.007, [-1.14, -1.36, 1.14, 1.2],
+  duongDong((x, y) => vDau(x, y) > 0.004, huongDau, 0.034, 0.007, [-1.14, -1.36, 1.14, 1.2],
     [[0, -0.6], [0.4, 0.45], [-0.4, 0.45], [0.95, 0.12], [-0.95, 0.12]]).forEach((d) => {
     const zt = d.reduce((t, [x, y]) => t + Math.max(0, vDau(x, y)), 0) / d.length;
     themDuong(d, 0.62 * Math.min(1, zt), 0.64, true);
@@ -857,7 +849,7 @@ function dungMoHinh() {
   const vThan = luoi((x, y) => 0.7 * y - doSauThan(x, y), -2.0, 0.55, 2.0, 3.0, 0.012);
   const mThan = luoi((x, y) => (y > 0.6 && Math.abs(x) < noiSuy(RONG_THAN, y) - 0.012 && doSau(x, y) <= -0.002 ? 1 : 0),
     -2.0, 0.55, 2.0, 3.0, 0.012);
-  duongDong((x, y) => mThan(x, y) > 0.5, reVuong(tiepTuyen(vThan, 0.015), (x, y) => y > 1.55), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
+  duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.55, 2.0, 3.0],
     [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5]]).forEach((d) => {
     const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
     themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
@@ -1552,7 +1544,7 @@ function veMat(tg, diem) {
     cx.stroke();
   });
   cx.globalCompositeOperation = 'lighter';
-  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một lớp nét mảnh (nhẹ máy)
+  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một nét mảnh (thêm lớp quầng mờ thì máy yếu còn ~26 khung/giây)
   bo.forEach((ds, i) => {
     if (!ds.length) return;
     const al = (i + 0.5) / 5.5;
@@ -1563,7 +1555,7 @@ function veMat(tg, diem) {
       for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
     });
     cx.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
-    cx.lineWidth = 1;
+    cx.lineWidth = 1;                    // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
     cx.stroke();
   });
   // hạt sáng trôi dọc hai luồng

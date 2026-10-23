@@ -212,6 +212,9 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - **Toàn màn hình không hiện tên ghi chú**: nay hiện đủ tên (chữ 14px, to hơn thường), ẩn hết nút; đồ thị to hơn ~25% vì không còn
   thanh trên/dưới chiếm chỗ.
 - Màn hình dựng đứng (điện thoại): quỹ đạo tròn đều thay vì dẹt, chấm trải theo chiều cao, đỡ chen nhau.
+- **Cỡ chữ theo số lượng** (anh yêu cầu): cỡ chữ, độ dài tên và cỡ chấm tính theo số ghi chú đang hiện (đang xem một vùng thì chỉ
+  đếm vùng đó) — ít thì to, nhiều thì nhỏ; toàn màn hình to thêm một bậc; điện thoại giới hạn để chừa chỗ ngang. Đo toàn màn hình
+  1366×768: 5 ghi chú → 18 px, 17 ghi chú → 15,5 px, 81 ghi chú → 12 px.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

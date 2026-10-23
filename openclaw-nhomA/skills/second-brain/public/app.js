@@ -357,13 +357,23 @@ function ve() {
   cx.beginPath(); cx.arc(CX, CY, RK * 1.75, 0, Math.PI * 2); cx.fill();
   // (Thái Cực vẽ sau cùng — nằm trên mọi chấm và nhãn)
 
+  // Cỡ chữ, độ dài tên và cỡ chấm theo SỐ GHI CHÚ ĐANG HIỆN: ít thì chữ to, tên dài, chấm to — dễ đọc;
+  // nhiều thì nhỏ lại cho đỡ chồng. Đang xem một vùng thì chỉ đếm vùng đó. Toàn màn hình to thêm một bậc.
+  const soHien = Math.max(1, nodes.filter((n) => !mo(n)).length);
+  const lnN = Math.log(soHien);
+  let coChu = Math.max(11, Math.min(17, 19.5 - 2 * lnN));
+  if (tapTrung) coChu *= 1.12;
+  if (W - lechDich < 520) coChu = Math.min(coChu, 13.5);          // điện thoại: chừa chỗ ngang cho tên
+  const tranTen = Math.round(Math.max(26, Math.min(46, 54 - 6 * lnN)));
+  const toCham = Math.max(1, Math.min(1.5, 2.2 - 0.3 * lnN));
+
   // các ghi chú — vẽ chấm trước, nhãn sau (node đang chọn được ưu tiên chỗ)
   nodes.forEach((nd) => {
     const p = diem.get(nd.note.id);
     const nb = nd === hover || nd === chon;
     const toi = mo(nd);
     cx.beginPath();
-    cx.arc(p.x, p.y, nb ? nd.r + 2.4 : nd.r, 0, Math.PI * 2);
+    cx.arc(p.x, p.y, (nb ? nd.r + 2.4 : nd.r) * toCham, 0, Math.PI * 2);
     cx.fillStyle = nd.mau;
     cx.globalAlpha = nb ? 1 : toi ? 0.2 : 0.85;
     cx.fill();
@@ -371,7 +381,7 @@ function ve() {
     cx.globalAlpha = 1;
   });
 
-  cx.font = `500 ${tapTrung ? 14 : 12.5}px "Be Vietnam Pro",sans-serif`;   // toàn màn hình: chữ to hơn
+  cx.font = `500 ${coChu.toFixed(1)}px "Be Vietnam Pro",sans-serif`;
   cx.textBaseline = 'middle';
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
   const daVe = [{ x0: CX - RK - 6, x1: CX + RK + 6, y0: CY - RK - 6, y1: CY + RK + 6 }];
@@ -382,23 +392,25 @@ function ve() {
     const toi = mo(nd);
     if (!nb && toi) return;
     const p = diem.get(nd.note.id);
-    const tran = nb ? 90 : 32;     // rê chuột / đang chọn: hiện đủ tên
+    const tran = nb ? 90 : tranTen;     // rê chuột / đang chọn: hiện đủ tên
     let t = nd.note.title.length > tran ? nd.note.title.slice(0, tran - 1) + '…' : nd.note.title;
     let w = cx.measureText(t).width;
     const phai = mepPhai() - 10;
+    const cach = 6 + nd.r * toCham;     // khoảng cách chữ — chấm, theo cỡ chấm
     // đặt về phía còn chỗ: không tràn mép trái, không chui xuống dưới thẻ chi tiết
     let trai = p.x < CX;
-    if (trai && p.x - 10 - w < 8) trai = false;
-    else if (!trai && p.x + 10 + w > phai) trai = true;
+    if (trai && p.x - cach - w < 8) trai = false;
+    else if (!trai && p.x + cach + w > phai) trai = true;
     // màn hẹp (điện thoại): hai phía đều thiếu chỗ thì rút gọn nhãn cho vừa, không để chữ bị cắt ở mép
-    const cho = trai ? p.x - 18 : phai - p.x - 10;
+    const cho = trai ? p.x - cach - 8 : phai - p.x - cach;
     if (w > cho) {
       if (cho < 48 && !nb) return;
       while (t.length > 4 && cx.measureText(t).width > cho) t = t.slice(0, -2).trimEnd() + '…';
       w = cx.measureText(t).width;
     }
-    const x0 = trai ? p.x - 10 - w : p.x + 10;
-    const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - 9, y1: p.y + 9 };
+    const x0 = trai ? p.x - cach - w : p.x + cach;
+    const nua = coChu * 0.72;     // nửa chiều cao ô chữ, theo cỡ chữ
+    const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - nua, y1: p.y + nua };
     if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     cx.textAlign = 'left';

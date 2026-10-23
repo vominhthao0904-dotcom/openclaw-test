@@ -10,7 +10,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **111** |
+| Test `test-brain.sh` | 50 | **113** |
 | Test `test-web.sh` | 30 | **69** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
@@ -166,6 +166,18 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   Nguyên nhân: `printf "$DS" | grep -q` dưới `set -o pipefail` — danh sách skill của OpenClaw thật dài hơn bộ đệm ống (~64 KB),
   grep thấy tên thì thoát sớm, printf dính SIGPIPE, cả ống bị coi là lỗi. Sửa: so khớp ngay trong bash, không qua ống.
   Tái hiện bằng `openclaw` giả in 310 KB: bản cũ 4 dòng CHƯA ĐẠT, bản sửa 4 ĐẠT; thiếu skill thật vẫn báo đúng CHƯA ĐẠT.
+- **`sao-luu-drive.sh` có lúc báo "chưa có remote 'brain-mahoa'" dù đã cấu hình đúng** (Mây thấy 5 test Drive giả hỏng trong
+  `test-brain.sh` khi nghiệm thu PR #13). Cùng loại lỗi với `kiemtra.sh` ở trên: `rclone listremotes | grep -qx` dưới `pipefail` —
+  `brain-mahoa` đứng đầu danh sách, grep thấy là thoát, rclone ghi dòng tiếp theo thì dính SIGPIPE. Máy nhiều nhân hiếm gặp; ép chạy
+  trên 1 nhân CPU (như VPS nhỏ) thì hỏng 38/40 lần. Nếu bật sao lưu Drive thật mà chưa sửa thì **nhiều đêm sẽ bỏ sao lưu**.
+  Sửa: đọc hết danh sách rồi mới so (cả chỗ kiểm lịch trong `kiem`).
+- Cùng đợt: **lần sao lưu Drive đầu tiên trên kho chưa có `backups/`** thì hỏng và báo nhầm "đang có một lần sao lưu Drive khác chạy"
+  (file khoá nằm trong thư mục chưa tạo). Sửa: tạo thư mục trước khi khoá.
+- Bộ test cũng có lỗi riêng làm mục Drive hỏng lác đác: mật khẩu thử tạo bằng `rclone obscure` là chuỗi ngẫu nhiên, khoảng 1/64 lần
+  mở đầu bằng "-" nên rclone tưởng là cờ, không tạo được remote. Sửa: đưa mật khẩu thô kèm `--obscure`. Bước 6 trong `CAI-DAT.md`
+  dùng `rclone config` hỏi đáp nên không dính lỗi này.
+- Thêm 2 test (brain 113): rclone giả in danh sách chậm từng dòng — bản cũ hỏng mọi lần, bản sửa đạt — và kho mới chưa có `backups/`.
+  Chạy 15 lần liên tiếp trên 1 nhân CPU: 15/15 đạt.
 
 - **Trang web, kho trống: chữ "Kho đang trống" đè lên lõi Bát Quái** (thấy trên ảnh chụp máy anh). Chữ và lõi cùng nằm giữa khung.
   Sửa: đẩy chữ xuống dưới lõi, đủ xa để không đè cả khi rê chuột (lõi nở to, hiện tên 8 quẻ). Đã chụp kiểm ở laptop 1366×640,

@@ -171,6 +171,16 @@ Xếp hạng bm25 có trọng số: khớp ở **tiêu đề ×4, thẻ ×3, nh�
   Sửa: đẩy chữ xuống dưới lõi, đủ xa để không đè cả khi rê chuột (lõi nở to, hiện tên 8 quẻ). Đã chụp kiểm ở laptop 1366×640,
   màn thấp 1280×520 và điện thoại 390×760.
 
+## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
+- Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
+  với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục
+  đánh số, duyệt rồi mới lưu.
+- Bộ nhớ agent: chỉ `MEMORY.md` + daily notes trong khoảng ngày chỉ định; `memory_search` chỉ tìm ứng viên, phải đọc lại bằng
+  `memory_get` và dẫn `file#dòng`; lưu với thẻ `tu-memory`, `--source other`, `--cite`. Không sửa/xoá bộ nhớ gốc.
+- Kiến thức chung: có nguồn chính thống mới đề xuất lưu; chưa có nguồn thì không tự lưu (chỉ `y-tuong` "chưa kiểm chứng" khi
+  người dùng yêu cầu). 4 ràng buộc này do Mây đề xuất khi rà; tên công cụ `memory_search`/`memory_get` và cấu trúc bộ nhớ
+  đã đối chiếu với tài liệu OpenClaw. Chỉ đổi SKILL.md — không đổi code, schema, dữ liệu.
+
 ## Chưa làm (cố ý)
 - Trang web không có HTTPS riêng — dựa vào đường hầm SSH (đã mã hoá). Không mở trang ra Internet.
 - Ô **Hỏi** truyền câu hỏi + ghi chú liên quan cho `openclaw agent` qua tham số dòng lệnh; trên VPS nhiều người dùng, user khác có thể thấy trong `ps` lúc lệnh đang chạy. VPS một người dùng thì không ảnh hưởng. (Chưa đổi vì chưa xác minh được `openclaw agent` có nhận nội dung qua stdin hay không.)

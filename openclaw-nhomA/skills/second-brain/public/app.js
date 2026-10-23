@@ -72,6 +72,7 @@ let DATA = { notes: [], categories: {}, links: [], cay: [], loai: [] };
 let vungSo = {};          // số ghi chú THẬT của từng vùng (gồm mọi nhóm con)
 let nodes = [];
 let vongMau = [];        // màu theo thứ tự vòng
+let tocVong = [];        // tốc độ góc theo thứ tự vòng (dấu = chiều xoay)
 let noiBat = null;       // tên nhóm đang được làm nổi, null = không lọc
 let quay = true;
 let tapTrung = false;    // nhấp đúp: toàn màn hình — lõi, chấm và tên, ẩn mọi nút
@@ -193,6 +194,7 @@ function dungQuyDao() {
   const ten = tenDay;
   nodes = [];
   vongMau = [];
+  tocVong = [];
   ten.forEach((k, vi) => {
     const ds = nhom[k];
     // mỗi nhóm một vòng; nhóm đông nằm vòng trong
@@ -200,11 +202,16 @@ function dungQuyDao() {
     const lech = vi * 0.9;
     const mau = mauCua(k);
     vongMau.push(mau);
+    // Vận hành như vũ trụ: vòng trong nhanh, vòng ngoài chậm (Kepler: tốc độ góc ∝ bán kính^-1,5).
+    // Âm dương đối đãi: vòng dương (1, 3, 5…) xoay thuận chiều khí Tiên Thiên (theo kim đồng hồ trên màn hình,
+    // Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn), vòng âm (2, 4, 6…) xoay ngược.
+    const toc = (vi % 2 ? -1 : 1) * 0.03 * Math.pow(bk, -1.5);
+    tocVong.push(toc);
     ds.forEach((note, i) => {
       nodes.push({
         note, nhom: k, vong: vi, mau,
         bk, pha: lech + (i / ds.length) * Math.PI * 2,
-        toc: (vi % 2 ? -1 : 1) * (0.26 / (vi + 2)),
+        toc,
         r: 3.4 + Math.min(3.2, (note.tags?.length || 0) * 0.7),
       });
     });
@@ -304,9 +311,23 @@ function viTri(nd) {
   return { x: CX + Math.cos(a) * R * b, y: CY + Math.sin(a) * R * b * det() };
 }
 
+// nền sao: vị trí cố định (sinh một lần), lấp lánh rất nhẹ lệch nhịp — nền vũ trụ, không tranh chỗ với chấm
+const SAO = (() => {
+  let h = 20261023;
+  const nn = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296);
+  return Array.from({ length: 110 }, () => ({ x: nn(), y: nn(), r: 0.35 + nn() * 0.9, pha: nn() * 6.28, nhip: 0.4 + nn() * 1.2 }));
+})();
+
 function ve() {
   cx.clearRect(0, 0, W, H);
   const R = banKinh();
+  const tg = itMotion ? 0 : performance.now() / 1000;
+  cx.fillStyle = '#CFE0FF';
+  SAO.forEach((o) => {
+    cx.globalAlpha = 0.1 + 0.3 * (0.5 + 0.5 * Math.sin(tg * o.nhip + o.pha));
+    cx.beginPath(); cx.arc(o.x * W, o.y * H, o.r, 0, Math.PI * 2); cx.fill();
+  });
+  cx.globalAlpha = 1;
 
   // vòng quỹ đạo — mỗi nhóm một màu riêng
   const soVong = vongMau.length;
@@ -315,11 +336,10 @@ function ve() {
   // Mỗi vòng: màu của vùng; nét dày theo số ghi chú (vùng lớn nét đậm hơn); "thở" rất nhẹ lệch nhịp nhau;
   // một vệt sáng chạy dọc vòng cùng chiều các chấm, nhanh hơn chút — theo nút tốc độ, dừng xoay thì dừng.
   // Vòng vẫn nhạt hơn chấm: chấm (ghi chú) luôn là thứ nổi nhất.
-  const t = itMotion ? 0 : performance.now() / 1000;
   for (let i = 0; i < soVong; i++) {
     const ten = tenVong[i], mau = vongMau[i];
     const noi = noiBat && ten === noiBat, toiV = noiBat && !noi;
-    const tho = itMotion ? 0 : Math.sin(t * 0.9 + i * 1.3);
+    const tho = itMotion ? 0 : Math.sin(tg * 0.9 + i * 1.3);
     const bk = bkThat(0.26 + (i + 1) / (soVong + 1) * 0.70) * (1 + 0.004 * tho);
     const rx = R * bk, ry = rx * det();
     const so = vungSo[ten] ?? nodes.filter((n) => n.vong === i).length;
@@ -333,8 +353,8 @@ function ve() {
     cx.setLineDash([]);
     if (toiV || itMotion) continue;
     // vệt sáng: 6 đoạn ngắn, đậm ở đầu, nhạt dần về đuôi
-    const huong = i % 2 ? -1 : 1;
-    const dau = goc * huong * (0.26 / (i + 2)) * 1.8 + i * 0.9;
+    const huong = Math.sign(tocVong[i]) || 1;
+    const dau = goc * tocVong[i] * 1.8 + i * 0.9;
     const doan = 0.07;
     for (let k = 0; k < 6; k++) {
       const a1 = dau - huong * (k + 1) * doan, a2 = dau - huong * k * doan;
@@ -380,11 +400,14 @@ function ve() {
   rkHienTai = itMotion ? dich : rkHienTai + (dich - rkHienTai) * 0.2;
   if (Math.abs(dich - rkHienTai) < 0.3) rkHienTai = dich;
   const RK = rkHienTai;
-  const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, RK * 1.75);
-  quang.addColorStop(0, 'rgba(240,127,45,.32)');
+  // quầng sáng quanh Thái Cực "thở" chậm (~9 giây một nhịp)
+  const tho = itMotion ? 0 : Math.sin(tg * 0.7);
+  const rq = RK * (1.75 + 0.12 * tho);
+  const quang = cx.createRadialGradient(CX, CY, RK * 0.6, CX, CY, rq);
+  quang.addColorStop(0, `rgba(240,127,45,${(0.3 + 0.07 * tho).toFixed(3)})`);
   quang.addColorStop(1, 'rgba(240,127,45,0)');
   cx.fillStyle = quang;
-  cx.beginPath(); cx.arc(CX, CY, RK * 1.75, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.arc(CX, CY, rq, 0, Math.PI * 2); cx.fill();
   // (Thái Cực vẽ sau cùng — nằm trên mọi chấm và nhãn)
 
   // Cỡ chữ, độ dài tên và cỡ chấm theo SỐ GHI CHÚ ĐANG HIỆN: ít thì chữ to, tên dài, chấm to — dễ đọc;
@@ -459,7 +482,43 @@ function ve() {
   const s = (RK * 2 + 4) / ((dungYen ? RK : banKinhLoiTo()) * 2 + 4);
   const w = hinh.width / DV * s;
   cx.drawImage(hinh, CX - w / 2, CY - w / 2, w, w);
+  if (!itMotion) veKhi(RK);
   if (hoverLoi && RK > banKinhLoiTo() - 1) veTenQue(RK);
+}
+
+/* Khí âm dương tiêu trưởng chạy quanh vành Bát Quái — Bát Quái đứng yên (Càn luôn ở trên), chỉ khí vận hành.
+   Thứ tự Tiên Thiên: Dương sinh ở Chấn (Đông Bắc) → Ly (Đông) → Đoài (Đông Nam) → cực thịnh ở Càn (Nam, trên);
+   Âm sinh ở Tốn (Tây Nam) → Khảm (Tây) → Cấn (Tây Bắc) → cực thịnh ở Khôn (Bắc, dưới) → về Chấn.
+   Với bố cục Nam ở trên, Đông bên trái, vòng này chạy THEO kim đồng hồ — khớp hướng đầu cá Dương (trên) và đầu cá Âm (dưới).
+   Màu: nửa trái (dương trưởng) vàng kim, mạnh dần từ Chấn tới Càn; nửa phải (âm trưởng) xanh, mạnh dần từ Tốn tới Khôn.
+   Qua Càn là đổi sang xanh yếu ("Dương cực thì Âm sinh"), qua Khôn đổi sang vàng yếu ("Âm cực thì Dương sinh"). Theo nút tốc độ. */
+function khiTai(a) {
+  const trai = Math.cos(a) < 0;                         // nửa trái màn hình = phía Đông = dương trưởng
+  const manh = (1 + (trai ? -Math.sin(a) : Math.sin(a))) / 2;   // 0 lúc mới sinh → 1 lúc cực thịnh
+  return { mau: trai ? '242,206,107' : '90,162,255', manh };
+}
+function veKhi(RK) {
+  const rv = RK + 3.5;
+  const dau = Math.PI * 0.75 + goc * 0.9;          // bắt đầu ở Chấn (135°), góc tăng = theo kim đồng hồ trên màn hình
+  const doan = 0.09;
+  cx.lineCap = 'round';
+  for (const [rong, dam] of [[7, 0.22], [2.6, 1]]) {     // lớp ngoài mờ rộng = quầng; lớp trong = lõi luồng khí
+    for (let k = 0; k < 9; k++) {
+      const a1 = dau - (k + 1) * doan, a2 = dau - k * doan;
+      const { mau, manh } = khiTai((a1 + a2) / 2);
+      cx.beginPath();
+      cx.arc(CX, CY, rv, a1, a2);
+      cx.strokeStyle = `rgba(${mau},${(dam * (0.35 + 0.65 * manh) * (1 - k / 9)).toFixed(3)})`;
+      cx.lineWidth = rong;
+      cx.stroke();
+    }
+  }
+  cx.lineCap = 'butt';
+  const { mau, manh } = khiTai(dau);
+  cx.beginPath();
+  cx.arc(CX + Math.cos(dau) * rv, CY + Math.sin(dau) * rv, 2.4 + 1.2 * manh, 0, Math.PI * 2);
+  cx.fillStyle = `rgba(${mau},${(0.6 + 0.4 * manh).toFixed(3)})`;
+  cx.fill();
 }
 
 /* ---------------- Thái Cực – Tiên Thiên Bát Quái (Phục Hy) ----------------

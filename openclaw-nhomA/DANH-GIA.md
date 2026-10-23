@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **111** |
-| Test `test-web.sh` | 30 | **68** |
+| Test `test-web.sh` | 30 | **69** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -228,6 +228,18 @@ Không lỗi JavaScript, không trang nào tràn ngang. Đã sửa:
 - **Chuyển động**: vòng "thở" rất nhẹ (bán kính ±0,4%, độ sáng ±4%), lệch nhịp giữa các vòng; mỗi vòng một **vệt sáng** chạy
   dọc vòng cùng chiều chấm, nhanh hơn 1,8 lần — theo nút tốc độ, dừng xoay thì dừng; máy bật "giảm chuyển động" thì tắt hẳn.
 - Đo: kho 6 vùng và kho 10 vùng — đúng 6 và 10 vòng, 6/6 và 10/10 màu khác nhau, ~60 khung hình/giây, không lỗi JS.
+
+## Vận hành theo Bát Quái và vũ trụ (anh yêu cầu)
+- **Khí âm dương tiêu trưởng** quanh vành Bát Quái; Bát Quái vẫn đứng yên (Càn trên, đúng phương vị). Thứ tự Tiên Thiên: Chấn → Ly →
+  Đoài → Càn (dương trưởng) → Tốn → Khảm → Cấn → Khôn (âm trưởng) → Chấn — trên màn hình (Nam trên, Đông trái) là chiều kim đồng hồ,
+  khớp hướng đầu cá Dương/Âm của Thái Cực đã vẽ. Màu: nửa trái vàng kim mạnh dần tới Càn, nửa phải xanh mạnh dần tới Khôn; qua Càn
+  đổi xanh yếu (Dương cực Âm sinh), qua Khôn đổi vàng yếu (Âm cực Dương sinh). Theo nút tốc độ. Quầng Thái Cực "thở" ~9 giây/nhịp.
+- **Vũ trụ**: tốc độ góc ∝ bán kính^-1,5 (Kepler) — vòng trong nhanh, vòng ngoài chậm; vòng dương (1, 3, 5…) xoay thuận chiều khí,
+  vòng âm ngược chiều; vệt sáng mỗi vòng theo đúng tốc độ vòng đó; nền 110 ngôi sao lấp lánh nhẹ.
+- **Kiểm chứng tự động** (`test-web.sh`, khi có node): khí phải xuất phát ở Chấn và đi theo góc tăng; Chấn/Tốn là "mới sinh" (yếu),
+  Càn/Khôn là "cực thịnh"; Ly thuộc Dương, Khảm thuộc Âm. Thử cố tình đảo chiều âm dương → test báo HỎNG đủ 6 lỗi.
+- Đo trên trình duyệt: khí đi qua đúng Chấn → Ly → Đoài → Càn → Tốn → Khảm → Cấn → Khôn → Chấn; 6 vòng tốc độ 0,139 / −0,096 /
+  0,072 / −0,056 / 0,045 / −0,038 (trong → ngoài, dấu = chiều); ~60 khung hình/giây; máy bật "giảm chuyển động" thì đứng yên.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

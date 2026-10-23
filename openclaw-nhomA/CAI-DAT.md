@@ -333,7 +333,7 @@ bash test-brain.sh     # 111 trường hợp: tìm không dấu, ghi bằng gi�
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 68 trường hợp: lõi Bát Quái đúng Kinh Dịch, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 69 trường hợp: lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```

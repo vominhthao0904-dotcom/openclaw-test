@@ -204,6 +204,24 @@ if q.get("Ly", (0, 0))[1] != 180: loi.append("Ly không ở bên trái (phương
 print("dung" if not loi else "; ".join(loi))
 PY
 check "8 quẻ đúng hào, đúng số, đúng phương" 'python3 "$TMP/kinh_dich.py" "$SB/public/app.js"' "dung"
+if command -v node >/dev/null 2>&1; then
+  # khí vận hành: đi theo kim đồng hồ từ Chấn; Dương (vàng) mạnh dần tới Càn, Âm (xanh) mạnh dần tới Khôn
+  cat > "$TMP/khi.js" <<'JS'
+const src = require('fs').readFileSync(process.argv[2], 'utf8');
+const m = src.match(/function khiTai\(a\) \{[\s\S]*?\n\}/);
+if (!m) { console.log('không thấy khiTai'); process.exit(0); }
+const khiTai = new Function(m[0] + '; return khiTai;')();
+const rad = (d) => d * Math.PI / 180, vang = '242,206,107', xanh = '90,162,255', loi = [];
+const xem = (ten, deg, mau, lon) => { const k = khiTai(rad(deg)); if (k.mau !== mau || (lon ? k.manh < 0.95 : k.manh > 0.2)) loi.push(`${ten} ${deg}°: ${k.mau} ${k.manh.toFixed(2)}`); };
+xem('Chấn (Dương mới sinh)', 135, vang, false); xem('Càn (Dương cực thịnh)', -90.5, vang, true);
+xem('Tốn (Âm mới sinh)', -45, xanh, false);    xem('Khôn (Âm cực thịnh)', 89.5, xanh, true);
+const ly = khiTai(rad(180)), kham = khiTai(rad(0.5));
+if (ly.mau !== vang) loi.push('Ly phải thuộc Dương'); if (kham.mau !== xanh) loi.push('Khảm phải thuộc Âm');
+if (!/Math\.PI \* 0\.75 \+ goc/.test(src)) loi.push('khí phải bắt đầu ở Chấn (135°) và đi theo góc tăng');
+console.log(loi.length ? loi.join('; ') : 'dung');
+JS
+  check "khí âm dương tiêu trưởng đúng chiều, đúng màu" 'node "$TMP/khi.js" "$SB/public/app.js"' "dung"
+fi
 check "favicon Thái Cực mở được (không cần mã)" 'command curl -sS -o /dev/null -w "%{http_code} %{content_type}" "$U/favicon.svg"' "200 image/svg+xml"
 
 echo

@@ -238,6 +238,7 @@ function dungQuyDao() {
   nodes.forEach((n, i) => { n.chiSo = i; });   // thứ tự trên mặt A.I: các vùng nằm liền mạch theo đường nét
   veChuGiai(ten, nhom);
   veConLai();
+  datChoTrong();                         // dải chip vừa đổi số hàng: tính lại chỗ trống cho đồ thị
 }
 
 /* Nói rõ đồ thị đang không vẽ hết — để anh không tưởng ghi chú bị mất. */
@@ -290,8 +291,24 @@ function coLai() {
   cv.width = Math.round(W * DV);
   cv.height = Math.round(H * DV);
   cx.setTransform(DV, 0, 0, DV, 0, 0);
-  CY = H / 2;
+  datChoTrong();
   datLech();
+}
+/* Dải chip vùng (cùng dòng "Đồ thị vẽ …") nằm đè lên đáy khung. Máy tính một hàng, không chạm quỹ đạo; điện thoại 2–4 hàng
+   chiếm ~1/3 khung — trước đây đè lên các vòng ngoài, kho nhiều vùng thì che cả lõi Bát Quái. Bị đè thì dồn đồ thị vào khoảng
+   trống giữa thanh chế độ (trên) và dải chip (dưới); không đè thì giữ bố cục cũ. Dải chip đang ẩn (mặt A.I) thì giữ số đo cũ. */
+let VUNG_TREN = 0, VUNG_DUOI = 0;
+function datChoTrong() {
+  const d = $('.duoi'), n = $('.che-do');
+  if (W && d && d.getClientRects().length) {
+    VUNG_TREN = VUNG_DUOI = 0;
+    const c = cv.getBoundingClientRect(), day = d.getBoundingClientRect().top - c.top - 10;   // đỉnh dải chip, toạ độ khung
+    if (H / 2 + banKinh() * det() + 14 > day) {
+      VUNG_TREN = n && n.getClientRects().length ? Math.max(0, n.getBoundingClientRect().bottom - c.top + 6) : 0;
+      VUNG_DUOI = Math.max(0, H - day);
+    }
+  }
+  CY = tapTrung ? H / 2 : (VUNG_TREN + H - VUNG_DUOI) / 2;
 }
 
 /* Thẻ chi tiết nằm đè lên mép phải màn hình. Khi nó mở, thu hẹp vùng vẽ lại
@@ -312,7 +329,7 @@ const rgba = (hex, a) => {
 const mo = (nd) => !!noiBat && nd.nhom !== noiBat;   // nhóm bị làm mờ
 
 // toàn màn hình: không còn thanh chuyển và dải vùng chiếm chỗ trên/dưới → đồ thị to hơn ~25%, dùng hết chiều cao
-const banKinh = () => Math.min((W - lechDich) * 0.40, H * (tapTrung ? 0.58 : 0.46));
+const banKinh = () => Math.min((W - lechDich) * 0.40, tapTrung ? H * 0.58 : (H - VUNG_TREN - VUNG_DUOI) * 0.46);
 // độ dẹt của quỹ đạo: màn ngang dẹt cho vừa khung; màn dựng đứng (điện thoại) tròn đều để chấm trải theo chiều cao
 const det = () => (H > (W - lechDich) * 1.2 ? 1 : 0.74);
 
@@ -1519,17 +1536,37 @@ function veMat(tg, diem) {
     cx.fill(vien);
     cx.globalCompositeOperation = 'lighter';
     veNao(t, phu);
-    // vòng HUD — ba cung nét đứt: xanh lam, vàng kim (màu luồng Dương), cam (màu lõi); xoay xen kẽ chiều, nhanh chậm khác nhau
-    [[1.38, '95,180,255', 1, 24, 0.45], [1.5, '230,196,106', -1, 18, 0.6], [1.62, '240,127,45', 1, 13, 0.58]]
-      .forEach(([r, mau, chieu, toc, dam]) => {
-        cx.setLineDash([4, 8]);
-        cx.lineDashOffset = itMotion ? 0 : chieu * tg * toc;
+    // vòng HUD — ba vòng nét đứt: xanh lam, vàng kim (màu luồng Dương), cam (màu lõi); xoay xen kẽ chiều, nhanh chậm khác nhau.
+    // Vòng khép kín quanh đầu như vầng hào quang: phần đi qua sau cổ, vai bị thân che (trước đây chỉ là cung hở, dừng ngang
+    // hàm — anh hỏi "ba vòng tròn nên nối phía sau"). Nửa trên vẽ thẳng; chỉ cung dưới (đi sau cổ) mới cắt theo bóng thân —
+    // cắt cả vòng theo viền đầu + thân mỗi khung hình thì chậm thấy rõ. Vòng to hơn đầu nên không cần cắt theo đầu.
+    const than = new Path2D(), MEP = 16;
+    for (let i = 0; i <= 2 * MEP + 1; i++) {   // mép cổ – vai – cánh tay hai bên, chiếu như vân thân
+      const b = i <= MEP ? -1 : 1, y = 0.7 + 2.27 * ((i <= MEP ? i : 2 * MEP + 1 - i) / MEP) ** 1.3;
+      chieuVao(NHAP, 0, b * noiSuy(RONG_THAN, y), y, 0, 0.85 * (1 - em(1.05, 1.5, y)));
+      if (i) than.lineTo(NHAP[0], NHAP[1]); else than.moveTo(NHAP[0], NHAP[1]);
+    }
+    than.closePath();
+    const ngoaiThan = new Path2D();
+    ngoaiThan.rect(-W, -H, 3 * W, 3 * H);
+    ngoaiThan.addPath(than);
+    const VONG = [[1.38, '95,180,255', 1, 24, 0.45], [1.5, '230,196,106', -1, 18, 0.6], [1.62, '240,127,45', 1, 13, 0.58]];
+    const D0 = Math.PI * 0.15;               // cung dưới: từ ~4 giờ tới ~8 giờ
+    cx.lineWidth = 1.5;
+    cx.setLineDash([4, 8]);
+    for (const duoi of [false, true]) {
+      if (duoi) { cx.save(); cx.clip(ngoaiThan, 'evenodd'); }
+      VONG.forEach(([r, mau, chieu, toc, dam]) => {
+        // cung dưới nối tiếp đúng nhịp nét đứt của cung trên (lùi độ lệch đúng bằng chiều dài cung trên) — khỏi giật ở chỗ nối
+        cx.lineDashOffset = (itMotion ? 0 : chieu * tg * toc) - (duoi ? r * u * (Math.PI + 2 * D0) : 0);
         cx.beginPath();
-        cx.arc(tam.x, tam.y, r * u, Math.PI * 0.82, Math.PI * 2.18);
+        if (duoi) cx.arc(tam.x, tam.y, r * u, D0, Math.PI - D0);
+        else cx.arc(tam.x, tam.y, r * u, Math.PI - D0, Math.PI * 2 + D0);
         cx.strokeStyle = `rgba(${mau},${(dam * phu).toFixed(3)})`;
-        cx.lineWidth = 1.5;
         cx.stroke();
       });
+      if (duoi) cx.restore();
+    }
     cx.setLineDash([]);
     veVung(phu, t, diem);
   }

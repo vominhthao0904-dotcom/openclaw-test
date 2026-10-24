@@ -240,7 +240,8 @@ def api_ingest(conn, _q, body):
                  "kind": meta.get("kind") or meta.get("loai"), "url": meta.get("url") or "",
                  "cite": meta.get("cite") or ""}
         for tieu_de, noi_dung in brain._tach_markdown(than, tach, mac_dinh,
-                                                       dung_dong_dau=not meta.get("title") and not dat_ten):
+                                                       dung_dong_dau=not meta.get("title") and not dat_ten,
+                                                       co_ten=bool(meta.get("title"))):
             muc.append({"title": tieu_de, "content": noi_dung, "_file": ten or "(dán vào)", **chung})
     # đặt tên khi phần đó ra đúng MỘT ghi chú (một file / một đoạn dán, cả file 1 ghi chú)
     if ten_moi:
@@ -546,8 +547,12 @@ def api_ask(conn, _q, body):
         ly_do = loi_openclaw(r)
         if "from agent exec" in ly_do:
             return {"ok": False, "used": used, "error": hoi_bi_chan()}
+        # lỗi hay gặp nhất: Gateway OpenClaw chưa chạy / vừa khởi động lại — nói luôn cách kiểm bằng tiếng Việt
+        goi_y = (" — Gateway OpenClaw đang tắt hoặc đang khởi động lại: đợi một lát rồi hỏi lại; vẫn lỗi thì nhờ Mây "
+                 "(hoặc tự chạy trong Termius) `openclaw gateway status`."
+                 if re.search(r"(?i)gateway (?:not reachable|unavailable|closed)|ECONNREFUSED|connect(?:ion)? refused", ly_do) else "")
         return {"ok": False, "used": used,
-                "error": f"openclaw agent lỗi (mã {r.returncode})" + (f": {ly_do[:300]}" if ly_do else "")}
+                "error": f"openclaw agent lỗi (mã {r.returncode})" + (f": {ly_do[:300]}" if ly_do else "") + goi_y}
     return {"ok": True, "answer": extract_reply(r.stdout) or "(Mây không trả về nội dung)", "used": used}
 
 

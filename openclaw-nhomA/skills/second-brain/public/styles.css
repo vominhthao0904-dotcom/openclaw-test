@@ -430,7 +430,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 @media (max-width:900px){
   .stage{height:auto;min-height:62dvh}
   .xem{position:relative;inset:auto}
-  .xem[data-xem="do"]{height:62dvh}
+  .xem[data-xem="do"]{height:auto}
+  #do{height:62dvh}
+  /* điện thoại: dải chip vùng nằm DƯỚI đồ thị — đè lên thì 2–4 hàng chip che các vòng ngoài, kho nhiều vùng che cả lõi */
+  .duoi{position:static;padding:8px 16px 16px;padding-right:60px}
   .thu-vien{grid-template-columns:1fr;padding-top:60px}
   .cay{border-right:0;border-bottom:1px solid var(--son-3);max-height:220px}
   .ke{padding:12px 16px 28px}

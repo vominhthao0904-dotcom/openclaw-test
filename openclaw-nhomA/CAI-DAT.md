@@ -329,7 +329,7 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 129 trường hợp (VPS có crontab: 130): tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), gộp các ghi chú trang, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 135 trường hợp (VPS có crontab: 136): tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), gộp các ghi chú trang, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…

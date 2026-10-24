@@ -1055,10 +1055,9 @@ function cong(ds, n) {                    // đường cong Catmull-Rom qua các
   kq.push(ds[ds.length - 1]);
   return kq;
 }
-// Bộ não trong vòm kính của ảnh: viền (dò trên ảnh, thu vào 12% cho chấm nằm gọn trên não), tâm vỏ não, khung bao
+// Bộ não trong vòm kính của ảnh: viền (dò trên ảnh, thu vào 12% cho chấm nằm gọn trên não), tâm vỏ não
 const NAO = {
   bao: [[0.551, -0.872], [0.526, -0.825], [0.511, -0.781], [0.499, -0.738], [0.494, -0.692], [0.463, -0.656], [0.432, -0.622], [0.432, -0.568], [0.382, -0.551], [0.344, -0.527], [0.315, -0.496], [0.252, -0.51], [0.215, -0.497], [0.188, -0.467], [0.15, -0.458], [0.119, -0.426], [0.085, -0.383], [0.052, -0.275], [-0.0, -0.197], [-0.05, -0.304], [-0.088, -0.374], [-0.12, -0.426], [-0.151, -0.46], [-0.187, -0.473], [-0.212, -0.505], [-0.25, -0.516], [-0.316, -0.496], [-0.343, -0.529], [-0.387, -0.547], [-0.436, -0.567], [-0.466, -0.603], [-0.461, -0.657], [-0.495, -0.692], [-0.5, -0.738], [-0.512, -0.781], [-0.527, -0.825], [-0.552, -0.872], [-0.556, -0.92], [-0.535, -0.966], [-0.528, -1.013], [-0.541, -1.068], [-0.514, -1.111], [-0.518, -1.171], [-0.445, -1.183], [-0.386, -1.194], [-0.366, -1.237], [-0.327, -1.261], [-0.283, -1.276], [-0.244, -1.294], [-0.203, -1.306], [-0.159, -1.308], [-0.121, -1.32], [-0.081, -1.326], [-0.041, -1.331], [-0.0, -1.347], [0.039, -1.331], [0.08, -1.329], [0.119, -1.317], [0.16, -1.313], [0.201, -1.306], [0.242, -1.291], [0.282, -1.276], [0.313, -1.245], [0.362, -1.235], [0.402, -1.209], [0.439, -1.18], [0.516, -1.169], [0.51, -1.11], [0.534, -1.067], [0.518, -1.011], [0.531, -0.965], [0.56, -0.92]],
-  X0: -0.56, Y0: -1.35, X1: 0.56, Y1: -0.2,
   Z: 0,
   GIUA: [0, -0.87],          // tâm vỏ não: các vùng kiến thức chia lãnh thổ quanh điểm này
 };
@@ -1079,15 +1078,27 @@ const trongNao = (x, y) => Math.abs(x) > 0.03 && [[0, 0], [0.035, 0], [-0.035, 0
 // vòng (trái → qua đỉnh → phải, như các vòng quanh đầu), mỗi vùng một quạt, kín cả bộ não.
 const QUAT0 = 2.2, QUAT1 = 2 * Math.PI + 0.94;    // góc quanh tâm vỏ não (y hướng xuống): từ trái-dưới, qua đỉnh, tới phải-dưới
 const gocNao = (x, y) => { const g = Math.atan2(y - NAO.GIUA[1], x - NAO.GIUA[0]); return g < 1.57 ? g + 2 * Math.PI : g; };
+// Hai chấm không chồng lên nhau (chồng thì trông như một chấm, bấm trúng chấm bên cạnh): chỗ thử cách các chấm đã đặt của vùng
+// mình và hai vùng kề ít nhất kc — kc theo mật độ của vùng (quạt ~0,75/n đơn vị², vùng đông thì khít hơn, tối đa 0,055). Thử
+// hết lượt vẫn không được thì lấy chỗ thoáng nhất đã thử.
 function viTriNao(nd) {
   const n = Math.max(1, vongMau.length), id = String(nd.note.id), w = (QUAT1 - QUAT0) / n;
   const g0 = QUAT0 + nd.vong * w + 0.06 * w, g1 = QUAT0 + (nd.vong + 1) * w - 0.06 * w;
-  for (let lan = 0; lan < 160; lan++) {
-    const x = NAO.X0 + (NAO.X1 - NAO.X0) * bam(id, 11 + 2 * lan), y = NAO.Y0 + (NAO.Y1 - NAO.Y0) * bam(id, 12 + 2 * lan);
+  const cung = nodes.filter((m) => m.vong === nd.vong).length;
+  const kc = keo(0.75 * Math.sqrt(0.75 / n / Math.max(1, cung)), 0.02, 0.055);
+  const da = nodes.filter((m) => m.nao && m !== nd && Math.abs(m.vong - nd.vong) <= 1);
+  let tot = null, xa = -1;
+  for (let lan = 0; lan < 240; lan++) {
+    // lấy mẫu thẳng trong quạt của vùng (đều theo diện tích quanh tâm vỏ não; 0,7 phủ hết viền não) — đa số chỗ thử hợp lệ
+    const g = g0 + (g1 - g0) * bam(id, 11 + 2 * lan), r = 0.7 * Math.sqrt(bam(id, 12 + 2 * lan));
+    const x = NAO.GIUA[0] + r * Math.cos(g), y = NAO.GIUA[1] + r * Math.sin(g);
     if (!trongNao(x, y)) continue;
-    const g = gocNao(x, y);
-    if (g >= g0 && g <= g1) return [x, y, NAO.Z];
+    let d = 9;
+    for (const m of da) { d = Math.min(d, Math.hypot(m.nao[0] - x, m.nao[1] - y)); if (d < xa) break; }
+    if (d >= kc) return [x, y, NAO.Z];
+    if (d > xa) { xa = d; tot = [x, y, NAO.Z]; }
   }
+  if (tot) return tot;
   const g = (g0 + g1) / 2;
   return [0.4 * Math.cos(g), NAO.GIUA[1] + 0.25 * Math.sin(g), NAO.Z];
 }

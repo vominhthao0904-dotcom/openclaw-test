@@ -672,6 +672,10 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
   tách khỏi nền não sáng, đốm sáng li ti lệch trên-trái, quầng nhạt cùng màu; lấp lánh khẽ lệch nhịp. Quầng vẽ thường chứ không
   cộng sáng (nền não đã sáng, cộng sáng thì mất màu — bản trước chấm trông xám). Mép trên của vùng đặt chấm lùi xuống ~0,05
   bán kính đầu: viền não đo trước đây lấy cả lớp kính vòm ngay trên đỉnh não, kho lớn có chấm nằm lơ lửng trên kính.
+  Hai chấm không còn chồng lên nhau (trước có cặp cách 1–2,5 px: trông như một chấm, bấm trúng chấm bên cạnh — bài thử bấm
+  nơ-ron có lúc hỏng vì vậy): mỗi chấm cách chấm của vùng mình và hai vùng kề một khoảng theo mật độ vùng (≤ 0,055 bán kính
+  đầu), lấy mẫu thẳng trong quạt của vùng, không được thì lấy chỗ thoáng nhất. Kho thường và kho lớn (80): cặp gần nhất ~7 px;
+  kho 400 ghi chú đặt chấm ~0,18 giây, rải theo nhịp các chấm bay vào nên không giật.
 - **Mắt có hồn hơn** (anh: "mắt thiết kế có hồn hơn"): đo khe mắt trên ảnh (mí trên, mí dưới, khoé trong, khoé ngoài); mọi ánh
   sáng thêm vào mắt chỉ nằm trong khe đó — mí che bớt mống mắt như mắt thật, không tràn ra mi. Mống mắt thở nhẹ (sáng lên rồi
   dịu xuống), đốm long lanh trắng nhìn theo con trỏ chuột, ~7 giây một vệt sáng lướt ngang mống mắt; Mây nói thì mống mắt sáng

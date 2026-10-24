@@ -629,6 +629,16 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
 - **Liên kết giữa ghi chú** ở mặt A.I thành cung khớp thần kinh pha màu hai vùng, có xung sáng nhỏ; vẽ sau bộ não (trước: vạch thẳng
   xám nằm dưới não nên khuất). Mạng sợi trang trí trong não mờ đi để nhường đường dữ liệu thật.
 - Kiểm: kho 18 ghi chú / 5 vùng và kho 218 ghi chú / 8 vùng; laptop 1366×768, 1920×1080, iPhone; rê vào vùng; 38–41 khung/giây.
+- Anh xem ảnh: "Chưa hài hoà, ảnh 2 bộ não sáng quá" (kho 218 ghi chú trên điện thoại). Rà lại, sửa:
+  - **Não trắng xoá** khi kho đông: quầng của hơn trăm nơ-ron cộng dồn. Nay vẽ các quầng lên một lớp riêng theo kiểu "lấy sáng nhất"
+    (chồng nhau không sáng thêm) rồi cộng cả lớp lên một lần; cỡ quầng theo cỡ đầu (điện thoại nhỏ lại); lõi trắng dịu dần khi kho đông.
+  - **Nơ-ron dồn nửa trên**, thuỳ thái dương trống: nay mỗi vùng một hình quạt trên vỏ não (trái → qua đỉnh → phải, theo thứ tự các
+    vòng), nốt rải đều trong quạt — kể cả thuỳ thái dương, não sáng đều trên dưới.
+  - **Tên vòng phía trên đè ba vòng hào quang**: đưa lên trên vòng khi mọi vòng phía trên còn chỗ dưới thanh nút; không đủ chỗ
+    (điện thoại) thì tất cả ghi dưới — cho đều nhau.
+  - **Mép dưới não như vành mũ** cắt ngang trán: viền não nhạt dần xuống đáy; thuỳ thái dương bớt tím cho cùng tông phần trên.
+  - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
+    trước và sau khi hỏi.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

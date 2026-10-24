@@ -19,7 +19,7 @@ BODY_LIMIT = 8 << 20          # 8 MB: vài file Markdown, hoặc một file PDF/
 ASK_TIMEOUT = brain.so_env("BRAIN_ASK_TIMEOUT", 180, 10)
 TRAN_DO_THI = brain.so_env("BRAIN_MAX_NOTES", 1500, 50)   # số ghi chú tối đa gửi cho trang
 MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-        ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
+        ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".webp": "image/webp"}
 # Trang chạy ở localhost nhưng trình duyệt vẫn có thể bị web khác xúi gửi form sang đây.
 # Chỉ nhận POST từ chính trang này: đúng Content-Type, đúng Host, Origin hợp lệ.
 HOST_OK = {"127.0.0.1", "localhost", "::1", "[::1]"}

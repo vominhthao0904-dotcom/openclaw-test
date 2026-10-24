@@ -719,7 +719,8 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
 ## Sau khi cài PR #25 (theo ảnh anh chụp) + rà soát giao diện
 1. **Nhãn chấm không còn đứng mãi**: chấm chọn bằng cách bấm (mặt A.I, toàn màn hình) tự bỏ chọn khi Mây đọc xong ~2,5 giây;
    bấm chỗ trống hoặc bấm lại chấm thì tắt ngay (ở toàn màn hình, nhấp chỗ trống lúc đang có chấm chọn chỉ bỏ chọn, không bật/tắt
-   tên). Đang chọn một chấm mà rê chấm khác thì tạm ẩn nhãn chấm đang chọn — trước đây hai nhãn chồng lên nhau.
+   tên). Đang chọn một chấm mà rê chấm khác thì tạm ẩn nhãn chấm đang chọn — trước đây hai nhãn chồng lên nhau. Esc khi đang
+   có chấm chọn: lần đầu chỉ bỏ chọn, lần sau mới thoát mặt A.I / toàn màn hình.
 2. **Rê tới chấm là Mây đọc tên**: dừng chuột ~0,35 giây trên chấm thì đọc; không đọc lặp chấm vừa đọc (6 giây); chỉ cắt ngang
    tên chấm khác và lời chào, không cắt câu trả lời ô Hỏi đang đọc.
 3. **Mặt A.I, bấm chấm không mở bảng chi tiết** (cả thường lẫn toàn màn hình; bảng thu hình A.I lại, che chữ): chấm được chọn,
@@ -741,6 +742,8 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
   - Nút "Thêm việc" cao hơn các ô bên cạnh → cao bằng nhau.
   - Điện thoại: tiêu đề Thư viện / Việc dính sát thanh Toàn cảnh / Thư viện / Việc → chừa thêm khoảng.
   - Kiểm tự động: không phần tử nào có chữ bị cắt ngang ở mọi tab, mọi chế độ xem; điện thoại không tràn ngang.
+- Miệng nhép: lọc mượt theo thời gian thực (~30 ms) thay cho theo từng khung — máy chậm cũng mượt như máy nhanh. Bài thử đo tốc
+  độ đổi theo giây (nói tự nhiên ≤ ~2,1/giây, "gập" ~8/giây): đo được ~1,6/giây.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

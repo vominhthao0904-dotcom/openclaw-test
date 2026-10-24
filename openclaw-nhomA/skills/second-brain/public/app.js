@@ -1176,7 +1176,7 @@ function capNhatMat(tg) {
     const tt = t - loiNoi.t0, cuoi = Math.min(1, (loiNoi.dai - tt) / 0.3);
     dichMieng = 0.16 * Math.sin(tt * 13) ** 2 * (0.55 + 0.45 * Math.sin(tt * 3.7 + 1)) * cuoi;
   }
-  MAT.mieng += (dichMieng - MAT.mieng) * 0.5;
+  MAT.mieng += (dichMieng - MAT.mieng) * (1 - Math.exp(-dtKhung / 30));   // lọc theo thời gian (~30 ms): máy chậm cũng mượt như nhau
   if (!dichMieng && MAT.mieng < 1e-3) MAT.mieng = 0;
   // Phụ đề chạy chữ, tắt sau khi nói xong 3 giây. Khung giữ đủ cỡ cả câu ngay từ đầu (phần chưa tới trong suốt) nên không
   // co giãn, nhảy qua lại theo từng chữ; chữ hiện mượt, bám theo tiếng đang đọc nhưng không vọt (tối đa ~24 chữ/giây).
@@ -1472,6 +1472,10 @@ $('#batTieng').addEventListener('click', () => {
   if (canHoi) hoiGiongMang(); else datTieng(false);
 });
 datTieng(coTieng);
+// Esc khi đang có chấm chọn tạm (bấm ở mặt A.I / toàn màn hình): chỉ bỏ chọn — Esc lần sau mới thoát mặt A.I / toàn màn hình
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && chonTam && chon) { chon = null; chonTam = false; e.stopImmediatePropagation(); }
+}, true);
 document.addEventListener('keydown', (e) => {
   const a = document.activeElement;
   if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;

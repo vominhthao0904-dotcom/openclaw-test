@@ -581,6 +581,82 @@ Anh hỏi: "Thiếu bộ lọc: việc đã làm, việc chưa làm, việc ch�
 - +8 test brain (147; VPS có crontab 148; có test kho của bản trước tự thêm cột, giữ dữ liệu), +4 test web (99; exec 96).
   Trình duyệt: 22 bước lọc / chờ / xong / mở lại / nhớ lọc / thẻ chi tiết / Thư viện / iPhone.
 
+## Kiểm theo ảnh anh chụp sau khi cài PR #22
+Tạo việc, bộ lọc và nút Chờ chạy đúng trên máy anh (Chrome, Windows); phụ đề nằm dưới tượng, không đè lõi. Từ ảnh còn 3 chỗ, đã sửa:
+- **Rê chuột vào lõi: tên quẻ đè tên ghi chú** — "Tốn · Tây Nam" che chữ đầu của "Email khách hàng Phúc Khang…", "Cấn · Tây Bắc"
+  chạm "1. Cần chuẩn bị gì?". Các ô tên quẻ (và dòng "Thái Cực · Tiên Thiên Bát Quái") nay được tính là chỗ đã chiếm: nhãn ghi
+  chú nằm dưới thì tạm ẩn, bỏ chuột ra là hiện lại. Thử 16 góc xoay: bản trước 90 chỗ đè, bản này 0.
+- **Nói "mấy giờ" với Mây ở mặt A.I → "Chưa có thông tin về giờ cụ thể trong các ghi chú"** — câu hỏi giờ / ngày bị gửi đi hỏi
+  kho. Nay "mấy giờ (rồi)", "bây giờ là mấy giờ", "hôm nay thứ mấy / ngày mấy" trả lời ngay theo đồng hồ máy (ô Hỏi và giọng nói),
+  không gửi Mây; câu kiến thức có chữ "mấy giờ" ("mấy giờ thì đổ bê tông") vẫn hỏi kho.
+- **Câu "chưa có thông tin" vẫn gắn 2 ghi chú nguồn** — lời dặn Mây thêm: câu báo chưa có thông tin thì không gắn mã ghi chú.
+- Hướng dẫn sửa câu sai: giọng tiếng Anh thì phụ đề câu chào cũng là tiếng Anh (phụ đề = đúng câu đang đọc).
+- Ảnh tiếng Anh ở mặt A.I là đúng thiết kế: Chrome trên Windows không có giọng tiếng Việt nào (cả trong máy lẫn qua mạng),
+  nên tắt / bật loa trên Chrome không có hộp hỏi — hộp hỏi giọng qua mạng chỉ có ở Edge.
+- Trình duyệt: 9 bước mới (16 góc xoay khi rê lõi, câu hỏi giờ / ngày qua ô Hỏi và giọng nói, câu kiến thức vẫn hỏi kho).
+
+## Bộ não mới trong mặt A.I (theo ảnh mẫu anh gửi)
+Anh: "Ảnh bộ não hiện tại chưa đẹp, chưa đúng, sửa lại theo các ý tưởng hình ảnh bộ não anh gửi" — kèm ảnh não hologram, não mạch
+điện, não nhìn chính diện có cuống sáng, não trong đầu trong suốt; dặn "tập trung vào kiểu dây thần kinh, chấm, tia sáng".
+Bản cũ: hai hình bầu dục có hoa văn tổ ong — không ra nếp cuộn não. Bản mới:
+- **Hình não nhìn chính diện** (khớp với đầu nhìn thẳng): hai bán cầu tách bởi rãnh giữa, rãnh ngang (Sylvius) tách hai thuỳ thái
+  dương bên dưới, khoảng lõm giữa đáy là thân não — như ảnh não chính diện có cuống sáng.
+- **Nếp cuộn thật**: sinh bằng phản ứng – khuếch tán (Gray-Scott) trong mặt nạ từng thuỳ; các đường mảnh làm rãnh, phần rộng giữa
+  làm nếp; độ cao theo khoảng cách tới rãnh và mép thuỳ nên nếp tròn đầy, rãnh tối mảnh; tô bóng đèn trên trái, xanh lơ ngả tím
+  xuống dưới, viền sáng kiểu hologram (đã thử 12 kiểu trước khi chọn — kiểu đường viền nếp ra hoa văn san hô, kiểu khắc rãnh
+  trên lưới thô bị nhoè, nên bỏ).
+- **Dây thần kinh, chấm, tia sáng**: ~1.100 hạt sáng dồn trên đỉnh nếp + 90 chấm lấp lánh; mạng sợi hồng – xanh nối 36 nốt; ánh sáng
+  vàng – hồng chảy trong rãnh giữa và rãnh ngang; nguồn sáng ở khoảng lõm giữa với 24 tia toả, xoay chậm, chập chờn; vài nốt có
+  tia chữ thập. Ghi chú (nơ-ron) thành chấm nhỏ lõi trắng, quầng màu vùng (trước là đốm màu loang).
+- (Bó dây thần kinh từ thân não xuống lõi Bát Quái đã thử rồi bỏ — xem mục sau.)
+- Vân hộp sọ mờ hơn để thấy não như đầu trong suốt ở ảnh mẫu; khi Mây nói não sáng hơn, chấm lấp lánh nhanh hơn.
+- Dựng ảnh não một lần (~0,6–0,9 giây máy thử), chia lượt 12 ms nên không giật; bắt đầu ngay khi rê chuột vào lõi hay bật mặt
+  A.I — xong trước khi chuyển cảnh 3,2 giây kết thúc. Mỗi khung hình chỉ dán ảnh theo góc quay đầu + lớp động: 39–43 khung/giây.
+  Màn hình to lên nhiều (toàn màn hình) thì tự dựng lại cho nét.
+
+## Đầu – não – đường nối dữ liệu cân đối lại (rà soát tổng thể sau bộ não mới)
+Anh: "thiết lập thiết kế phần đầu cho cân đối với bộ não mới, các kết nối thông tin dữ liệu… hài hoà, cân đối, khoa học, trực
+quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
+- **Bỏ bó dây thần kinh từ lõi Bát Quái lên** — nhìn như tia sáng chui vào mũi. Không còn đường nào chạy qua mặt, cổ.
+- **Não ôm khít hộp sọ**: viền não lấy theo chính viền đầu, chừa lớp xương sọ 0,075 — đỉnh sát đỉnh đầu, rộng ~90% bề ngang hộp
+  sọ, thuỳ thái dương nằm sau thái dương, đáy ngang cung mày (trước: não nhỏ nằm giữa trán, hai bên còn trống). Vân mặt nằm trên
+  não mờ hẳn (sọ như kính), ngoài não giữ sáng: viền đầu, mắt, mũi, miệng rõ.
+- **Đường nối dữ liệu gom bó** (như dây thần kinh thật, cách các phần mềm vẽ mạng lưới gom cạnh cho đỡ rối): mỗi vùng MỘT trục từ
+  vòng tới cửa vào trên rìa não (theo hướng tâm vỏ não → vòng), có xung dữ liệu chạy vào rồi rẽ vào một nhánh; từ cửa vào toả nhánh
+  cong tới từng nơ-ron. Trước: mỗi ghi chú một đường thẳng từ vòng xuyên qua đầu — kho 218 ghi chú thành chùm tia rối.
+- **Lãnh thổ vùng**: quầng nơ-ron to, mờ, cộng ánh sáng — nơ-ron cùng vùng loang thành vùng sáng màu trên vỏ não như bản đồ não;
+  vùng màu lam trên nền não lam vẫn nổi. Rê chuột vào vòng vùng: trục, nhánh, lãnh thổ, liên kết của vùng đó rực lên, vùng khác mờ.
+- **Liên kết giữa ghi chú** ở mặt A.I thành cung khớp thần kinh pha màu hai vùng, có xung sáng nhỏ; vẽ sau bộ não (trước: vạch thẳng
+  xám nằm dưới não nên khuất). Mạng sợi trang trí trong não mờ đi để nhường đường dữ liệu thật.
+- Kiểm: kho 18 ghi chú / 5 vùng và kho 218 ghi chú / 8 vùng; laptop 1366×768, 1920×1080, iPhone; rê vào vùng; 38–41 khung/giây.
+- Anh xem ảnh: "Chưa hài hoà, ảnh 2 bộ não sáng quá" (kho 218 ghi chú trên điện thoại). Rà lại, sửa:
+  - **Não trắng xoá** khi kho đông: quầng của hơn trăm nơ-ron cộng dồn. Nay vẽ các quầng lên một lớp riêng theo kiểu "lấy sáng nhất"
+    (chồng nhau không sáng thêm) rồi cộng cả lớp lên một lần; cỡ quầng theo cỡ đầu (điện thoại nhỏ lại); lõi trắng dịu dần khi kho đông.
+  - **Nơ-ron dồn nửa trên**, thuỳ thái dương trống: nay mỗi vùng một hình quạt trên vỏ não (trái → qua đỉnh → phải, theo thứ tự các
+    vòng), nốt rải đều trong quạt — kể cả thuỳ thái dương, não sáng đều trên dưới.
+  - **Tên vòng phía trên đè ba vòng hào quang**: đưa lên trên vòng khi mọi vòng phía trên còn chỗ dưới thanh nút; không đủ chỗ
+    (điện thoại) thì tất cả ghi dưới — cho đều nhau.
+  - **Mép dưới não như vành mũ** cắt ngang trán: viền não nhạt dần xuống đáy; thuỳ thái dương bớt tím cho cùng tông phần trên.
+  - Ba vòng hào quang thu nhỏ một chút (1,30 / 1,41 / 1,52 bán kính đầu, trước 1,38 / 1,50 / 1,62): vẫn ôm quanh đầu, chừa khoảng
+    thở cho tên vòng vùng trên cùng (kho 5 vùng trên máy tính, tên "Kinh doanh" chạm vòng ngoài).
+- Anh: "Hình bát quái trên ngực cần cho nhỏ lại tí cho hài hoà" — lõi giữ Ø 60px cố định nên trên điện thoại to gần nửa bề ngang
+  đầu. Nay khi xuống ngực lõi co theo cỡ đầu (0,18 bán kính đầu): laptop Ø ~48px, điện thoại Ø 30px; ở Toàn cảnh vẫn Ø 60px.
+  Lúc chuyển cảnh dùng một hình cỡ lớn thu phóng (không vẽ lại hình lõi mỗi khung).
+- Anh: "Chỗ cằm anh thấy có các viền sáng hơn bình thường". Tách từng lớp để tìm nguồn — ba nguyên nhân chồng nhau:
+  1. **Mây nói, cằm hạ xuống nhưng viền đầu đứng yên**: cằm đè lên vân cổ mà vân cổ không bị che → hai lớp chồng thành dải sáng.
+     Nay viền đầu hạ cằm cùng các đường vân (dùng chung một hàm).
+  2. **Vân cổ sau mặt cắt cứng theo viền đầu**: các vòng cổ cắt xéo qua đường cằm để lại nhiều mẩu ngắn ôm sát cằm. Nay vẽ lên lớp
+     riêng rồi khoét phần sau mặt, mép khoét mờ dần ~0,05 bán kính đầu — cổ chìm dần vào dưới hàm như bóng đổ.
+  3. **Vân mặt dồn sát nhau ở mép hàm, dưới cằm** (các đường ôm hàm hội về cằm) → viền sáng: đoạn vân ở dải này dịu còn 55%.
+  Mặt A.I vẫn 38 khung/giây.
+- Anh: "Miệng cần làm cho thấy rõ miệng hơn" — đã thử vẽ môi riêng (cung môi trên, môi dưới, lòng miệng tối khi mở); anh chọn
+  "Giữ miệng này" (miệng tạo từ chính các đường vân) và "chỉ cần 1 vạch sáng hơn" (khoanh đỏ). Bỏ bản môi riêng. Lần đầu em làm
+  sáng nhầm vạch khe môi phía trên; anh báo "nhầm rồi — sáng chỗ khoanh đỏ": đúng ra là đường vân trong cùng ở giữa nhóm vòng môi
+  (y ≈ 0,79, rộng ~0,22 bán kính đầu) — mắt người đọc nó là "miệng". Nay chỉ vạch đó thêm quầng mảnh + lõi sáng (dày theo cỡ đầu),
+  hạ cùng môi dưới khi Mây nói; các vân quanh miệng giữ nguyên.
+  - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
+    trước và sau khi hỏi.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

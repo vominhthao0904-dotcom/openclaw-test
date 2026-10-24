@@ -642,6 +642,13 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
 - Anh: "Hình bát quái trên ngực cần cho nhỏ lại tí cho hài hoà" — lõi giữ Ø 60px cố định nên trên điện thoại to gần nửa bề ngang
   đầu. Nay khi xuống ngực lõi co theo cỡ đầu (0,18 bán kính đầu): laptop Ø ~48px, điện thoại Ø 30px; ở Toàn cảnh vẫn Ø 60px.
   Lúc chuyển cảnh dùng một hình cỡ lớn thu phóng (không vẽ lại hình lõi mỗi khung).
+- Anh: "Chỗ cằm anh thấy có các viền sáng hơn bình thường". Tách từng lớp để tìm nguồn — ba nguyên nhân chồng nhau:
+  1. **Mây nói, cằm hạ xuống nhưng viền đầu đứng yên**: cằm đè lên vân cổ mà vân cổ không bị che → hai lớp chồng thành dải sáng.
+     Nay viền đầu hạ cằm cùng các đường vân (dùng chung một hàm).
+  2. **Vân cổ sau mặt cắt cứng theo viền đầu**: các vòng cổ cắt xéo qua đường cằm để lại nhiều mẩu ngắn ôm sát cằm. Nay vẽ lên lớp
+     riêng rồi khoét phần sau mặt, mép khoét mờ dần ~0,05 bán kính đầu — cổ chìm dần vào dưới hàm như bóng đổ.
+  3. **Vân mặt dồn sát nhau ở mép hàm, dưới cằm** (các đường ôm hàm hội về cằm) → viền sáng: đoạn vân ở dải này dịu còn 55%.
+  Mặt A.I vẫn 38 khung/giây.
   - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
     trước và sau khi hỏi.
 

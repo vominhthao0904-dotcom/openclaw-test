@@ -608,7 +608,7 @@ function ve() {
 let matDich = 0, kMat = 0, eMat = 0;     // đích (0/1), tiến độ chuyển cảnh, tiến độ đã làm mượt
 let anQD = 1;                            // độ hiện của vòng quỹ đạo + nan hoa (tắt sớm khi hai luồng Âm Dương tuôn ra)
 let LX = 0, LY = 0;                      // vị trí lõi Bát Quái: giữa đồ thị, hoặc trên ngực khi là mặt A.I
-let dtKhung = 16.7, chuot = null, loiNoi = null, lopQuang = null;
+let dtKhung = 16.7, chuot = null, loiNoi = null, lopQuang = null, lopCo = null;
 const MAT = { yaw: 0, pitch: 0, u: 1, oy: 0, mieng: 0, chop: 1, henChop: 2.5, batDauChop: -9 };
 const QUAY = { cy: 1, sy: 0, cp: 1, sp: 0 };   // cos/sin góc quay đầu của khung hình đang vẽ
 const keo = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -879,14 +879,16 @@ function dungMoHinh() {
     // lúc chuyển cảnh đường này nằm trên một đoạn của luồng dài tương ứng độ dài của nó (đường ngắn trải hết luồng thì thành
     // các nét thẳng cắt ngang luồng)
     const span = Math.min(1, tong / 4), s0 = ngau() * (1 - span);
-    // tách theo lớp sáng: đoạn nằm trên bộ não mờ hẳn (sọ trong suốt — não là trọng tâm), ngoài não giữ sáng
+    // tách theo lớp sáng: đoạn nằm trên bộ não mờ hẳn (sọ trong suốt — não là trọng tâm); mép hàm, dưới cằm dịu bớt; còn lại giữ sáng
     let ht = null, lop = -1;
     ds.forEach(([x, y, s]) => {
       const z = laDau ? Math.max(0, doSau(x, y)) : doSauCo(x, y);
-      const l = laDau && trongDaGiac(x, y, NAO.bao) && !trongDaGiac(x, y, NAO.lom) ? 0 : 3;
+      // lớp: 0 = trên bộ não, 1 = mép hàm – dưới cằm (các vân ôm hàm dồn sát nhau về phía cằm, sáng thành viền), 2 = còn lại
+      const l = !laDau ? 2 : trongDaGiac(x, y, NAO.bao) && !trongDaGiac(x, y, NAO.lom) ? 0
+        : y > 0.75 && (y > 1.07 || 1 - (x / Math.max(0.01, nuaRong(y))) ** 2 < 0.14) ? 1 : 2;
       if (l !== lop) {
         if (ht) ht.pts.push([x, y, z, s]);
-        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.17 + 0.83 * l / 3), s0, span };
+        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * [0.17, 0.55, 1][l], s0, span };
         manh.push(ht);
         lop = l;
       }
@@ -1856,6 +1858,9 @@ function veTienThien(tx, ty, R, a, quet) {
   }
 }
 
+// nhép miệng: môi dưới và cằm hạ xuống bao nhiêu tại (x, y) của đầu — dùng chung cho đường vân và viền đầu
+const haCam = (x, y, mieng) => (mieng > 0 && y > 0.725 && x > -0.8 && x < 0.8
+  ? mieng * 0.9 * em(0.725, 0.79, y) * (1 - em(0.3, 0.8, Math.abs(x))) : 0);
 function veMat(tg, diem) {
   if (!MH) MH = dungMoHinh();
   const u = MAT.u, k = kMat, t = itMotion ? 0 : giay(), xong = k >= 1;
@@ -1879,9 +1884,11 @@ function veMat(tg, diem) {
   cx.lineJoin = 'round';
   cx.lineCap = 'round';
   const vien = new Path2D();
+  // viền đầu hạ cằm theo miệng như các đường vân — trước đây viền đứng yên: Mây nói, cằm hạ xuống đè lên vân cổ mà vân cổ không
+  // bị che, hai lớp chồng nhau thành dải sáng dưới cằm (anh chụp lúc Mây đang nói)
   { const v = MH.vien, b = MH.vienB;
     for (let i = 0; i < v.length / 3; i++) {
-      chieuVao(b, i * 2, v[i * 3], v[i * 3 + 1], v[i * 3 + 2], 1);
+      chieuVao(b, i * 2, v[i * 3], v[i * 3 + 1] + haCam(v[i * 3], v[i * 3 + 1], MAT.mieng), v[i * 3 + 2], 1);
       if (i) vien.lineTo(b[i * 2], b[i * 2 + 1]); else vien.moveTo(b[0], b[1]);
     }
     vien.closePath(); }
@@ -1974,8 +1981,7 @@ function veMat(tg, diem) {
       for (let i = 0; i < n; i++) {
         const o = i * 5, x = dd[o];
         let y = dd[o + 1];
-        // nhép miệng: môi dưới và cằm hạ xuống
-        if (mieng > 0 && m.laDau && y > 0.725 && x > -0.8 && x < 0.8) y += mieng * 0.9 * em(0.725, 0.79, y) * (1 - em(0.3, 0.8, Math.abs(x)));
+        if (m.laDau) y += haCam(x, y, mieng);   // nhép miệng: môi dưới và cằm hạ xuống
         if (m.mi) y *= MAT.chop;                // chớp mắt: hai mí khép về giữa mắt (y = 0)
         chieuVao(b, i * 2, x, y, dd[o + 2], dd[o + 4]);
         if (mo < 1) {
@@ -2014,23 +2020,47 @@ function veMat(tg, diem) {
     }
   });
   cx.globalCompositeOperation = 'lighter';
-  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một nét mảnh (thêm lớp quầng mờ thì máy yếu còn ~26 khung/giây)
-  let daChe = false;
+  // đã thành hình: gom theo độ sáng, mỗi nhóm vẽ một lần, một nét mảnh (thêm lớp quầng mờ thì máy yếu còn ~26 khung/giây).
+  // Vân cổ sau mặt (nhóm 5–9) vẽ lên lớp riêng rồi khoét phần nằm sau mặt, mép khoét mờ dần ra ngoài — trước đây cắt cứng theo
+  // viền đầu: các vòng cổ cắt xéo qua đường cằm để lại nhiều mẩu ngắn ôm sát cằm, chồng nhau thành dải sáng dưới cằm (anh chụp).
+  const coSau = xong && bo.slice(5).some((ds) => ds.length);
+  let gc = null;
+  if (coSau) {
+    if (!lopCo) lopCo = document.createElement('canvas');
+    if (lopCo.width !== cv.width || lopCo.height !== cv.height) { lopCo.width = cv.width; lopCo.height = cv.height; }
+    gc = lopCo.getContext('2d');
+    gc.setTransform(1, 0, 0, 1, 0, 0);
+    gc.clearRect(0, 0, lopCo.width, lopCo.height);
+    gc.setTransform(DV, 0, 0, DV, 0, 0);
+    gc.globalCompositeOperation = 'source-over';
+  }
   bo.forEach((ds, i) => {
     if (!ds.length) return;
-    const al = (i % 5 + 0.5) / 5.5;
-    cx.beginPath();
+    const g = i >= 5 ? gc : cx, al = (i % 5 + 0.5) / 5.5;
+    g.beginPath();
     ds.forEach((m) => {
       const b = m.b;
-      cx.moveTo(b[0], b[1]);
-      for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
+      g.moveTo(b[0], b[1]);
+      for (let j = 1; j < b.length / 2; j++) g.lineTo(b[j * 2], b[j * 2 + 1]);
     });
-    if (i >= 5 && !daChe) { cx.save(); cx.clip(ngoaiDau, 'evenodd'); daChe = true; }   // vân cổ sau mặt: che theo viền đầu, một lần
-    cx.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
-    cx.lineWidth = 1;                    // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
-    cx.stroke();
+    g.strokeStyle = `rgba(130,215,255,${al.toFixed(3)})`;
+    g.lineWidth = 1;                     // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
+    g.stroke();
   });
-  if (daChe) cx.restore();
+  if (coSau) {
+    gc.globalCompositeOperation = 'destination-out';
+    gc.fill(vien);
+    gc.lineJoin = 'round';
+    for (const [w, a] of [[0.1, 0.35], [0.06, 0.45], [0.03, 0.6]]) {   // ba nét khoét chồng nhau: mờ dần trong ~0,05 bán kính đầu
+      gc.lineWidth = w * u;
+      gc.strokeStyle = `rgba(0,0,0,${a})`;
+      gc.stroke(vien);
+    }
+    cx.save();
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.drawImage(lopCo, 0, 0);
+    cx.restore();
+  }
   // hạt sáng trôi dọc hai luồng
   if (soi > 0 && !xong) {
     cx.fillStyle = '#FFF6DA';

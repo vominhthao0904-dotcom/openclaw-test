@@ -689,6 +689,33 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
   (ảnh phẳng không quay theo chuột); nhãn ghi chú khi rê chuột có nền tối (khỏi chồng lên tên vòng vùng — ảnh anh chụp trước).
 - Nhanh hơn hẳn vì không còn vẽ hàng nghìn đường vân mỗi khung: máy thử 1x 59–60 khung/giây (bản trước 21–33), 2x ~35.
 
+## Mặt A.I sau khi cài PR #24 (theo 6 ý anh ghi trên ảnh chụp)
+1. **Mép ảnh hoà vào nền** (anh khoanh hai bên vai và đáy: "tạo cảm giác đóng khung ảnh"): ảnh làm mờ dần theo đường cong siêu
+   elip — hai bên vai và phần ngực dưới tan dần vào nền, không còn cạnh thẳng của khung ảnh.
+2. **Vòng hào quang xoay + hai luồng Âm Dương**: vòng tĩnh trong ảnh đã xoá (nội suy từ nền hai bên vòng, đo vòng khớp 3 px:
+   tâm (−0,015; −0,083), bán kính 1,343 bán kính đầu). Vẽ vòng sống phía sau ảnh: vòng mảnh + vạch chấm trôi theo chiều kim đồng
+   hồ, hai luồng — Dương vàng kim, Âm xanh lam (sáng hơn chút cho khỏi chìm trên nền xanh) — đối nhau 180°, đuổi nhau như hai
+   con cá Thái Cực, đầu sáng, đuôi ~130° mảnh và nhạt dần. Thân, đầu che phần vòng đi phía sau. Theo nút tốc độ / dừng xoay
+   ("Vừa": ~16 giây một vòng).
+3. **Chấm nhỏ dần khi kho đông**: tới 30 ghi chú giữ cỡ hiện tại; đông hơn nhỏ theo căn bậc hai (80 → ~60%, từ ~190 → 40%);
+   chấm còn dưới ~1 px thì thành chấm sáng li ti (bỏ viền tối, lõi sáng giữa, quầng màu rộng hơn).
+4. **Toàn màn hình, bấm chấm không mở bảng chi tiết**: chỉ chọn chấm (sáng lên, hiện tên), mặt A.I thì Mây đọc tên; bấm lại để
+   bỏ chọn. Vào toàn màn hình khi bảng đang mở thì bảng tự cất (trừ khi đang sửa). Ngoài toàn màn hình bấm chấm mở bảng như cũ.
+5. **Mắt chớp tự nhiên**: lúc chờ 3–6 giây một lần, đang nói 1,8–3,5 giây (người nói chớp nhiều hơn), 15% là chớp đôi; khép
+   nhanh ~0,07 giây, mở chậm hơn ~0,12 giây. Mí trên vẽ theo khe mắt đo trên ảnh: tấm mí màu da quanh mắt (trên như phấn mắt,
+   giữa sáng nhẹ, sát mi sẫm), mép trên mờ dần vào da ảnh, hàng mi là nét tối thon hai đầu. Đã thử kéo giãn dải ảnh làm mí —
+   lộ răng cưa và sọc dọc khi khép, bỏ. Máy bật "giảm chuyển động" thì không chớp.
+6. **Miệng nhép khi nói**: môi dưới hạ theo nhịp nói (tối đa ~0,032 bán kính đầu ở giữa, 0 ở khoé), cả khối môi dưới dời nguyên,
+   cằm co lại cho khớp nên không lộ đường nối; lòng miệng hé màu xanh đêm có ánh xanh ở giữa, vạch sáng giữa miệng vẫn trên cùng.
+   Nhịp miệng đổi |sin| → sin² và lọc mượt từng khung: khép mềm, không gập góc (dùng chung cho đầu đường vân).
+- **Bát Quái chỉ hai màu vàng kim – xanh lam** (anh nhắc lại): nền vành quẻ và vành quanh Thái Cực trước là xanh đêm gần như
+  đen (`#0B1E33`, `#112638`) — đổi sang hai sắc xanh lam đậm (`#062A6E`, `#08337F`). Bài thử đếm điểm ảnh của lõi: chỉ còn vàng
+  kim, xanh lam và viền chuyển giữa hai màu, không còn điểm đen / xám đậm. Áp dụng cả lõi ở Toàn cảnh lẫn lõi trên ngực mặt A.I.
+- **Tab "Hỏi" thành "Q" khi dịch sang tiếng Anh** (anh bấm nút dịch của Edge để thử): không phải cột hẹp — các tab chia đều
+  bề ngang, "Recharge" 8 chữ vẫn vừa. Bộ dịch của Edge dịch từng chữ đứng riêng nên đoán sai: "Hỏi" → "Q", "Thêm" → "More",
+  "Nạp" → "Recharge", "Việc" → "The". Nhãn tiếng Việt chưa đổi (chờ anh chọn cách); trang vẫn cho dịch như cũ (bản thử chặn dịch đã bỏ).
+- Tốc độ: máy thử 1x 61 khung/giây (kho thường và kho 80 ghi chú), 2x ~30–35 — như trước.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

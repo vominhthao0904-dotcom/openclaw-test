@@ -637,6 +637,8 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
   - **Tên vòng phía trên đè ba vòng hào quang**: đưa lên trên vòng khi mọi vòng phía trên còn chỗ dưới thanh nút; không đủ chỗ
     (điện thoại) thì tất cả ghi dưới — cho đều nhau.
   - **Mép dưới não như vành mũ** cắt ngang trán: viền não nhạt dần xuống đáy; thuỳ thái dương bớt tím cho cùng tông phần trên.
+  - Ba vòng hào quang thu nhỏ một chút (1,30 / 1,41 / 1,52 bán kính đầu, trước 1,38 / 1,50 / 1,62): vẫn ôm quanh đầu, chừa khoảng
+    thở cho tên vòng vùng trên cùng (kho 5 vùng trên máy tính, tên "Kinh doanh" chạm vòng ngoài).
   - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
     trước và sau khi hỏi.
 

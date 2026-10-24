@@ -1917,7 +1917,8 @@ function veMat(tg, diem) {
     const ngoaiThan = new Path2D();
     ngoaiThan.rect(-W, -H, 3 * W, 3 * H);
     ngoaiThan.addPath(than);
-    const VONG = [[1.38, '95,180,255', 1, 24, 0.45], [1.5, '230,196,106', -1, 18, 0.6], [1.62, '240,127,45', 1, 13, 0.58]];
+    // bán kính vừa ôm đầu, chừa khoảng thở cho tên các vòng vùng phía trên (trước 1,38–1,62: tên vòng trên cùng chạm vòng ngoài)
+    const VONG = [[1.3, '95,180,255', 1, 24, 0.45], [1.41, '230,196,106', -1, 18, 0.6], [1.52, '240,127,45', 1, 13, 0.58]];
     const D0 = Math.PI * 0.15;               // cung dưới: từ ~4 giờ tới ~8 giờ
     cx.lineWidth = 1.5;
     cx.setLineDash([4, 8]);

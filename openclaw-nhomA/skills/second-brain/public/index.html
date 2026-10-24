@@ -34,14 +34,14 @@
     <section class="tab" data-pane="them">
       <form id="formThem">
         <label>Chủ đề <span class="phu">— một câu khẳng định</span>
-          <input name="title" required maxlength="200" placeholder="Hero mobile dùng contain, không dùng cover">
+          <input name="title" required maxlength="200" placeholder="vd: Ảnh hero mobile dùng contain">
         </label>
         <div class="hai">
           <label>Loại
             <select name="kind" id="chonLoai"></select>
           </label>
           <label>Nhóm
-            <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm/Nhóm con">
+            <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm">
           </label>
         </div>
         <datalist id="dsNhom"></datalist>
@@ -60,7 +60,7 @@
           <input name="cite" list="dsTrich" maxlength="300" placeholder="Tác giả (năm). Tên sách/bài. Nơi xuất bản, tr. 12">
         </label>
         <label>Nguồn <span class="phu">(link bài viết, khoá học… để sau còn kiểm lại)</span>
-          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link — hoặc gõ vài chữ để chọn nguồn đã dùng">
+          <input name="url" type="url" list="dsNguon" maxlength="500" placeholder="Dán link, hoặc chọn nguồn đã dùng">
         </label>
         <input type="hidden" name="source" value="">
         <button class="go" type="submit">Lưu ghi chú</button>
@@ -117,8 +117,12 @@
         <input id="oTim" type="search" placeholder="Từ khoá — có dấu hay không đều được" autocomplete="off">
       </label>
       <div class="hai loc">
-        <select id="timLoai" aria-label="Lọc theo loại"></select>
-        <select id="timNhom" aria-label="Lọc theo vùng"></select>
+        <label>Loại ghi chú
+          <select id="timLoai"></select>
+        </label>
+        <label>Vùng kiến thức
+          <select id="timNhom"></select>
+        </label>
       </div>
       <div id="ketQua" class="list"></div>
     </section>
@@ -257,7 +261,7 @@
           <select name="kind" id="suaLoai"></select>
         </label>
         <label>Nhóm
-          <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm/Nhóm con">
+          <input name="category" list="dsNhom" maxlength="150" placeholder="Vùng/Nhóm">
         </label>
       </div>
       <label>Thẻ

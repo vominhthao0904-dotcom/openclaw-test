@@ -82,6 +82,9 @@ try { if (localStorage.getItem('sb.hienTen') === '0') hienTen = false; } catch (
 let goc = 0;
 let hover = null;
 let chon = null;
+// Mặt A.I / toàn màn hình: chấm chọn bằng cách bấm (không mở bảng chi tiết) — tự bỏ chọn khi Mây đọc xong ~2,5 giây
+let chonTam = false, chonHet = 0;
+let henDocTen = 0, hoverTruoc = null, daDocRe = { nd: null, t: -99 };   // rê chuột dừng trên chấm: Mây đọc tên
 
 const itMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (itMotion) quay = false;
@@ -153,7 +156,10 @@ async function nap() {
 /* Các ô chọn loại / vùng: đổ một lần, giữ lựa chọn đang có. */
 function dienChon() {
   const dem = Object.fromEntries((DATA.loai || []).map((x) => [x.kind, x.so]));
-  [['#chonLoai', false], ['#suaLoai', false], ['#napLoai', 'Theo file'], ['#timLoai', 'Mọi loại']]
+  const tong = DATA.tong_ghi_chu ?? (DATA.notes || []).length;
+  // bộ lọc Tìm theo cách các trang tìm kiếm hay đặt: nhãn ở trên ô ("Loại ghi chú", "Vùng kiến thức"), lựa chọn đầu là
+  // "Tất cả …" kèm tổng số (trước là "Mọi loại", "Mọi vùng" — anh thấy khó hiểu)
+  [['#chonLoai', false], ['#suaLoai', false], ['#napLoai', 'Theo file'], ['#timLoai', `Tất cả loại (${tong})`]]
     .forEach(([sel, dauTien]) => {
       const o = $(sel), cu = o.value;
       o.innerHTML = '';
@@ -163,9 +169,9 @@ function dienChon() {
     });
   const tn = $('#timNhom'), cu = tn.value;
   tn.innerHTML = '';
-  tn.appendChild(new Option('Mọi vùng', ''));
+  tn.appendChild(new Option(`Tất cả vùng (${tong})`, ''));
   (DATA.cay || []).forEach((c) => { if (c.duong_dan) tn.appendChild(new Option(`${c.ten} (${c.so})`, c.duong_dan)); });
-  tn.value = [...tn.options].some((o) => o.value === cu) ? cu : '';   // vùng vừa hết ghi chú: về "Mọi vùng", không để ô trống
+  tn.value = [...tn.options].some((o) => o.value === cu) ? cu : '';   // vùng vừa hết ghi chú: về "Tất cả vùng", không để ô trống
 }
 
 /* ---------------- bố trí quỹ đạo ---------------- */
@@ -365,6 +371,7 @@ const SAO = (() => {
 
 function ve() {
   cx.clearRect(0, 0, W, H);
+  if (eMat > 0.01 && ANH_DAU.ok) veNenMat(eMat);
   const R = banKinh();
   const tg = itMotion ? 0 : performance.now() / 1000;
   cx.fillStyle = '#CFE0FF';
@@ -572,12 +579,14 @@ function ve() {
   cx.textBaseline = 'middle';
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
   const daVe = [{ x0: LX - RK - 6, x1: LX + RK + 6, y0: LY - RK - 6, y1: LY + RK + 6 }, ...tenQue];
+  // mặt A.I: đang rê chấm khác thì tạm ẩn nhãn chấm đang chọn — hai nhãn chồng lên nhau (ảnh anh chụp)
+  const chonNhan = kMat > 0.5 && hover && hover !== chon ? null : chon;
   const uuTien = nodes.slice().sort((a, b) =>
-    (b === hover || b === chon) - (a === hover || a === chon) || a.thu - b.thu || a.vong - b.vong);
+    (b === hover || b === chonNhan) - (a === hover || a === chonNhan) || a.thu - b.thu || a.vong - b.vong);
   const daGhi = new Set();          // tên đã ghi — các trang của cùng một file chỉ ghi tên một lần
   let soNhan = 0;
   uuTien.forEach((nd) => {
-    const nb = nd === hover || nd === chon;
+    const nb = nd === hover || nd === chonNhan;
     const toi = mo(nd);
     // chế độ "chỉ chấm" và mặt A.I: rê chuột mới hiện tên
     if (!nb && (toi || (tapTrung && !hienTen) || kMat > 0.12)) return;
@@ -1134,6 +1143,11 @@ function capNhatMat(tg) {
   MAT.oy = tren + 24 + 2.0 * MAT.u + Math.max(0, duoi - tren - 60 - cao * MAT.u) / 2;
   const t = giay();
   const dangNoi = loiNoi && t - loiNoi.t0 < loiNoi.dai;
+  // chấm chọn tạm (bấm ở mặt A.I / toàn màn hình): còn đọc thì giữ, đọc xong ~2,5 giây thì tự bỏ chọn — nhãn không đứng mãi
+  if (chonTam && chon) {
+    if (dangNoi) chonHet = Math.max(chonHet, t + 2.5);
+    else if (t > chonHet) { chon = null; chonTam = false; }
+  }
   // đầu nhìn theo con trỏ; không có con trỏ (điện thoại) thì lắc nhẹ; đang nói thì gật khẽ theo nhịp
   let yawT = 0, pitchT = 0;
   if (!itMotion) {
@@ -1266,12 +1280,12 @@ function hoiGiongMang() {
 }
 
 // "Mây nói": nhép miệng + phụ đề + tiếng (chỉ ở chế độ mặt A.I). chuAnh: câu tương đương khi phải dùng giọng tiếng Anh.
-function noi(chu, chuAnh) {
+function noi(chu, chuAnh, ngan) {
   if (!matDich || !chu) return;
   if (coTieng && coDocNoi && !giongDung()) chonGiong();
   const g = coTieng && coDocNoi ? giongDung() : null, anh = laTiengAnh(g);
   const hien = String(anh && chuAnh ? chuAnh : chu).replace(/\s+/g, ' ').trim();   // phụ đề = đúng câu đang đọc
-  const ln = { chu: hien, t0: giay(), dai: keo(hien.length * 0.075, 1.6, 9), hienN: 0 };
+  const ln = { chu: hien, t0: giay(), dai: keo(hien.length * 0.075, 1.6, 9), hienN: 0, ngan: !!ngan };
   loiNoi = ln;
   if (!g) return;
   speechSynthesis.cancel();
@@ -1438,13 +1452,16 @@ function datMat(bat) {
   if (bat) {
     const n = DATA.tong_ghi_chu ?? DATA.notes.length;
     const v = (DATA.cay || []).filter((c) => c.duong_dan).length;
+    // lời chào cho phép cắt ngang (rê chuột vào chấm thì đọc tên chấm luôn); câu trả lời ô Hỏi thì không bị cắt
     setTimeout(() => (n ? noi(`Xin chào anh. Kho đang có ${n} ghi chú trong ${v} vùng kiến thức.`,
-      `Hello. Your Second Brain holds ${n} ${n === 1 ? 'note' : 'notes'} in ${v} knowledge ${v === 1 ? 'area' : 'areas'}.`)
+      `Hello. Your Second Brain holds ${n} ${n === 1 ? 'note' : 'notes'} in ${v} knowledge ${v === 1 ? 'area' : 'areas'}.`, true)
       : noi('Xin chào anh. Kho đang trống — mình bắt đầu ghi chú đầu tiên nhé?',
-        'Hello. Your Second Brain is empty. Shall we write the first note?')), itMotion ? 0 : 2300);
+        'Hello. Your Second Brain is empty. Shall we write the first note?', true)), itMotion ? 0 : 2300);
   } else {
     loiNoi = null;
     if (coDocNoi) speechSynthesis.cancel();
+    if (chonTam) { chon = null; chonTam = false; }
+    clearTimeout(henDocTen);
   }
 }
 // Máy chỉ có giọng tiếng Việt qua mạng: bấm loa lần đầu, hoặc BẬT LẠI sau khi tắt (tắt tiếng là bỏ quyền), thì hỏi có dùng
@@ -1626,6 +1643,60 @@ function veVung(a, t, diem) {
     cx.fillText(ten, tx, ty);
     cx.globalAlpha = 1;
   });
+  const tenHop = hoverVung || nhay;      // điện thoại không rê được: chạm vòng vùng thì hộp hiện ~2,5 giây
+  const vh = tenHop && MH.vungXY.find((o) => o.ten === tenHop);
+  if (vh) veNhomCon(vh, a, hep);
+}
+// Rê chuột vào vòng một vùng (anh: "hiện thêm các mục con trong nó, 1 bậc con"): hộp nhỏ cạnh vòng — tên vùng, tổng số ghi chú,
+// rồi các nhóm con trực tiếp (đông trước) kèm số ghi chú, tối đa 7 dòng; ghi chú nằm thẳng ở vùng (chưa vào nhóm con) ghi riêng
+// một dòng. Hộp đặt ra phía ngoài (vòng bên trái → hộp bên trái), không che đầu A.I, không tràn mép.
+function veNhomCon(v, a, hep) {
+  const nut = (DATA.cay || []).find((c) => c.ten === v.ten);
+  if (!nut || a <= 0.3) return;
+  const mau = mauCua(v.ten), TOI_DA = 7, coChu = hep ? 11 : 12, dong = coChu + 8, dem = 10;
+  const con = nut.con || [], dsDong = con.slice(0, TOI_DA).map((c) => [c.ten, c.so, mauCua(v.ten)]);
+  if (con.length > TOI_DA) dsDong.push([`+ ${con.length - TOI_DA} nhóm khác`, '', null]);
+  if (con.length && nut.rieng) dsDong.push(['Chưa vào nhóm con', nut.rieng, null]);
+  if (!con.length) dsDong.push(['Chưa chia nhóm con', '', null]);
+  cx.save();
+  cx.globalCompositeOperation = 'source-over';
+  cx.globalAlpha = a;
+  cx.textBaseline = 'middle';
+  const dau = `${v.ten} · ${nut.so} ghi chú`;
+  cx.font = `700 ${coChu + 1}px "Be Vietnam Pro",sans-serif`;
+  let rong = cx.measureText(dau).width;
+  cx.font = `500 ${coChu}px "Be Vietnam Pro",sans-serif`;
+  dsDong.forEach(([t, so]) => { rong = Math.max(rong, 14 + cx.measureText(t).width + 14 + cx.measureText(String(so)).width); });
+  const mepPhaiVe = W - lechDich - 8;
+  rong = Math.min(rong + 2 * dem, hep ? 220 : 280);
+  const cao = 2 * dem + dong * (dsDong.length + 1) + 4;
+  const trai = v.x < CX - 4 ? true : v.x > CX + 4 ? false : v.x - rong - v.r - 14 > 8;
+  let x0 = trai ? v.x - v.r - 14 - rong : v.x + v.r + 14;
+  x0 = keo(x0, 8, mepPhaiVe - rong);
+  const y0 = keo(v.y - cao / 2, (tapTrung ? 6 : MEP_TREN + 4), H - cao - 8);
+  cx.fillStyle = 'rgba(6,14,32,.93)';
+  cx.beginPath();
+  if (cx.roundRect) cx.roundRect(x0, y0, rong, cao, 10); else cx.rect(x0, y0, rong, cao);
+  cx.fill();
+  cx.strokeStyle = rgba(mau, 0.55); cx.lineWidth = 1; cx.stroke();
+  const cat = (t, toiDa) => { while (t.length > 3 && cx.measureText(t).width > toiDa) t = t.slice(0, -2).trimEnd() + '…'; return t; };
+  let y = y0 + dem + dong / 2;
+  cx.textAlign = 'left';
+  cx.font = `700 ${coChu + 1}px "Be Vietnam Pro",sans-serif`;
+  cx.fillStyle = TRUNG;
+  cx.fillText(cat(dau, rong - 2 * dem), x0 + dem, y);
+  y += dong + 4;
+  cx.font = `500 ${coChu}px "Be Vietnam Pro",sans-serif`;
+  dsDong.forEach(([t, so, m]) => {
+    if (m) { cx.fillStyle = rgba(m, 0.9); cx.beginPath(); cx.arc(x0 + dem + 3, y, 3, 0, Math.PI * 2); cx.fill(); }
+    const ss = String(so), wSo = cx.measureText(ss).width;
+    cx.fillStyle = m ? 'rgba(225,236,252,.92)' : 'rgba(170,190,220,.75)';
+    cx.textAlign = 'left';
+    cx.fillText(cat(t, rong - 2 * dem - 14 - wSo - 10), x0 + dem + (m ? 12 : 0), y);
+    if (ss) { cx.textAlign = 'right'; cx.fillStyle = 'rgba(170,190,220,.9)'; cx.fillText(ss, x0 + rong - dem, y); }
+    y += dong;
+  });
+  cx.restore();
 }
 function timVung(x, y) {
   if (!matDich || kMat < 0.9 || !MH || MH.hienVung < 0.5) return null;
@@ -1757,6 +1828,15 @@ function veMatAnh(a, mieng, t) {
     cx.restore();
   });
   cx.restore();
+}
+// Nền khung ở mặt A.I (anh: "màu nền bên ngoài ảnh A.I nên cùng độ sáng và màu với phía sau đầu — không thì hai vai và ảnh
+// như bị bó trong vùng sáng, hai bên tối, nhìn như hai vùng nền khác nhau"): cả khung một nền xanh lam cùng tông quầng xanh quanh
+// cổ của ảnh, chuyển rất rộng từ cổ ra tới góc khung và tối đi rất nhẹ — không có ranh giới nào. Hiện dần theo chuyển cảnh.
+function veNenMat(a) {
+  const x = CX, y = MAT.oy + 0.6 * MAT.u, R = Math.hypot(Math.max(x, W - x), Math.max(y, H - y));
+  const g = cx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, 'rgb(13,60,128)'); g.addColorStop(0.45, 'rgb(11,47,104)'); g.addColorStop(1, 'rgb(9,33,76)');
+  cx.globalAlpha = a; cx.fillStyle = g; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1;
 }
 // Vòng hào quang sau đầu (anh: "vòng tròn phía sau có hiệu ứng xoay tròn và có 2 luồng âm dương màu blue và vàng kim chạy
 // trên vòng"): vòng mảnh + vạch chấm trôi theo chiều kim đồng hồ, và hai luồng — Dương vàng kim, Âm xanh lam — đối nhau 180°,
@@ -1951,12 +2031,14 @@ function veMat(tg, diem) {
   ngoaiDau.addPath(vien);
   const tam = chieuDiem(0, -0.1, 0, 1);
   if (phu > 0) {
-    // quầng xanh sau đầu, kính trong suốt, não bên trong
-    const q = cx.createRadialGradient(tam.x, tam.y, u * 0.3, tam.x, tam.y, u * 2.1);
-    q.addColorStop(0, `rgba(40,120,255,${(0.2 * phu).toFixed(3)})`);
+    // quầng xanh sau đầu, kính trong suốt, não bên trong. Đầu ảnh mẫu: quầng rộng, nhạt hơn — nền khung đã cùng tông xanh
+    // (veNenMat), quầng hẹp đậm lại thành "vùng sáng" bó quanh đầu
+    const rq = ANH_DAU.ok ? 3.4 : 2.1, aq = ANH_DAU.ok ? 0.1 : 0.2;
+    const q = cx.createRadialGradient(tam.x, tam.y, u * 0.3, tam.x, tam.y, u * rq);
+    q.addColorStop(0, `rgba(40,120,255,${(aq * phu).toFixed(3)})`);
     q.addColorStop(1, 'rgba(40,120,255,0)');
     cx.fillStyle = q;
-    cx.fillRect(tam.x - u * 2.2, tam.y - u * 2.2, u * 4.4, u * 4.4);
+    cx.fillRect(tam.x - u * (rq + 0.1), tam.y - u * (rq + 0.1), u * (2 * rq + 0.2), u * (2 * rq + 0.2));
     const g = cx.createRadialGradient(tam.x, tam.y - u * 0.2, u * 0.1, tam.x, tam.y, u * 1.3);
     g.addColorStop(0, `rgba(90,180,255,${(0.13 * phu).toFixed(3)})`);
     g.addColorStop(1, `rgba(30,90,200,${(0.05 * phu).toFixed(3)})`);
@@ -2414,8 +2496,23 @@ cv.addEventListener('mousemove', (e) => {
   hoverLoi = !hoverVung && Math.hypot(mx - LX, my - LY) < (hoverLoi ? rkHienTai + 6 : banKinhLoi() + 4);
   hover = hoverLoi || hoverVung ? null : timGan(mx, my);
   cv.style.cursor = hover || hoverVung ? 'pointer' : hoverLoi ? 'help' : 'default';
+  if (hover !== hoverTruoc) {             // mặt A.I: dừng chuột trên chấm ~0,35 giây là Mây đọc tên (anh: "rê tới chấm thì đọc luôn")
+    hoverTruoc = hover;
+    clearTimeout(henDocTen);
+    if (hover && matDich && eMat > 0.9) henDocTen = setTimeout(() => docTenRe(hover), 350);
+  }
 });
-cv.addEventListener('mouseleave', () => { hover = null; hoverLoi = false; hoverVung = null; chuot = null; });
+cv.addEventListener('mouseleave', () => { hover = null; hoverTruoc = null; clearTimeout(henDocTen); hoverLoi = false; hoverVung = null; chuot = null; });
+// Đọc tên chấm đang rê: không đọc lại chấm vừa đọc (6 giây), không cắt ngang câu trả lời Mây đang đọc — chỉ cắt câu cho phép
+// cắt (tên chấm khác, lời chào)
+function docTenRe(nd) {
+  if (hover !== nd || !matDich) return;
+  const t = giay(), ln = loiNoi;
+  if (daDocRe.nd === nd && t - daDocRe.t < 6) return;
+  if (ln && !ln.ngan && !ln.xong && t - ln.t0 < ln.dai) return;
+  daDocRe = { nd, t };
+  noi(nd.note.title, null, true);
+}
 cv.addEventListener('click', (e) => {
   const b = cv.getBoundingClientRect();
   const x = e.clientX - b.left, y = e.clientY - b.top;
@@ -2427,12 +2524,22 @@ cv.addEventListener('click', (e) => {
     return;
   }
   const nd = timGan(x, y);
-  // toàn màn hình: không mở bảng chi tiết (anh: "đừng cho bảng hiện ra, ở chế độ toàn màn hình sẽ đẹp hơn, chuyên nghiệp
-  // hơn") — chỉ chọn chấm (sáng lên, hiện tên cạnh chấm), mặt A.I thì Mây đọc tên; bấm lại chấm đó thì bỏ chọn
-  if (nd && tapTrung) { chon = chon === nd ? null : nd; if (chon) noi(nd.note.title); return; }
-  if (nd) { moChiTiet(nd.note.id); noi(nd.note.title); }   // mặt A.I: đọc tên ghi chú vừa bấm
+  // Mặt A.I (thường lẫn toàn màn hình) và toàn màn hình: bấm chấm KHÔNG mở bảng chi tiết — bảng thu hình A.I lại, che chữ
+  // (anh: "không cho bảng khác hiện ra… nhìn không chuyên nghiệp"). Chấm được chọn (sáng lên, hiện tên), Mây đọc tên và câu
+  // đầu của nội dung; đọc xong ~2,5 giây thì tự bỏ chọn. Bấm lại chấm đó hoặc bấm chỗ trống: bỏ chọn ngay.
+  if (nd && (matDich || tapTrung)) {
+    clearTimeout(henDocTen);
+    if (chon === nd && chonTam) { chon = null; chonTam = false; return; }
+    chon = nd; chonTam = true; chonHet = giay() + 4;
+    const cau = cauDau(nd.note.preview || '');
+    noi(cau && !cau.toLowerCase().startsWith(nd.note.title.toLowerCase().slice(0, 20)) ? `${nd.note.title}. ${cau}` : nd.note.title, null, true);
+    daDocRe = { nd, t: giay() };
+    return;
+  }
+  if (nd) { moChiTiet(nd.note.id); return; }
+  if (chonTam) { chon = null; chonTam = false; return; }   // bấm chỗ trống: bỏ chấm đang chọn (không đóng / bật gì khác)
   // bấm chỗ trống của đồ thị (không phải lõi Bát Quái): đóng thẻ chi tiết đang mở
-  else if (Math.hypot(x - LX, y - LY) >= rkHienTai + 6) dongNeuTrong();
+  if (Math.hypot(x - LX, y - LY) >= rkHienTai + 6) dongNeuTrong();
 });
 
 function capNhatToc(luu) {
@@ -2539,7 +2646,7 @@ cv.addEventListener('pointerup', (e) => {
   clearTimeout(henMotLan);
   if (dup) { datTapTrung(!tapTrung); return; }
   // toàn màn hình, nhấp 1 lần vào chỗ trống: bật/tắt tên — chờ một nhịp để phân biệt với nhấp đúp
-  if (tapTrung) henMotLan = setTimeout(() => datHienTen(!hienTen), 330);
+  if (tapTrung && !chonTam) henMotLan = setTimeout(() => datHienTen(!hienTen), 330);
 });
 $('#batTen').addEventListener('click', () => datHienTen(!hienTen));
 document.addEventListener('keydown', (e) => {
@@ -2570,6 +2677,7 @@ async function moChiTiet(id) {
   if (lan !== luotMo || !r.ok) return;     // bấm nhanh hai ghi chú: trả lời về muộn của ghi chú trước không đè ghi chú sau
   const n = r.note;
   chon = nodes.find((x) => x.note.id === id) || null;
+  chonTam = false;
 
   // đường dẫn nhóm — bấm từng tầng để mở đúng nhóm đó trong Thư viện
   const vun = $('#ctDuong');
@@ -2663,6 +2771,7 @@ async function moChiTiet(id) {
   $('#ctLay').hidden = !daCat;
   dongSua(n);
   $('#chiTiet').hidden = false;
+  document.body.classList.add('co-chi-tiet');
   datLech();
 }
 
@@ -2716,7 +2825,7 @@ $('#ctSua').addEventListener('submit', async (e) => {
   if (xem === 'thu-vien') napThuVien();
   if (!$('[data-pane="on"]').hidden) napHangOn();
 });
-function dongChiTiet() { $('#chiTiet').hidden = true; chon = null; datLech(); }
+function dongChiTiet() { $('#chiTiet').hidden = true; document.body.classList.remove('co-chi-tiet'); chon = null; datLech(); }
 $('#dong').addEventListener('click', dongChiTiet);
 // Bấm ra chỗ trống ngoài thẻ chi tiết thì đóng thẻ, như bấm ×. Bấm nút / thẻ ghi chú khác / ô nhập thì làm việc của nó
 // (mở ghi chú khác…). Đang sửa ghi chú thì không tự đóng — khỏi mất chữ đang gõ.
@@ -3340,7 +3449,7 @@ async function napThuVien(themNua = false) {
     chip.appendChild(b);
   };
   const dem = r.dem_loai || {};
-  tao('', 'Mọi loại', r.tong_khong_loc_loai ?? '', null);
+  tao('', 'Tất cả loại', r.tong_khong_loc_loai ?? '', null);
   Object.keys(LOAI).filter((k) => dem[k] || LOAI_DANG === k).forEach((k) => tao(k, tenLoai(k), dem[k] || 0, LOAI[k].mau));
 
   veGopTrang(r.bo_trang || []);

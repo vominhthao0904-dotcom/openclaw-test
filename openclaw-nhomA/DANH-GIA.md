@@ -716,6 +716,32 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
   "Nạp" → "Recharge", "Việc" → "The". Nhãn tiếng Việt chưa đổi (chờ anh chọn cách); trang vẫn cho dịch như cũ (bản thử chặn dịch đã bỏ).
 - Tốc độ: máy thử 1x 61 khung/giây (kho thường và kho 80 ghi chú), 2x ~30–35 — như trước.
 
+## Sau khi cài PR #25 (theo ảnh anh chụp) + rà soát giao diện
+1. **Nhãn chấm không còn đứng mãi**: chấm chọn bằng cách bấm (mặt A.I, toàn màn hình) tự bỏ chọn khi Mây đọc xong ~2,5 giây;
+   bấm chỗ trống hoặc bấm lại chấm thì tắt ngay (ở toàn màn hình, nhấp chỗ trống lúc đang có chấm chọn chỉ bỏ chọn, không bật/tắt
+   tên). Đang chọn một chấm mà rê chấm khác thì tạm ẩn nhãn chấm đang chọn — trước đây hai nhãn chồng lên nhau.
+2. **Rê tới chấm là Mây đọc tên**: dừng chuột ~0,35 giây trên chấm thì đọc; không đọc lặp chấm vừa đọc (6 giây); chỉ cắt ngang
+   tên chấm khác và lời chào, không cắt câu trả lời ô Hỏi đang đọc.
+3. **Mặt A.I, bấm chấm không mở bảng chi tiết** (cả thường lẫn toàn màn hình; bảng thu hình A.I lại, che chữ): chấm được chọn,
+   Mây đọc tên + câu đầu của nội dung (lấy từ đoạn xem trước sẵn có, không gọi thêm máy chủ). Toàn cảnh thường vẫn mở bảng.
+   Mở ghi chú từ chỗ khác (Tìm, Thư viện, lệnh giọng nói) vẫn mở bảng như cũ.
+4. **Rê vòng vùng: hộp nhóm con** cạnh vòng — tên vùng · tổng số ghi chú, các nhóm con trực tiếp (đông trước) kèm số, tối đa
+   7 dòng (+ N nhóm khác), dòng "Chưa vào nhóm con" nếu vùng có ghi chú để thẳng; hộp đặt ra phía ngoài, không che đầu A.I. Điện
+   thoại: chạm vòng thì hộp hiện ~2,5 giây.
+5. **Bộ lọc Tìm**: theo cách các trang tìm kiếm hay đặt — nhãn trên ô "Loại ghi chú", "Vùng kiến thức", lựa chọn đầu "Tất cả loại
+   (18)", "Tất cả vùng (18)" (trước "Mọi loại", "Mọi vùng"). Chip lọc ở Thư viện cũng "Tất cả loại".
+6. **Nền khung mặt A.I liền một tông xanh** (anh: vai và ảnh như bị bó trong vùng sáng, hai bên tối như hai vùng nền khác nhau):
+   cả khung một nền xanh lam cùng tông quầng xanh quanh cổ ảnh, chuyển rất rộng từ cổ ra tới góc khung, tối đi rất nhẹ; quầng
+   sau đầu rộng và nhạt hơn. Đo: góc khung (9,34,78), cạnh vai (12,49,106) — trước góc khung xanh đêm (11,23,44).
+- **Rà soát giao diện** (chụp mọi tab, mọi chế độ xem ở 1366×768 như laptop anh và trên điện thoại):
+  - Thư viện, Việc: bảng chi tiết mở thì đè lên nội dung — thẻ ghi chú, dòng việc, ô ngày bị cắt (ảnh anh chụp). Nay nội dung
+    co lại bên trái bảng; màn ≤ 1440px bảng rộng 440px (trước 520) cho nội dung đủ chỗ; cây nhóm hẹp lại, ô thêm việc xếp hai hàng.
+  - Chữ gợi ý trong ô bị cắt cụt ở tab Thêm: "Hero mobile dùng contain, không dù…", "Vùng/Nhóm/Nh…", "Dán link — hoặc gõ vài chữ
+    để chọn ng…" → rút gọn vừa ô.
+  - Nút "Thêm việc" cao hơn các ô bên cạnh → cao bằng nhau.
+  - Điện thoại: tiêu đề Thư viện / Việc dính sát thanh Toàn cảnh / Thư viện / Việc → chừa thêm khoảng.
+  - Kiểm tự động: không phần tử nào có chữ bị cắt ngang ở mọi tab, mọi chế độ xem; điện thoại không tràn ngang.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

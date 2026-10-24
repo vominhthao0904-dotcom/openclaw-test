@@ -236,7 +236,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 
 /* ---------- thẻ chi tiết ---------- */
 .sheet{
-  position:absolute;top:0;right:0;z-index:20;width:min(520px,calc(100vw - var(--panel)));height:100dvh;
+  position:absolute;top:0;right:0;z-index:20;width:var(--rong-ct);height:100dvh;
   background:var(--son-2);border-left:1px solid var(--son-3);padding:30px 34px 26px;
   overflow-y:auto;box-shadow:-24px 0 60px rgba(0,0,0,.45);
 }
@@ -275,6 +275,18 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 }
 .nhe:hover{color:var(--trung);border-color:var(--trung-mo)}
 
+/* Bảng chi tiết mở: Thư viện và Việc co lại bên trái bảng — trước đây bảng đè lên, thẻ ghi chú, dòng việc, ô ngày bị cắt
+   (ảnh anh chụp). Màn laptop (≤ 1440px) bảng hẹp hơn chút cho nội dung còn đủ chỗ. */
+:root{--rong-ct:min(520px,calc(100vw - var(--panel)))}
+@media (max-width:1440px){:root{--rong-ct:min(440px,calc(100vw - var(--panel)))}}
+@media (min-width:901px){
+  body.co-chi-tiet .xem.thu-vien,body.co-chi-tiet .xem.viec-xem{right:var(--rong-ct)}
+  body.co-chi-tiet .thu-vien{grid-template-columns:200px 1fr}
+  body.co-chi-tiet .ke-dau{flex-wrap:wrap;gap:8px 16px}
+  body.co-chi-tiet .ke-dau h2{font-size:20px}
+  body.co-chi-tiet .them-viec{grid-template-columns:1fr 1fr}
+  body.co-chi-tiet .them-viec input[name=title],body.co-chi-tiet .them-viec .go{grid-column:1 / -1}
+}
 @media (max-width:900px){
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto}
@@ -441,10 +453,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   /* mặt A.I trên điện thoại: phụ đề có ô riêng dưới khung mặt — đè lên thì 3–4 dòng che kín lõi Bát Quái */
   body.mat-ai:not(.tap-trung) .xem[data-xem="do"]{padding-bottom:112px}
   body.mat-ai:not(.tap-trung) .loi-may{bottom:10px;font-size:14px;line-height:1.45}
-  .thu-vien{grid-template-columns:1fr;padding-top:60px}
+  .thu-vien{grid-template-columns:1fr;padding-top:74px}   /* chừa thanh Toàn cảnh / Thư viện / Việc — 60px thì tiêu đề dính sát thanh */
   .cay{border-right:0;border-bottom:1px solid var(--son-3);max-height:220px}
   .ke{padding:12px 16px 28px}
-  .viec-xem{padding:60px 16px 28px}
+  .viec-xem{padding:74px 16px 28px}
   .hai{grid-template-columns:1fr}
 }
 
@@ -522,7 +534,7 @@ body.mat-ai .noi-may{display:grid}
 
 /* tạo việc nhanh ở cột Việc */
 .them-viec{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,170px) auto;gap:8px;margin:10px 0 4px}
-.them-viec .go{width:auto;padding:10px 18px;white-space:nowrap}
+.them-viec .go{width:auto;padding:0 18px;white-space:nowrap;align-self:stretch;min-height:40px}   /* cao bằng các ô bên cạnh */
 .them-viec input{min-width:0}
 #sayViec{margin:4px 0 6px;min-height:1.2em}
 #sayViec .nho{margin-left:6px}

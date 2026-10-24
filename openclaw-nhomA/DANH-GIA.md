@@ -650,8 +650,10 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
   3. **Vân mặt dồn sát nhau ở mép hàm, dưới cằm** (các đường ôm hàm hội về cằm) → viền sáng: đoạn vân ở dải này dịu còn 55%.
   Mặt A.I vẫn 38 khung/giây.
 - Anh: "Miệng cần làm cho thấy rõ miệng hơn" — đã thử vẽ môi riêng (cung môi trên, môi dưới, lòng miệng tối khi mở); anh chọn
-  "Giữ miệng này" (miệng tạo từ chính các đường vân) và "chỉ cần 1 vạch sáng hơn" (khoanh khe môi). Bỏ bản môi riêng; khe môi
-  thêm một nét quầng mảnh + lõi sáng (dày theo cỡ đầu), các vân quanh miệng giữ nguyên.
+  "Giữ miệng này" (miệng tạo từ chính các đường vân) và "chỉ cần 1 vạch sáng hơn" (khoanh đỏ). Bỏ bản môi riêng. Lần đầu em làm
+  sáng nhầm vạch khe môi phía trên; anh báo "nhầm rồi — sáng chỗ khoanh đỏ": đúng ra là đường vân trong cùng ở giữa nhóm vòng môi
+  (y ≈ 0,79, rộng ~0,22 bán kính đầu) — mắt người đọc nó là "miệng". Nay chỉ vạch đó thêm quầng mảnh + lõi sáng (dày theo cỡ đầu),
+  hạ cùng môi dưới khi Mây nói; các vân quanh miệng giữ nguyên.
   - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
     trước và sau khi hỏi.
 

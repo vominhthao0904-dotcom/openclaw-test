@@ -928,9 +928,7 @@ function dungMoHinh() {
     themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 - 0.06 * Math.sin(Math.PI * t) * (1 - 0.25 * t)]), 0.62, 0.7, true, true, 0.03);
     themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 + 0.032 * Math.sin(Math.PI * t)]), 0.62, 0.55, true, true, 0.03);
   }
-  const truocKhe = manh.length;           // khe môi: đánh dấu để vẽ thêm một nét sáng hơn (anh khoanh: "chỉ cần 1 vạch sáng hơn")
   themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 0.62, 0.6, true, false, 0.03);
-  manh.slice(truocKhe).forEach((m) => { m.khe = true; });
   // cổ + vai + ngực liền một mạch với đầu: đường dòng theo (0,7·y − độ nhô) — trên cổ thành vòng ngang, xuống ngực loang
   // rộng, tới mép uốn theo dốc vai. Thân đứng yên, cổ xoay theo đầu một phần. Vân cổ chạy LIỀN lên tận dưới hàm; lúc vẽ,
   // phần nằm sau mặt bị che theo đường viền đầu của khung hình đó — đầu quay sang bên thì cổ lộ ra tới đâu có vân tới đó
@@ -960,6 +958,9 @@ function dungMoHinh() {
     }
   }
   manh.forEach((m) => {
+    // vạch giữa miệng: đường vân trong cùng của nhóm vòng môi (y ≈ 0,79, rộng ~0,22) — mắt người đọc nó là "miệng"; vẽ thêm một nét
+    // sáng hơn (anh khoanh đỏ: "chỉ cần 1 vạch sáng hơn"). Mây nói thì vạch hạ cùng môi dưới.
+    m.khe = m.laDau && !m.mi && m.pts.every(([x, y]) => Math.abs(x) < 0.14 && y > 0.775 && y < 0.8);
     // mảnh vân cổ sát dưới hàm (có thể bị mặt che khi đầu quay): chỉ những mảnh này phải vẽ qua lớp che — lớp che tốn công
     m.sauMat = !m.laDau && m.pts.some(([x, y]) => y < 1.35 && Math.abs(x) < 0.95);
     const n = m.pts.length;
@@ -2049,7 +2050,7 @@ function veMat(tg, diem) {
     g.lineWidth = 1;                     // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
     g.stroke();
   });
-  // khe môi: thêm một nét sáng hơn các đường vân (quầng mảnh + lõi sáng) — miệng rõ hơn, vẫn đúng kiểu vân
+  // vạch giữa miệng: thêm một nét sáng hơn các đường vân (quầng mảnh + lõi sáng) — miệng rõ hơn, vẫn đúng kiểu vân
   if (xong) {
     cx.beginPath();
     MH.manh.forEach((m) => {

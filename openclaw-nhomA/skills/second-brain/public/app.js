@@ -145,6 +145,9 @@ async function nap() {
   dungQuyDao();
   if (xem === 'thu-vien') veCay();
   if (xem === 'viec') napViec();
+  // tab Ôn đang mở: hộp "Chưa xếp chỗ" và nút Kho lưu đọc số từ kho vừa tải — vẽ lại. Trước đây mở lại trang thẳng vào tab Ôn
+  // thì hai phần này vẽ lúc kho chưa tải xong (tưởng trống) rồi không vẽ lại: mất nút "Kho lưu (26)".
+  if (!$('[data-pane="on"]').hidden) { veHopCho(); veKhoLuu(); }
 }
 
 /* Các ô chọn loại / vùng: đổ một lần, giữ lựa chọn đang có. */
@@ -2318,14 +2321,6 @@ function moTab(ten, luu = true) {
   if (ten === 'on') napHangOn();
   if (luu) try { localStorage.setItem('sb.tab', ten); } catch (_) { /* không lưu được thì thôi */ }
 }
-// Mở lại đúng tab lần trước. Lần đầu trên điện thoại/máy tính bảng: mở tab Tìm (gọn) thay vì form Thêm dài
-// cả màn hình — ghi chú trên điện thoại thường nhắn qua Telegram, còn trang web dùng để tra và xem.
-{
-  let t = null;
-  try { t = localStorage.getItem('sb.tab'); } catch (_) { /* bỏ qua */ }
-  if (!t || !document.querySelector(`.tabs [data-tab="${t}"]`)) t = matchMedia('(max-width:900px)').matches ? 'tim' : null;
-  if (t && t !== 'them') moTab(t, false);
-}
 // phím / (khi không đang gõ chữ): nhảy tới ô Tìm
 document.addEventListener('keydown', (e) => {
   if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -2368,6 +2363,7 @@ function veHopCho() {
 
 /* Kho lưu: nơi ghi chú hết thời nằm lại, không bị xoá. */
 let moKhoLuu = false;
+const moBoKho = new Set();     // bộ trang đang bung trong Kho lưu
 
 let luotKho = 0;
 async function veKhoLuu() {
@@ -2416,8 +2412,6 @@ async function veKhoLuu() {
   });
   le.forEach((x) => box.appendChild(dong(x)));
 }
-const moBoKho = new Set();     // bộ trang đang bung trong Kho lưu
-
 async function napHangOn() {
   veHopCho();
   veKhoLuu();
@@ -2978,6 +2972,16 @@ $('#napThat').addEventListener('click', () => napVao(false));
 /* ---------------- chạy ---------------- */
 window.addEventListener('resize', coLai);
 coLai();
+// Mở lại đúng tab lần trước. Lần đầu trên điện thoại/máy tính bảng: mở tab Tìm (gọn) thay vì form Thêm dài
+// cả màn hình — ghi chú trên điện thoại thường nhắn qua Telegram, còn trang web dùng để tra và xem.
+// Đặt ở cuối file: trước đây nằm giữa file, mở lại thẳng tab Ôn là chạy khi các biến của Kho lưu chưa khởi tạo → lỗi,
+// mất nút "Kho lưu".
+{
+  let t = null;
+  try { t = localStorage.getItem('sb.tab'); } catch (_) { /* bỏ qua */ }
+  if (!t || !document.querySelector(`.tabs [data-tab="${t}"]`)) t = matchMedia('(max-width:900px)').matches ? 'tim' : null;
+  if (t && t !== 'them') moTab(t, false);
+}
 nap().then(hienTheoLoai);
 requestAnimationFrame(vong);
 // dựng sẵn mô hình mặt A.I lúc máy rảnh (~0,3 giây) — lần đầu bấm lõi Bát Quái không bị khựng

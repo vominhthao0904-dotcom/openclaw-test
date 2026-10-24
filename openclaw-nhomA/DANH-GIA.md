@@ -512,6 +512,18 @@ API. Tìm ra và đã sửa:
 - Tab Ôn: máy chủ lỗi thì trước đây cũng hiện *"Chưa có gì để ôn"* (tưởng kho trống) — nay hiện đúng dòng lỗi. Hàng ôn trống
   trên máy anh là đúng: ghi chú phải cũ hơn 3 ngày mới vào hàng chờ, mà kho mới dùng từ 21/10.
 
+## Sau PR #20: mở lại trang ở tab Ôn thì mất nút "Kho lưu"
+- Ảnh của anh: tab Ôn chỉ còn "Chưa có gì để ôn", mất nút *Kho lưu (26)* (ảnh trước vẫn có). Anh tải lại trang lúc đang ở tab
+  Ôn — trang tự mở lại đúng tab đó. Hai lỗi chồng nhau:
+  1. Đoạn "mở lại tab lần trước" nằm giữa file, chạy trước khi các biến của Kho lưu được khởi tạo → lỗi JavaScript *"Cannot
+     access … before initialization"*. Bản cũ cũng dính (biến `moKhoLuu`), chỉ là lỗi nằm im; bộ đếm chống chạy chồng thêm ở
+     PR #19 làm lỗi lộ ra mỗi lần.
+  2. Kể cả không lỗi, tab Ôn được vẽ lúc kho chưa tải xong (tưởng 0 ghi chú cất kho) rồi không vẽ lại.
+- Sửa: đưa đoạn mở lại tab xuống cuối file (sau mọi khai báo); tải kho xong mà tab Ôn đang mở thì vẽ lại hộp "Chưa xếp chỗ" và
+  nút Kho lưu.
+- Bài thử mới: mở lại trang ở **từng tab** (Thêm · Nạp · Tìm · Hỏi · Ôn), máy tính và iPhone, đòi đúng tab, đủ nội dung, không
+  lỗi JavaScript (12/12); tải lại 3 lần ở tab Ôn vẫn có nút Kho lưu. Cả bộ rà soát trình duyệt chạy lại: 101/101.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

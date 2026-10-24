@@ -928,7 +928,9 @@ function dungMoHinh() {
     themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 - 0.06 * Math.sin(Math.PI * t) * (1 - 0.25 * t)]), 0.62, 0.7, true, true, 0.03);
     themDuong(cung(14, (t) => [b * (0.2 + 0.28 * t), 0.012 + 0.032 * Math.sin(Math.PI * t)]), 0.62, 0.55, true, true, 0.03);
   }
+  const truocKhe = manh.length;           // khe môi: đánh dấu để vẽ thêm một nét sáng hơn (anh khoanh: "chỉ cần 1 vạch sáng hơn")
   themDuong(cung(17, (t) => { const x = -0.21 + 0.42 * t; return [x, 0.725 + 0.012 * (x / 0.21) ** 2]; }), 0.62, 0.6, true, false, 0.03);
+  manh.slice(truocKhe).forEach((m) => { m.khe = true; });
   // cổ + vai + ngực liền một mạch với đầu: đường dòng theo (0,7·y − độ nhô) — trên cổ thành vòng ngang, xuống ngực loang
   // rộng, tới mép uốn theo dốc vai. Thân đứng yên, cổ xoay theo đầu một phần. Vân cổ chạy LIỀN lên tận dưới hàm; lúc vẽ,
   // phần nằm sau mặt bị che theo đường viền đầu của khung hình đó — đầu quay sang bên thì cổ lộ ra tới đâu có vân tới đó
@@ -2047,6 +2049,23 @@ function veMat(tg, diem) {
     g.lineWidth = 1;                     // đúng 1px: trình duyệt có đường vẽ nhanh riêng cho nét 1px (1,1px chậm gấp đôi)
     g.stroke();
   });
+  // khe môi: thêm một nét sáng hơn các đường vân (quầng mảnh + lõi sáng) — miệng rõ hơn, vẫn đúng kiểu vân
+  if (xong) {
+    cx.beginPath();
+    MH.manh.forEach((m) => {
+      if (!m.khe) return;
+      const b = m.b;
+      cx.moveTo(b[0], b[1]);
+      for (let j = 1; j < b.length / 2; j++) cx.lineTo(b[j * 2], b[j * 2 + 1]);
+    });
+    cx.lineCap = 'round';
+    cx.strokeStyle = `rgba(120,210,255,${(0.22 * phu).toFixed(3)})`;
+    cx.lineWidth = Math.max(2.5, 0.03 * u);
+    cx.stroke();
+    cx.strokeStyle = `rgba(195,238,255,${(0.88 * phu).toFixed(3)})`;
+    cx.lineWidth = Math.max(1.2, 0.011 * u);
+    cx.stroke();
+  }
   if (coSau) {
     gc.globalCompositeOperation = 'destination-out';
     gc.fill(vien);

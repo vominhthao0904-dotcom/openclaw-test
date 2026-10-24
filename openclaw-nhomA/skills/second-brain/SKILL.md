@@ -166,11 +166,16 @@ $BR show --id <id>                               # nội dung đủ + nguồn + 
 
 ```bash
 $BR add --title "Gọi chị Lan về bảo trì" --content "Hỏi tình trạng lõi, hẹn thay" --kind viec --due 2026-11-05 --category "Kinh doanh/Khách hàng" --tags khach-lan
-$BR viec                                         # quá hạn / hôm nay / 7 ngày tới / sau này / không hạn
+$BR viec                                         # chưa làm: quá hạn / hôm nay / 7 ngày tới / sau này / không hạn; dang_cho; dem
 $BR viec --xong <id>      |   $BR viec --mo-lai <id>
+$BR viec --cho <id>       |   $BR viec --het-cho <id>      # đang chờ người khác / chờ kết quả  |  hết chờ, về "chưa làm"
+$BR viec --tat-ca                                # thêm da_xong: 200 việc xong gần nhất (đếm đủ ở dem.da_xong)
 ```
 Hạn nhận `2026-11-05`, `5/11/2026`. Người dùng nói "thứ sáu", "tuần sau" → tự đổi ra ngày cụ thể và **đọc lại ngày** cho họ xác nhận.
-Khi người dùng hỏi "hôm nay có việc gì", chạy `viec` và nêu quá hạn trước. Việc không vào hàng chờ ôn.
+Khi người dùng hỏi "hôm nay có việc gì", chạy `viec` và nêu quá hạn trước; việc **đang chờ** (`dang_cho`, có `qua_han` riêng)
+nói tách ra sau: "đang chờ: chị Lan gửi báo giá (từ 3 ngày trước)". Việc không vào hàng chờ ôn.
+Người dùng nói "đã gửi, chờ chị Lan trả lời" / "đang đợi kết quả" cho một việc → `viec --cho <id>` (nhắc lại tên việc trước);
+"xong rồi" → `--xong` (tự hết chờ). `--cho` không áp cho việc đã xong. Trên web: lọc Chưa làm · Đang chờ · Đã xong · Tất cả.
 
 ## 6. Thứ gì mất được, thứ gì không
 
@@ -239,7 +244,7 @@ OpenClaw từ chối `openclaw agent` từ exec (chốt an toàn: lượt hỏi 
 chạy. Không gỡ biến đó, không lách bằng đường CLI khác. Người dùng cần ô Hỏi, hoặc sau khi cập nhật skill cần khởi động lại web:
 gửi họ lệnh `bash {baseDir}/scripts/web.sh restart` để **tự chạy** trong Termius, thay vì tự chạy hộ.
 Ba chế độ xem: **Toàn cảnh** (đồ thị quanh lõi Thái Cực – Tiên Thiên Bát Quái, mỗi vòng một vùng), **Thư viện** (cây vùng/nhóm có số đếm, lọc theo
-loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (quá hạn / hôm nay / sắp tới, tích xong).
+loại và thẻ, sắp xếp, phân trang — truy xuất có hệ thống), **Việc** (tạo nhanh; lọc Chưa làm · Đang chờ · Đã xong · Tất cả; tích xong, nút Chờ).
 Cột trái: **Thêm** (có loại, nhóm gợi ý từ cây, hạn, trích dẫn) · **Nạp** (kéo thả .md/.txt/Word .docx/PDF hoặc dán, xem trước; mặc định mỗi file 1 ghi chú) ·
 **Tìm** (lọc loại/vùng) · **Hỏi** (Mây trả lời từ kho, dẫn nguồn) · **Ôn**. Thẻ chi tiết hiện đường dẫn nhóm bấm được,
 nguồn, trích dẫn, hạn, ghi chú liên kết.

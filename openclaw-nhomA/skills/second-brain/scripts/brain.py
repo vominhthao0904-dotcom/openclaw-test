@@ -41,7 +41,7 @@ KINDS = {
 }
 MAX_TANG = 3                                   # Vùng / Nhóm / Nhóm con — sâu hơn thì khó tìm, không dễ hơn
 COLS = ("id,title,content,category,tags,source,url,created_at,updated_at,reviewed_at,status,"
-        "kind,cite,due,done_at,content_hash")
+        "kind,cite,due,done_at,content_hash,waiting_at")
 CON = "status='active'"                        # ghi chú đang dùng; 'archived' là đã cất kho
 # "chưa xếp chỗ" = thiếu nhóm hoặc thẻ. Việc (kind viec) không tính: việc đã có chỗ ở danh sách Việc, tạo nhanh chỉ có tên +
 # hạn — tính vào thì mỗi việc vặt lại thành một lời nhắc phân loại
@@ -187,7 +187,7 @@ def nang_cap(db):
     for ten, kieu in (("url", "TEXT DEFAULT ''"), ("reviewed_at", "TEXT"),
                       ("status", "TEXT DEFAULT 'active'"), ("kind", "TEXT DEFAULT 'kien-thuc'"),
                       ("cite", "TEXT DEFAULT ''"), ("due", "TEXT"), ("done_at", "TEXT"),
-                      ("content_hash", "TEXT")):
+                      ("content_hash", "TEXT"), ("waiting_at", "TEXT")):
         if ten not in co:
             db.execute(f"ALTER TABLE notes ADD COLUMN {ten} {kieu}")
             them = True
@@ -348,13 +348,13 @@ def row_dict(r, snippet=None):
 
 def them_note(db, nid, title, content, category="", tags="", source="chat", url="",
               created=None, updated=None, reviewed=None, status="active",
-              kind="kien-thuc", cite="", due=None, done_at=None):
+              kind="kien-thuc", cite="", due=None, done_at=None, waiting_at=None):
     t = now()
     title, content = gon(title), content.strip()
-    db.execute(f"INSERT INTO notes({COLS}) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    db.execute(f"INSERT INTO notes({COLS}) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                (nid, title, content, category, tags, source, url,
                 created or t, updated or t, reviewed, status or "active",
-                kind or "kien-thuc", cite or "", due, done_at, van_tay(title, content)))
+                kind or "kien-thuc", cite or "", due, done_at, van_tay(title, content), waiting_at))
 
 
 def viec_lap_lai(r, viec_han):
@@ -815,7 +815,8 @@ def cmd_restore(a, db):
               norm_tags(",".join(tags) if isinstance(tags, list) else (tags or "")),
               d.get("source", "other"), d.get("url", ""),
               d.get("created_at"), now(), d.get("reviewed_at"), "active",
-              chuan_kind(d.get("kind")) or "kien-thuc", d.get("cite") or "", d.get("due"), d.get("done_at"))
+              chuan_kind(d.get("kind")) or "kien-thuc", d.get("cite") or "", d.get("due"), d.get("done_at"),
+              d.get("waiting_at"))
     db.commit()
     out({"ok": True, "lay_lai": nid, "title": d["title"], "tu_file": str(f)})
 
@@ -1236,7 +1237,7 @@ def cmd_export(a, db):
             if n.get("cite"):
                 dong += f"\n\nTrích dẫn: {n['cite']}"
             if n.get("due"):
-                dong += f"\n\nHạn: {n['due']}" + (" (đã xong)" if n.get("done_at") else "")
+                dong += f"\n\nHạn: {n['due']}" + (" (đã xong)" if n.get("done_at") else " (đang chờ)" if n.get("waiting_at") else "")
             parts.append(f"# {n['title']}\n\n{dong}\n\n{n['content']}\n")
         dest.write_text("\n---\n\n".join(parts), encoding="utf-8")
     out({"ok": True, "file": str(dest), "notes": len(rows), "format": a.format})
@@ -1271,7 +1272,7 @@ def cmd_import(a, db):
                   # giữ nguyên trạng thái: nhập lại bản sao lưu không được làm sống dậy ghi chú đã cất kho
                   "archived" if it.get("status") == "archived" else "active",
                   chuan_kind(it.get("kind")) or "kien-thuc", it.get("cite") or "",
-                  it.get("due"), it.get("done_at"))
+                  it.get("due"), it.get("done_at"), it.get("waiting_at"))
         added += 1
     db.commit()
     out({"ok": True, "added": added, "skipped_duplicate_or_empty": skipped, "backup": str(b) if b else None})
@@ -1320,38 +1321,62 @@ def cmd_kinds(a, db):
 def danh_dau_viec(db, ids, xong=True):
     n = 0
     for i in [x.strip() for x in ids.split(",") if x.strip()]:
-        n += db.execute("UPDATE notes SET done_at=?, updated_at=? WHERE id=? AND kind='viec'",
+        # xong thì hết chờ; mở lại việc đã xong là việc cần làm tiếp (không quay về "đang chờ")
+        n += db.execute("UPDATE notes SET done_at=?, waiting_at=NULL, updated_at=? WHERE id=? AND kind='viec'",
                         (now() if xong else None, now(), i)).rowcount
+    db.commit()
+    return n
+
+
+def danh_dau_cho(db, ids, cho=True):
+    """Việc đang chờ: chờ người khác / chờ kết quả — chưa xong nhưng chưa phải việc mình làm được ngay."""
+    n = 0
+    for i in [x.strip() for x in ids.split(",") if x.strip()]:
+        n += db.execute("UPDATE notes SET waiting_at=?, updated_at=? WHERE id=? AND kind='viec' AND done_at IS NULL",
+                        (now() if cho else None, now(), i)).rowcount
     db.commit()
     return n
 
 
 def cmd_viec(a, db):
     """Việc cần làm: một loại ghi chú có hạn và trạng thái xong."""
-    for ids, xong in ((a.xong, True), (a.mo_lai, False)):
+    for ids, ham, gt in ((a.xong, danh_dau_viec, True), (a.mo_lai, danh_dau_viec, False),
+                         (a.cho, danh_dau_cho, True), (a.het_cho, danh_dau_cho, False)):
         if ids:
-            n = danh_dau_viec(db, ids, xong)
-            out({"ok": bool(n), "da_cap_nhat": n, **({} if n else {"error": "Không thấy việc nào với id đó"})},
+            n = ham(db, ids, gt)
+            out({"ok": bool(n), "da_cap_nhat": n,
+                 **({} if n else {"error": "Không thấy việc nào với id đó" + (" (hoặc việc đã xong)" if ham is danh_dau_cho else "")})},
                 0 if n else 2)
     out({"ok": True, **ds_viec(db, a.category, a.tat_ca),
-         "note": "Thêm việc: add --kind viec --due 2026-11-05. Xong: viec --xong <id>."})
+         "note": "Thêm việc: add --kind viec --due 2026-11-05. Xong: viec --xong <id>. Đang chờ người khác: viec --cho <id>."})
+
+
+VIEC_XONG_TOI_DA = 200          # danh sách "đã xong" chỉ trả các việc xong gần nhất — kho dùng lâu có hàng nghìn
 
 
 def ds_viec(db, category=None, tat_ca=False):
+    """Việc chưa làm (theo hạn: quá hạn / hôm nay / 7 ngày tới / sau này / không hạn), đang chờ, và (tat_ca) đã xong."""
     where, params = [CON, "kind='viec'"], []
-    if not tat_ca:
-        where.append("done_at IS NULL")
     loc_nhom(where, params, category)
-    rows = db.execute("SELECT * FROM notes WHERE " + " AND ".join(where) +
-                      " ORDER BY done_at IS NOT NULL, due IS NULL, due, created_at", params).fetchall()
+    w = " AND ".join(where)
+    rows = db.execute(f"SELECT * FROM notes WHERE {w} AND done_at IS NULL ORDER BY due IS NULL, due, created_at",
+                      params).fetchall()
+    xong = db.execute(f"SELECT * FROM notes WHERE {w} AND done_at IS NOT NULL ORDER BY done_at DESC LIMIT ?",
+                      params + [VIEC_XONG_TOI_DA]).fetchall() if tat_ca else []
+    so_xong = db.execute(f"SELECT count(*) FROM notes WHERE {w} AND done_at IS NOT NULL", params).fetchone()[0]
     hom_nay = datetime.now().strftime("%Y-%m-%d")
     tuan = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-    nhom = {"qua_han": [], "hom_nay": [], "7_ngay_toi": [], "sau_nay": [], "khong_han": [], "da_xong": []}
-    for r in rows:
+    nhom = {"qua_han": [], "hom_nay": [], "7_ngay_toi": [], "sau_nay": [], "khong_han": [], "dang_cho": [], "da_xong": []}
+    for r in list(rows) + list(xong):
         d = {"id": r["id"], "title": r["title"], "due": r["due"], "category": r["category"],
              "tom_tat": rut_gon(r["content"], 120)}
         if r["done_at"]:
+            d["done_at"] = r["done_at"]
             nhom["da_xong"].append(d)
+        elif r["waiting_at"]:
+            d["waiting_at"] = r["waiting_at"]
+            d["qua_han"] = bool(r["due"] and r["due"] < hom_nay)
+            nhom["dang_cho"].append(d)
         elif not r["due"]:
             nhom["khong_han"].append(d)
         elif r["due"] < hom_nay:
@@ -1362,8 +1387,10 @@ def ds_viec(db, category=None, tat_ca=False):
             nhom["7_ngay_toi"].append(d)
         else:
             nhom["sau_nay"].append(d)
-    return {"dang_mo": sum(len(v) for k, v in nhom.items() if k != "da_xong"),
-            **{k: v for k, v in nhom.items() if v or k != "da_xong"}}
+    cho = len(nhom["dang_cho"])
+    return {"dang_mo": len(rows),          # chưa xong = chưa làm + đang chờ
+            "dem": {"chua_lam": len(rows) - cho, "dang_cho": cho, "da_xong": so_xong},
+            **{k: v for k, v in nhom.items() if v or k not in ("da_xong", "dang_cho")}}
 
 
 # ---------------- nạp kiến thức từ nhiều nguồn ----------------
@@ -1838,6 +1865,8 @@ def main():
     s = sub.add_parser("kinds", help="các loại kiến thức"); s.set_defaults(fn=cmd_kinds)
     s = sub.add_parser("viec", help="công việc: quá hạn / hôm nay / sắp tới")
     s.add_argument("--xong", help="đánh dấu xong: id1,id2"); s.add_argument("--mo-lai", dest="mo_lai")
+    s.add_argument("--cho", help="đánh dấu đang chờ (người khác / kết quả): id1,id2")
+    s.add_argument("--het-cho", dest="het_cho", help="hết chờ, đưa về việc chưa làm: id1,id2")
     s.add_argument("--category"); s.add_argument("--tat-ca", dest="tat_ca", action="store_true")
     s.set_defaults(fn=cmd_viec)
     s = sub.add_parser("nap", help="nạp hàng loạt: .md .txt .pdf .csv .json .html, cả thư mục; - = stdin")

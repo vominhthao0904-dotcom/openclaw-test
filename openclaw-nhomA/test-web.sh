@@ -190,6 +190,11 @@ check "việc lặp lại: cùng tên, khác hạn thêm được" \
   'post /api/add "{\"title\":\"Gọi chị Lan báo giá\",\"content\":\"\",\"kind\":\"viec\",\"due\":\"2030-01-12\"}" | jq_ "d[\"ok\"]"' "True"
 check "việc cùng tên, cùng hạn: báo trùng" \
   'post /api/add "{\"title\":\"Gọi chị Lan báo giá\",\"content\":\"\",\"kind\":\"viec\",\"due\":\"12/1/2030\"}" | jq_ "(d[\"ok\"], bool(d.get(\"trung_id\")))"' "(False, True)"
+WID=$(curl -sS "$U/api/tasks" | jq_ '[v["id"] for v in d.get("7_ngay_toi",[])+d.get("sau_nay",[]) if v["due"]=="2030-01-05"][0]')
+check "việc đang chờ qua web" 'post /api/task "{\"id\":\"'"$WID"'\",\"cho\":true}" >/dev/null; curl -sS "$U/api/tasks" | jq_ "([v[\"id\"] for v in d[\"dang_cho\"]], d[\"dem\"][\"dang_cho\"])"' "(['$WID'], 1)"
+check "thẻ Thư viện biết việc đang chờ" 'curl -sS "$U/api/library?kind=viec" | jq_ "any(n[\"id\"]==\"'"$WID"'\" and n[\"waiting_at\"] for n in d[\"notes\"])"' "True"
+check "hết chờ qua web" 'post /api/task "{\"id\":\"'"$WID"'\",\"cho\":false}" >/dev/null; curl -sS "$U/api/tasks" | jq_ "d[\"dem\"][\"dang_cho\"]"' "0"
+check "việc đã xong không chuyển sang chờ" 'post /api/task "{\"id\":\"'"$VID"'\",\"cho\":true}" | jq_ "d[\"ok\"]"' "False"
 check "sửa loại + nhóm qua web" \
   'post /api/update "{\"id\":\"'"$VID"'\",\"kind\":\"nhat-ky\",\"category\":\"Kinh doanh/Họp\"}" >/dev/null; curl -sS "$U/api/note?id='"$VID"'" | jq_ "(d[\"note\"][\"kind\"], d[\"note\"][\"category\"])"' "('nhat-ky', 'Kinh doanh/Họp')"
 check "nạp: xem trước không ghi" \

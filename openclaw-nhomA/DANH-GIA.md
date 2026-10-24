@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **139** |
-| Test `test-web.sh` | 30 | **95** |
+| Test `test-brain.sh` | 50 | **147** |
+| Test `test-web.sh` | 30 | **99** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -565,7 +565,21 @@ phụ đề ở mọi cỡ màn hình. Lỗi tìm được và đã sửa:
 - **Việc chưa có nhóm bị đếm vào "Chưa xếp chỗ"** (trang web, `inbox`, `stats`) — việc sống theo hạn, không cần xếp vào vùng;
   nay không tính, dòng việc cũng không ghi "Chưa xếp chỗ".
 - +4 test brain (139; VPS có crontab 140), +4 test web (95; exec 92). Trình duyệt: 12 bước tạo việc (máy tính + iPhone) cùng toàn
-  bộ các lượt rà trước chạy lại.
+  bộ các lượt rà trước chạy lại (239/239).
+
+## Bộ lọc việc: Chưa làm · Đang chờ · Đã xong · Tất cả
+Anh hỏi: "Thiếu bộ lọc: việc đã làm, việc chưa làm, việc chờ…". Trước chỉ có ô "Hiện việc đã xong".
+- Việc có thêm trạng thái **đang chờ** (đã làm phần mình, đợi người khác / đợi kết quả): cột mới `waiting_at` (thời điểm bắt đầu
+  chờ). Kho cũ mở lần đầu bằng bản này tự thêm cột — chỉ thêm cột trống, không đổi ghi chú nào (file kho vì thế đổi mã SHA).
+- Web: dải lọc kèm số đếm, trình duyệt nhớ lựa chọn; nút **Chờ / Làm tiếp** ở từng dòng và trong thẻ chi tiết; *Đang chờ* ghi
+  "đang chờ từ …"; *Đã xong* xếp việc xong gần nhất trước (200 việc, đếm đủ), bỏ tích là mở lại; thẻ Thư viện ghi "đang chờ".
+- Xong thì tự hết chờ; mở lại việc đã xong là việc chưa làm; việc đã xong không chuyển sang chờ được. Bấm lọc liên tục chỉ vẽ
+  kết quả lần bấm cuối. Đầu trang "N việc đang mở" vẫn gồm việc đang chờ.
+- Mây: `viec --cho <id>` / `--het-cho <id>`; `viec` trả thêm `dang_cho` và `dem` (chua_lam / dang_cho / da_xong); `--tat-ca`
+  trả việc xong mới nhất trước. Sao lưu, xuất, nhập lại, khôi phục ghi chú đã xoá đều giữ trạng thái chờ.
+- Sửa kèm: thẻ Thư viện của việc tạo nhanh không còn lặp tên hai lần (nội dung = tên).
+- +8 test brain (147; VPS có crontab 148; có test kho của bản trước tự thêm cột, giữ dữ liệu), +4 test web (99; exec 96).
+  Trình duyệt: 22 bước lọc / chờ / xong / mở lại / nhớ lọc / thẻ chi tiết / Thư viện / iPhone.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

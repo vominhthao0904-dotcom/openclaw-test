@@ -142,7 +142,7 @@ def api_library(conn, q, _body):
     lim, off = _so(q, "limit", 40, 1, 100), _so(q, "offset", 0, 0, 10 ** 6)
     w = " AND ".join(where)
     tong = conn.execute(f"SELECT count(*) FROM notes WHERE {w}", params).fetchone()[0]
-    rows = conn.execute("SELECT id,title,category,tags,source,url,cite,kind,due,done_at,created_at,updated_at,"
+    rows = conn.execute("SELECT id,title,category,tags,source,url,cite,kind,due,done_at,waiting_at,created_at,updated_at,"
                         "reviewed_at,status,substr(replace(content,char(10),' '),1,220) AS preview "
                         f"FROM notes WHERE {w} ORDER BY {sap}, rowid DESC LIMIT ? OFFSET ?",
                         params + [lim, off]).fetchall()
@@ -171,7 +171,11 @@ def api_tasks(conn, q, _body):
 
 
 def api_task_done(conn, _q, body):
+    """{id, xong: true/false} đánh dấu xong / mở lại; {id, cho: true/false} đang chờ / hết chờ."""
     with _lock:
+        if "cho" in body:
+            n = brain.danh_dau_cho(conn, str(body.get("id") or ""), bool(body.get("cho")))
+            return {"ok": True} if n else {"ok": False, "error": "Không thấy việc này, hoặc việc đã xong"}
         n = brain.danh_dau_viec(conn, str(body.get("id") or ""), bool(body.get("xong", True)))
     return {"ok": bool(n)} if n else {"ok": False, "error": "Không thấy việc này"}
 

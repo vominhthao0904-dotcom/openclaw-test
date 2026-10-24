@@ -248,6 +248,16 @@ check "việc cùng tên + cùng hạn: không thêm" \
   'BR add --title "Nộp báo cáo tuần phòng kinh doanh" --content "báo cáo doanh số tuần" --kind viec --due 12/1/2030 | jq_ "d.get(\"da_them\")"' "False"
 check "duplicates bỏ qua việc lặp lại" \
   'BR duplicates | jq_ "any(\"phòng kinh doanh\" in c[\"tieu_de_a\"] for c in d[\"cap\"])"' "False"
+CID=$(BR add --title "Chờ anh Tâm ký hợp đồng" --content "đã gửi bản ký" --kind viec --due 2030-02-01 | jq_ 'd["id"]')
+check "việc đang chờ: viec --cho" 'BR viec --cho '"$CID"' >/dev/null; BR viec | jq_ "([v[\"id\"] for v in d[\"dang_cho\"]], d[\"dem\"][\"dang_cho\"])"' "(['$CID'], 1)"
+check "việc đang chờ rời các nhóm theo hạn" \
+  'BR viec | jq_ "any(v[\"id\"]==\"'"$CID"'\" for k in (\"qua_han\",\"hom_nay\",\"7_ngay_toi\",\"sau_nay\",\"khong_han\") for v in d.get(k,[]))"' "False"
+check "việc đang chờ vẫn tính là việc đang mở" 'BR viec | jq_ "d[\"dang_mo\"] == d[\"dem\"][\"chua_lam\"] + d[\"dem\"][\"dang_cho\"]"' "True"
+check "hết chờ: viec --het-cho" 'BR viec --het-cho '"$CID"' >/dev/null; BR viec | jq_ "(\"dang_cho\" in d, d[\"dem\"][\"dang_cho\"])"' "(False, 0)"
+check "xong thì hết chờ, mở lại là việc chưa làm" \
+  'BR viec --cho '"$CID"' >/dev/null; BR viec --xong '"$CID"' >/dev/null; BR viec --mo-lai '"$CID"' >/dev/null; BR viec | jq_ "d[\"dem\"][\"dang_cho\"]"' "0"
+check "việc đã xong không chuyển sang chờ" 'BR viec --cho '"$VID"' | jq_ "d[\"ok\"]"' "False"
+check "viec --tat-ca: đã xong mới nhất trước, có đếm" 'BR viec --tat-ca | jq_ "(d[\"da_xong\"][0][\"id\"], d[\"dem\"][\"da_xong\"] >= 1)"' "('$VID', True)"
 check "tìm theo loại" 'BR search "gốc" --kind kien-thuc | jq_ "d[\"count\"] >= 1"' "True"
 
 echo
@@ -430,6 +440,19 @@ check "sửa kho bằng công cụ khác: doctor phát hiện" 'BR doctor | jq_ 
 check "doctor --fix dựng lại, tìm ra nội dung mới" 'BR doctor --fix >/dev/null; BR search "do lun coc thu tinh" | jq_ "d[\"count\"]"' "1"
 python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute('DROP TABLE notes_kd');c.commit()" "$SECOND_BRAIN_DB"
 check "kho tạo bằng bản cũ: tự dựng chỉ mục" 'BR search "nghiem thu mong" | jq_ "d[\"count\"]"' "1"
+# kho của bản trước (chưa có cột waiting_at — kho trên máy anh trước bản này): mở là tự thêm cột, giữ nguyên ghi chú
+SECOND_BRAIN_DB="$TMP/ban-truoc.sqlite" BR add --title "Ghi chú bản trước" --content "Nội dung có sẵn" --kind viec >/dev/null
+python3 - "$TMP/ban-truoc.sqlite" <<'PY'
+import sqlite3, sys
+c = sqlite3.connect(sys.argv[1])
+try:                     # DROP COLUMN cần SQLite >= 3.35; máy cũ hơn thì kiểm phần còn lại (mở được, giữ dữ liệu)
+    c.execute("ALTER TABLE notes DROP COLUMN waiting_at"); c.commit()
+except sqlite3.OperationalError:
+    pass
+PY
+check "kho bản trước: tự thêm cột chờ, giữ dữ liệu" \
+  'SECOND_BRAIN_DB="$TMP/ban-truoc.sqlite" BR viec | jq_ "(d[\"dang_mo\"], d[\"dem\"][\"dang_cho\"])"; python3 -c "import sqlite3,sys;print(\"waiting_at\" in {r[1] for r in sqlite3.connect(sys.argv[1]).execute(\"PRAGMA table_info(notes)\")})" "$TMP/ban-truoc.sqlite"' "(1, 0)
+True"
 check "ghi bằng giọng nói: --source voice" \
   'BR add --title "Gọi chị Lan thứ sáu" --content "Hỏi lịch thay lõi lọc" --kind viec --source voice --tags giong-noi >/dev/null; BR list --source voice | jq_ "d[\"count\"]"' "1"
 check "rà ghi chú giọng nói theo thẻ" 'BR list --tag giong-noi | jq_ "d[\"notes\"][0][\"title\"]"' "Gọi chị Lan thứ sáu"

@@ -400,6 +400,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .ten-viec b{display:block;font-weight:600;font-size:14.5px}
 .ten-viec span{display:block;color:var(--trung-mo);font-size:12.5px;margin-top:2px}
 .khoi-viec.da_xong .ten-viec b{text-decoration:line-through;color:var(--trung-mo)}
+.khoi-viec.dang_cho h3{color:#9DB4E0}
+.dong-viec.dang-cho{border-style:dashed}
+.dong-viec .nut-cho{flex:none;align-self:center;padding:5px 12px;font-size:12.5px;white-space:nowrap}
+.loc-viec{margin:4px 0 16px}
 
 /* ---------- thẻ chi tiết: nguồn gốc kiến thức ---------- */
 .vun{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 30px 10px 0;font-size:12.5px}
@@ -453,6 +457,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   .nut-toc{width:36px;height:36px}
   input[type=checkbox]{width:22px;height:22px}
   .chip{min-height:36px}
+  .dong-viec .nut-cho{min-height:36px}
   .nut-cay,.mui{min-height:38px}
   .tabs button{min-height:44px}
 }

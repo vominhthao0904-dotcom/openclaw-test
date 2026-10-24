@@ -587,8 +587,9 @@ function ve() {
     cx.fillText(t, x0, p.y);
   });
 
-  // đứng yên: dùng hình vẽ đúng cỡ (nét sắc); đang co/giãn: thu phóng hình cỡ lớn cho mượt
-  const dungYen = RK === banKinhLoi() || RK === banKinhLoiTo();
+  // đứng yên (không co/giãn, không đang chuyển cảnh — lúc đó cỡ lõi đổi từng khung): dùng hình vẽ đúng cỡ (nét sắc);
+  // đang co/giãn: thu phóng hình cỡ lớn cho mượt
+  const dungYen = (kMat === 0 || kMat === 1) && (RK === banKinhLoi() || RK === banKinhLoiTo());
   const hinh = hinhThaiCuc(dungYen ? RK : banKinhLoiTo());
   const s = (RK * 2 + 4) / ((dungYen ? RK : banKinhLoiTo()) * 2 + 4);
   const w = hinh.width / DV * s;
@@ -2156,7 +2157,9 @@ const MAU_DUONG = '#E6C46A', MAU_AM = '#2563C4', NAVY_LOI = '#0C2147', NAVY_VANH
 let hoverLoi = false;
 
 /* Lõi nhỏ gọn cỡ chữ BRAIN cũ khi nhìn tổng thể; rê chuột vào thì phóng to mượt để xem rõ quẻ. */
-const banKinhLoi = () => 30;                                          // lúc nghỉ: Ø 60px
+// lúc nghỉ: Ø 60px. Mặt A.I: lõi xuống giữa ngực thì co theo cỡ đầu (~0,18 bán kính đầu: laptop Ø ~48px, điện thoại Ø 30px) —
+// giữ 60px thì trên điện thoại lõi to gần nửa bề ngang đầu, lệch với thân
+const banKinhLoi = () => { const e = em(0.45, 0.95, kMat); return e > 0 ? Math.round((30 + (keo(0.18 * MAT.u, 15, 30) - 30) * e) * 2) / 2 : 30; };
 const banKinhLoiTo = () => Math.max(56, Math.min(92, banKinh() * 0.22)); // lúc rê chuột
 let rkHienTai = 30;                                                   // bán kính đang vẽ (đang co/giãn)
 

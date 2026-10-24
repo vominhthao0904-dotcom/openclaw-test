@@ -2425,7 +2425,9 @@ async function napHangOn() {
   box.textContent = 'Đang lấy…';
   const r = await api('/api/review?limit=5');
   box.innerHTML = '';
-  if (!r.ok || !r.notes.length) {
+  // máy chủ lỗi thì nói lỗi — trước đây cũng hiện "Chưa có gì để ôn", tưởng kho trống
+  if (!r.ok) { box.appendChild(el('p', 'none', r.error || 'Không lấy được hàng ôn')); return; }
+  if (!r.notes.length) {
     box.innerHTML = '<p class="none">Chưa có gì để ôn. Ghi chú cần cũ hơn 3 ngày mới vào hàng chờ.</p>';
     return;
   }

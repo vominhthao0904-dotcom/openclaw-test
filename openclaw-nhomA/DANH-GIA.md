@@ -509,6 +509,8 @@ API. Tìm ra và đã sửa:
   cũ, không lỗi. Lệnh kiểm bằng mắt trong CAI-DAT thêm `--agent main`.
 - test-brain ra 130 trên VPS mà tài liệu ghi 129: một mục (đặt lịch Drive giữ nguyên lịch khác) chỉ chạy khi có `crontab`.
   Tài liệu ghi rõ.
+- Tab Ôn: máy chủ lỗi thì trước đây cũng hiện *"Chưa có gì để ôn"* (tưởng kho trống) — nay hiện đúng dòng lỗi. Hàng ôn trống
+  trên máy anh là đúng: ghi chú phải cũ hơn 3 ngày mới vào hàng chờ, mà kho mới dùng từ 21/10.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -708,9 +708,12 @@ trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ t
 6. **Miệng nhép khi nói**: môi dưới hạ theo nhịp nói (tối đa ~0,032 bán kính đầu ở giữa, 0 ở khoé), cả khối môi dưới dời nguyên,
    cằm co lại cho khớp nên không lộ đường nối; lòng miệng hé màu xanh đêm có ánh xanh ở giữa, vạch sáng giữa miệng vẫn trên cùng.
    Nhịp miệng đổi |sin| → sin² và lọc mượt từng khung: khép mềm, không gập góc (dùng chung cho đầu đường vân).
-- **Trang không tự dịch**: ảnh anh chụp trên Edge — trình duyệt tự dịch trang sang tiếng Anh, dịch sai nút ("Hỏi" → "Q",
-  "Nạp" → "Recharge", "Mây" → "Cloud") và cả nội dung ghi chú. Thêm `translate="no"`, lớp `notranslate` và
-  `<meta name="google" content="notranslate">`: Edge, Chrome không dịch nữa.
+- **Bát Quái chỉ hai màu vàng kim – xanh lam** (anh nhắc lại): nền vành quẻ và vành quanh Thái Cực trước là xanh đêm gần như
+  đen (`#0B1E33`, `#112638`) — đổi sang hai sắc xanh lam đậm (`#062A6E`, `#08337F`). Bài thử đếm điểm ảnh của lõi: chỉ còn vàng
+  kim, xanh lam và viền chuyển giữa hai màu, không còn điểm đen / xám đậm. Áp dụng cả lõi ở Toàn cảnh lẫn lõi trên ngực mặt A.I.
+- **Tab "Hỏi" thành "Q" khi dịch sang tiếng Anh** (anh bấm nút dịch của Edge để thử): không phải cột hẹp — các tab chia đều
+  bề ngang, "Recharge" 8 chữ vẫn vừa. Bộ dịch của Edge dịch từng chữ đứng riêng nên đoán sai: "Hỏi" → "Q", "Thêm" → "More",
+  "Nạp" → "Recharge", "Việc" → "The". Nhãn tiếng Việt chưa đổi (chờ anh chọn cách); trang vẫn cho dịch như cũ (bản thử chặn dịch đã bỏ).
 - Tốc độ: máy thử 1x 61 khung/giây (kho thường và kho 80 ghi chú), 2x ~30–35 — như trước.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)

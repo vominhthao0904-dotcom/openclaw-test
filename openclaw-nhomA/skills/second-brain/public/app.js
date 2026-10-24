@@ -2264,8 +2264,10 @@ const BAT_QUAI = [
   ['Ly', [1, 0, 1], 180, 'Đông', 3],
   ['Đoài', [1, 1, 0], -135, 'Đông Nam', 2],
 ];
-// hai màu chủ đạo vàng kim – xanh lam (đo trên Bát Quái của ảnh mẫu anh chọn: vàng 241,197,88; lam 6,68,149; vành tối)
-const MAU_DUONG = '#F1C558', MAU_AM = '#0A47A0', NAVY_LOI = '#0B1E33', NAVY_VANH = '#112638';
+// Bát Quái chỉ hai màu: vàng kim và xanh lam (anh: "Bát Quái chỉ 2 màu là blue và vàng kim"; vàng 241,197,88 và lam 6,68,149
+// đo trên Bát Quái của ảnh mẫu). Nền vành quẻ và vành quanh Thái Cực trước là xanh đêm gần như đen — nay là hai sắc xanh lam
+// đậm (đậm hơn nửa Âm để quẻ vàng nổi rõ và Thái Cực vẫn tách khỏi vành).
+const MAU_DUONG = '#F1C558', MAU_AM = '#0A47A0', NAVY_LOI = '#062A6E', NAVY_VANH = '#08337F';
 let hoverLoi = false;
 
 /* Lõi nhỏ gọn cỡ chữ BRAIN cũ khi nhìn tổng thể; rê chuột vào thì phóng to mượt để xem rõ quẻ. */

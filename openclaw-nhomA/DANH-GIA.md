@@ -498,11 +498,14 @@ API. Tìm ra và đã sửa:
 
 ## Sau PR #19: `kiemtra.sh` báo oan 23/27 trên máy nhiều agent
 - Mây cài PR #19 đúng (kho không đổi, 130/130, 91/91), nhưng `kiemtra.sh` báo 4 skill "OpenClaw chưa thấy". Máy anh có nhiều
-  agent; `openclaw skills list` trơn xem kho skill của **agent mặc định** (OpenClaw 2026.9.6: `--agent`, rồi thư mục đang đứng,
-  rồi agent mặc định), còn 4 skill nằm trong workspace của `main`. Thêm `--agent main` thì 27/27.
+  agent; `openclaw skills list` không kèm `--agent` thì OpenClaw 2026.9.6 chọn agent theo thứ tự: `--agent`, rồi **thư mục đang
+  đứng** (nằm trong workspace của agent nào thì xem kho agent đó), rồi agent mặc định. Mây kiểm lại (chỉ đọc): Telegram và agent
+  mặc định đều là `main` — nên chỗ lệch không phải agent mặc định mà nhiều khả năng là thư mục đang đứng lúc chạy script (thư
+  mục giải nén gói) nằm trong workspace của agent khác. 4 skill nằm trong workspace của `main`; thêm `--agent main` thì 27/27,
+  và Mây trên Telegram dùng đủ 4 skill.
 - Nay script tự tìm agent có workspace chứa thư mục skills (`openclaw agents list --json`) rồi kiểm đúng agent đó, in dòng
   *(kiểm kho skill của agent: …)*; thêm tuỳ chọn `--agent <id>`; không tự tìm được thì gợi ý `--agent main` ngay trong dòng
-  báo lỗi. Thử với openclaw giả 2 agent (mặc định là agent khác): bản cũ báo oan, bản mới 4/4; `agents list` hỏng thì về cách
+  báo lỗi. Ghi rõ `--agent` thì OpenClaw bỏ qua thư mục đang đứng, nên đúng cho cả hai trường hợp. Thử với openclaw giả 2 agent (lệnh trơn trả kho agent khác): bản cũ báo oan, bản mới 4/4; `agents list` hỏng thì về cách
   cũ, không lỗi. Lệnh kiểm bằng mắt trong CAI-DAT thêm `--agent main`.
 - test-brain ra 130 trên VPS mà tài liệu ghi 129: một mục (đặt lịch Drive giữ nguyên lịch khác) chỉ chạy khi có `crontab`.
   Tài liệu ghi rõ.

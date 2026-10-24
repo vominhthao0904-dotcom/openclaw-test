@@ -52,9 +52,10 @@ done
 echo
 echo "PHẦN 2 — OpenClaw đã nhận 4 skill này chưa?"
 if command -v openclaw >/dev/null 2>&1; then
-  # Máy có nhiều agent: `openclaw skills list` trơn xem kho skill của agent MẶC ĐỊNH — có thể là agent khác với agent sở hữu
-  # thư mục skills ở trên, nên báo "chưa thấy" oan cả 4 (đã gặp: 23/27, thêm --agent main thì 27/27). Tìm agent có workspace
-  # chứa thư mục skills này (openclaw agents list --json) rồi hỏi đúng agent đó; không tìm được thì hỏi như cũ.
+  # Máy có nhiều agent: `openclaw skills list` trơn chọn agent theo THƯ MỤC ĐANG ĐỨNG (nằm trong workspace của agent nào thì
+  # xem kho của agent đó), rồi mới tới agent mặc định — có thể xem nhầm kho của agent khác với agent sở hữu thư mục skills ở
+  # trên, nên báo "chưa thấy" oan cả 4 (đã gặp: 23/27 dù agent mặc định là main; thêm --agent main thì 27/27). Tìm agent có
+  # workspace chứa thư mục skills này (openclaw agents list --json) rồi hỏi đúng agent đó; không tìm được thì hỏi như cũ.
   if [ -z "$AGENT" ]; then
     AGENT="$(timeout 60 openclaw agents list --json 2>/dev/null | python3 -c '
 import json, os, sys

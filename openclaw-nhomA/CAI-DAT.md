@@ -364,7 +364,7 @@ Con số có thể khác 27 trong hai trường hợp bình thường, không ph
 ```bash
 openclaw skills list --agent main | grep -E "second-brain|pdf-extract|css-video|pptx-deck"
 ```
-Phải thấy đủ 4 dòng. (`--agent main`: máy có nhiều agent thì lệnh trơn chỉ xem kho skill của agent mặc định — có thể không phải `main`, nơi 4 skill được cài.)
+Phải thấy đủ 4 dòng. (`--agent main`: máy có nhiều agent thì lệnh trơn chọn agent theo thư mục đang đứng, rồi mới tới agent mặc định — đứng trong workspace của agent khác là xem nhầm kho; 4 skill cài ở `main`.)
 
 ### Khi có dòng CHƯA ĐẠT
 

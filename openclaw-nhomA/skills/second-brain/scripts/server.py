@@ -219,6 +219,10 @@ def api_ingest(conn, _q, body):
     if not tep and not nhi_phan:
         return {"ok": False, "error": "Chưa có nội dung để nạp"}
     tach = body.get("tach") if body.get("tach") in ("tu-dong", "heading", "khong", "trang") else "tu-dong"
+    # ô "Tên ghi chú" của trang Nạp đặt tên cho phần FILE khi có file, không có file thì cho chữ dán — nạp cả file lẫn
+    # chữ dán thì chữ dán vẫn lấy dòng đầu làm tên (đúng như nhãn ô Tên trên trang)
+    ten_moi = brain.gon(str(body.get("title") or ""))[:200]
+    cho_tep = bool(nhi_phan) or any(t.get("name") for t in tep)
     muc = []
     for t in nhi_phan[:20]:
         try:
@@ -228,22 +232,23 @@ def api_ingest(conn, _q, body):
     for t in tep[:200]:
         text = str(t.get("text") or "")
         ten = t.get("name") if isinstance(t.get("name"), str) else ""
+        dat_ten = ten_moi and bool(ten) == cho_tep
         meta, than = brain._frontmatter(text)
         mac_dinh = meta.get("title") or (brain._tieu_de_tu_ten(ten) if ten else "") or \
-            (str(body.get("title") or "").strip()) or brain.TEN_DAN
+            (ten_moi if dat_ten else "") or brain.TEN_DAN
         chung = {"category": meta.get("category") or meta.get("nhom") or "", "tags": meta.get("tags") or "",
                  "kind": meta.get("kind") or meta.get("loai"), "url": meta.get("url") or "",
                  "cite": meta.get("cite") or ""}
         for tieu_de, noi_dung in brain._tach_markdown(than, tach, mac_dinh,
-                                                       dung_dong_dau=not meta.get("title") and not body.get("title")):
+                                                       dung_dong_dau=not meta.get("title") and not dat_ten):
             muc.append({"title": tieu_de, "content": noi_dung, "_file": ten or "(dán vào)", **chung})
-    # ô "Tên ghi chú" của trang Nạp: đặt tên khi lần nạp ra đúng MỘT ghi chú (một file / một đoạn dán, cả file 1 ghi chú)
-    ten_moi = brain.gon(str(body.get("title") or ""))[:200]
+    # đặt tên khi phần đó ra đúng MỘT ghi chú (một file / một đoạn dán, cả file 1 ghi chú)
     if ten_moi:
-        if len(muc) != 1:
-            return {"ok": False, "error": f"Ô Tên ghi chú chỉ dùng khi nạp ra đúng 1 ghi chú — lần này ra {len(muc)}. "
-                                          "Bỏ trống ô Tên, hoặc nạp từng file một."}
-        muc[0]["title"] = ten_moi
+        phan = [m for m in muc if (m["_file"] != "(dán vào)") == cho_tep]
+        if len(phan) != 1:
+            return {"ok": False, "error": f"Ô Tên ghi chú chỉ dùng khi nạp ra đúng 1 ghi chú — lần này ra {len(phan)}"
+                                          f"{' từ file' if cho_tep else ''}. Bỏ trống ô Tên, hoặc nạp từng file một."}
+        phan[0]["title"] = ten_moi
     k = brain.chuan_kind(body.get("kind")) if body.get("kind") else None
     with _lock:
         return brain.nap_vao(conn, muc, str(body.get("category") or ""), str(body.get("tags") or ""), k,
@@ -260,7 +265,7 @@ def api_archived(conn, _q, _body):
 
 def api_archive(conn, _q, body):
     """Cất kho thay vì xoá: ghi chú rời khỏi đồ thị và tìm kiếm, nhưng vẫn nằm trong file."""
-    nid, ve = body.get("id") or "", "active" if body.get("lay_lai") else "archived"
+    nid, ve = ma(body), "active" if body.get("lay_lai") else "archived"
     with _lock:
         cur = conn.execute("UPDATE notes SET status=?, updated_at=? WHERE id=?", (ve, brain.now(), nid))
         conn.commit()
@@ -282,8 +287,14 @@ def api_review(conn, q, _body):
     return {"ok": True, "notes": [note_row(r) for r in rows]}
 
 
+def ma(body):
+    """Mã ghi chú gửi lên: phải là chuỗi — kiểu khác (danh sách, object) coi như không có, không để sqlite lỗi 500."""
+    v = body.get("id")
+    return v if isinstance(v, str) else ""
+
+
 def api_reviewed(conn, _q, body):
-    nid = body.get("id") or ""
+    nid = ma(body)
     with _lock:
         cur = conn.execute("UPDATE notes SET reviewed_at=? WHERE id=?", (brain.now(), nid))
         conn.commit()
@@ -490,7 +501,7 @@ def relevant_notes(conn, question, limit=12):
 
 
 def api_ask(conn, _q, body):
-    question = (body.get("question") or "").strip()
+    question = body.get("question").strip() if isinstance(body.get("question"), str) else ""
     if not question:
         return {"ok": False, "error": "Chưa nhập câu hỏi"}
     found = relevant_notes(conn, question)

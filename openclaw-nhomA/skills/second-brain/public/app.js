@@ -162,7 +162,7 @@ function dienChon() {
   tn.innerHTML = '';
   tn.appendChild(new Option('Mọi vùng', ''));
   (DATA.cay || []).forEach((c) => { if (c.duong_dan) tn.appendChild(new Option(`${c.ten} (${c.so})`, c.duong_dan)); });
-  tn.value = cu;
+  tn.value = [...tn.options].some((o) => o.value === cu) ? cu : '';   // vùng vừa hết ghi chú: về "Mọi vùng", không để ô trống
 }
 
 /* ---------------- bố trí quỹ đạo ---------------- */
@@ -886,8 +886,21 @@ function dungMoHinh() {
   duongDong((x, y) => mThan(x, y) > 0.5, tiepTuyen(vThan, 0.015), 0.038, 0.008, [-2.0, 0.3, 2.0, 3.0],
     [[0, 1.3], [0.9, 1.95], [-0.9, 1.95], [0, 2.5], [0.62, 0.62], [-0.62, 0.62]]).forEach((d) => {
     const ym = d.reduce((t, q) => t + q[1], 0) / d.length;
+    // mẩu ngắn kẹt giữa mép thân và đường kế bên (đỉnh dốc vai, góc dưới): đứng lẻ thành nét đứt (anh chụp gần thấy) — bỏ
+    const mep = ([x, y]) => Math.abs(x) > noiSuy(RONG_THAN, y) - 0.1 || y > 2.9;
+    if (ym > 0.6 && d.length * 0.008 < 0.3 && mep(d[0]) && mep(d[d.length - 1])) return;
     themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
   });
+  // viền thân hai bên: một nét liền từ cổ xuống dốc vai tới cánh tay — vân thân chạm mép thì gặp nét này, đỉnh vai không còn
+  // lởm chởm như răng lược. Chia đoạn để phía dưới mờ dần như các vân bên cạnh.
+  for (const b of [-1, 1]) {
+    for (let y0 = 1.0; y0 < 2.95; y0 += 0.25) {
+      const d = [];
+      for (let y = y0; y <= Math.min(2.97, y0 + 0.25) + 1e-9; y += 0.01) d.push([b * (noiSuy(RONG_THAN, y) - 0.008), y]);
+      const ym = y0 + 0.125;
+      themDuong(d, 0.64 + 0.34 * em(0.6, 2.9, ym), 0.56 * (1 - 0.7 * em(2.2, 2.95, ym)), false);
+    }
+  }
   manh.forEach((m) => {
     // mảnh vân cổ sát dưới hàm (có thể bị mặt che khi đầu quay): chỉ những mảnh này phải vẽ qua lớp che — lớp che tốn công
     m.sauMat = !m.laDau && m.pts.some(([x, y]) => y < 1.35 && Math.abs(x) < 0.95);
@@ -2003,9 +2016,11 @@ function ngayDep(iso) {
 // nút mở một ghi chú: mang id ghi chú, để menu chuột phải (Mở · Sửa · Cất vào kho lưu) biết đang trỏ vào ghi chú nào
 function ganMo(b, id) { b.dataset.ghiChu = id; b.addEventListener('click', () => moChiTiet(id)); }
 
+let luotMo = 0;
 async function moChiTiet(id) {
+  const lan = ++luotMo;
   const r = await api('/api/note?id=' + encodeURIComponent(id));
-  if (!r.ok) return;
+  if (lan !== luotMo || !r.ok) return;     // bấm nhanh hai ghi chú: trả lời về muộn của ghi chú trước không đè ghi chú sau
   const n = r.note;
   chon = nodes.find((x) => x.note.id === id) || null;
 
@@ -2182,59 +2197,102 @@ $('#ctCat').addEventListener('click', async (e) => {
   const r = await api('/api/archive', { id: e.target.dataset.id });
   if (!r.ok) return alert(r.error || 'Không cất được');
   dongChiTiet();
-  await sauKhiCat();
+  await sauKhiCat(e.target.dataset.id, true);
 });
-async function sauKhiCat() {               // ghi chú vừa cất kho: rời đồ thị, Thư viện, hàng ôn
+// ghi chú vừa cất kho (hoặc lấy lại): rời / về đồ thị, Thư viện, hàng ôn; kết quả Tìm chạy lại; các nút trỏ tới nó trong kết
+// quả Nạp / Hỏi đánh dấu "đã cất" (chuột phải thành Lấy lại). Trước đây cất từ kết quả Tìm xong vẫn thấy nằm trong danh sách.
+async function sauKhiCat(id, cat) {
   await nap();
   if (xem === 'thu-vien') napThuVien();
   if (!$('[data-pane="on"]').hidden) napHangOn();
+  if ($('#oTim').value.trim()) timNgay();
+  if (id) document.querySelectorAll(`#napKq [data-ghi-chu="${CSS.escape(id)}"], #traLoi [data-ghi-chu="${CSS.escape(id)}"]`)
+    .forEach((b) => { b.classList.toggle('da-cat', cat); if (cat) b.dataset.daCat = '1'; else delete b.dataset.daCat; });
 }
 
 /* Menu chuột phải trên một ghi chú — thẻ Thư viện, kết quả Tìm / Hỏi / Nạp, việc, chấm trên đồ thị: Mở · Sửa · Cất vào
    kho lưu. Điện thoại: chạm giữ. Trên web không có xoá hẳn (cất kho lấy lại được); xoá thật phải nhờ Mây / lệnh máy chủ. */
 const menuGc = $('#menuGc');
-let menuId = null;
+let menuId = null, moMenuLuc = 0;
 function dongMenu() { menuGc.hidden = true; menuId = null; }
-document.addEventListener('contextmenu', (e) => {
-  let id = e.target instanceof Element ? e.target.closest('[data-ghi-chu]')?.dataset.ghiChu : null;
-  if (!id && e.target === cv) {
+// mở menu cho ghi chú dưới phần tử t / điểm (x, y); không có ghi chú ở đó thì trả về false
+function moMenu(t, x, y) {
+  const o = t instanceof Element ? t.closest('[data-ghi-chu]') : null;
+  let id = o?.dataset.ghiChu;
+  if (!id && t === cv) {
     const b = cv.getBoundingClientRect();
-    id = timGan(e.clientX - b.left, e.clientY - b.top)?.note.id;
+    id = timGan(x - b.left, y - b.top)?.note.id;
   }
-  if (!id) { dongMenu(); return; }        // chỗ khác: để menu thường của trình duyệt
-  e.preventDefault();
+  if (!id) return false;
   menuId = id;
+  // ghi chú đang nằm trong kho lưu (danh sách Kho lưu, kết quả vừa cất): mục cuối là "Lấy lại", không phải "Cất" lần nữa
+  const daCat = o?.dataset.daCat === '1';
+  menuGc.querySelector('[data-lam="cat"]').hidden = daCat;
+  menuGc.querySelector('[data-lam="lay"]').hidden = !daCat;
   menuGc.hidden = false;
+  moMenuLuc = performance.now();
   const r = menuGc.getBoundingClientRect();
-  menuGc.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
-  menuGc.style.top = `${Math.max(8, Math.min(e.clientY, innerHeight - r.height - 8))}px`;
+  menuGc.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+  menuGc.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+  return true;
+}
+document.addEventListener('contextmenu', (e) => {
+  if (!moMenu(e.target, e.clientX, e.clientY)) { dongMenu(); return; }   // chỗ khác: để menu thường của trình duyệt
+  e.preventDefault();
 });
+// Chạm giữ trên điện thoại: Android tự phát contextmenu, còn iPhone (Safari) thì không — tự đếm 0,55 giây. Mở menu bằng
+// cách này thì cái "chạm" lúc nhấc tay bị bỏ, không mở luôn ghi chú. Kéo ngón tay (cuộn) thì thôi.
+let giu = null, boClick = false;
+document.addEventListener('pointerdown', (e) => {
+  boClick = false;
+  clearTimeout(giu?.hen);
+  if (e.pointerType !== 'touch') { giu = null; return; }
+  const t = e.target, x = e.clientX, y = e.clientY;
+  giu = { x, y, hen: setTimeout(() => { giu = null; if (menuGc.hidden && moMenu(t, x, y)) boClick = true; }, 550) };
+});
+['pointerup', 'pointercancel'].forEach((ev) => document.addEventListener(ev, () => { clearTimeout(giu?.hen); giu = null; }));
+document.addEventListener('pointermove', (e) => {
+  if (giu && Math.hypot(e.clientX - giu.x, e.clientY - giu.y) > 10) { clearTimeout(giu.hen); giu = null; }
+});
+window.addEventListener('click', (e) => {
+  if (!boClick) return;
+  boClick = false;
+  e.preventDefault(); e.stopImmediatePropagation();
+}, true);
 menuGc.addEventListener('click', async (e) => {
   const lam = e.target.closest('button')?.dataset.lam, id = menuId;
   if (!lam || !id) return;
   dongMenu();
   if (lam === 'mo') return moChiTiet(id);
   if (lam === 'sua') { await moChiTiet(id); if ($('#ctSua').hidden) $('#ctSuaMo').click(); return; }
+  if (lam === 'lay') {
+    const r = await api('/api/archive', { id, lay_lai: true });
+    if (!r.ok) return alert(r.error || 'Không lấy lại được');
+    await sauKhiCat(id, false);
+    if (!$('#chiTiet').hidden && $('#ctLay').dataset.id === id) await moChiTiet(id);
+    return;
+  }
   const ten = DATA.notes.find((x) => x.id === id)?.title;
   if (!confirm(`Cất ${ten ? `«${ten}»` : 'ghi chú này'} vào kho lưu?\n\nGhi chú rời khỏi đồ thị, Thư viện và tìm kiếm, `
     + 'nhưng không mất — lấy lại được ở tab Ôn › Kho lưu.')) return;
   const r = await api('/api/archive', { id });
   if (!r.ok) return alert(r.error || 'Không cất được');
   if (!$('#chiTiet').hidden && $('#ctCat').dataset.id === id) dongChiTiet();
-  await sauKhiCat();
+  await sauKhiCat(id, true);
 });
 document.addEventListener('click', (e) => { if (!menuGc.hidden && !menuGc.contains(e.target)) dongMenu(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') dongMenu(); });
-window.addEventListener('scroll', dongMenu, true);
+// cuộn thì đóng menu — trừ cái cuộn nhỏ ngay lúc mở (bấm chuột phải / chạm giữ vào thẻ nằm sát mép, trình duyệt tự cuộn thẻ
+// vào khung): trước đây menu vừa hiện đã tắt ngay
+window.addEventListener('scroll', () => { if (performance.now() - moMenuLuc > 400) dongMenu(); }, true);
 window.addEventListener('resize', dongMenu);
 
 $('#ctLay').addEventListener('click', async (e) => {
   const id = e.target.dataset.id;
   const r = await api('/api/archive', { id, lay_lai: true });
   if (!r.ok) return alert(r.error || 'Không lấy lại được');
-  await nap();
+  await sauKhiCat(id, false);
   await moChiTiet(id);
-  if (!$('[data-pane="on"]').hidden) napHangOn();
 });
 
 /* ---------------- các ô bên trái ---------------- */
@@ -2311,8 +2369,9 @@ function veHopCho() {
 /* Kho lưu: nơi ghi chú hết thời nằm lại, không bị xoá. */
 let moKhoLuu = false;
 
+let luotKho = 0;
 async function veKhoLuu() {
-  const box = $('#khoLuu');
+  const box = $('#khoLuu'), lan = ++luotKho;
   box.innerHTML = '';
   const n = DATA.trong_kho_luu || 0;
   if (!n) { moKhoLuu = false; return; }
@@ -2325,12 +2384,13 @@ async function veKhoLuu() {
   if (!moKhoLuu) return;
 
   const r = await api('/api/archived');
-  if (!r.ok) return;
+  if (lan !== luotKho || !r.ok) return;     // đã có lần vẽ mới hơn (bấm mở/đóng nhanh, vừa cất thêm) — để lần đó vẽ
   const dong = (x, trongBo) => {
     const b = el('button', 'hit' + (trongBo ? ' trong-bo' : ''));
     b.type = 'button';
     b.append(el('b', null, x.title), el('span', null, `${duongDep(x.category)} · cất ${ngayTu(x.updated_at) || ''}`));
     ganMo(b, x.id);
+    b.dataset.daCat = '1';
     return b;
   };
   // các trang của cùng một file ("<file> — trang N", thường là bản đã gộp) gom thành MỘT dòng, bấm để bung ra
@@ -2447,14 +2507,15 @@ function baoTrung(ds, loiDan, goiY = []) {
   box.hidden = false;
 }
 
-let hen;
+let hen, luotTim = 0;
 function timNgay() {
   clearTimeout(hen);
-  const q = $('#oTim').value.trim();
+  const q = $('#oTim').value.trim(), lan = ++luotTim;
   hen = setTimeout(async () => {
     const box = $('#ketQua');
     if (!q) { box.innerHTML = ''; return; }
     const r = await api('/api/search?' + new URLSearchParams({ q, kind: $('#timLoai').value, category: $('#timNhom').value }));
+    if (lan !== luotTim) return;           // anh đã gõ tiếp / đổi bộ lọc: kết quả cũ về muộn không đè kết quả mới
     if (!r.ok || !Array.isArray(r.notes)) {
       box.innerHTML = '';
       const p = document.createElement('p'); p.className = 'none';
@@ -2487,6 +2548,79 @@ $('#oTim').addEventListener('input', timNgay);
 $('#timLoai').addEventListener('change', timNgay);
 $('#timNhom').addEventListener('change', timNgay);
 
+/* Câu trả lời của Mây viết kiểu Markdown (**đậm**, `lệnh`, danh sách, khối ```) và dẫn nguồn bằng mã ghi chú [63d7736d5d92].
+   Dựng thành phần tử DOM — không dùng innerHTML, câu trả lời chỉ là dữ liệu — để định dạng hiện đúng thay vì ký hiệu thô;
+   mã nguồn thành nút mang tên ghi chú, bấm là mở (chuột phải có menu như mọi ghi chú). */
+const MA_NGUON = /\[([0-9a-f]{12}(?:\s*[,;]\s*[0-9a-f]{12})*)\]/g;
+function veTraLoi(chu, used) {
+  const ten = new Map((used || []).map((u) => [u.id, u.title]));
+  const khung = el('div', 'tl');
+  const dong = (s, cha) => {                 // một dòng: **đậm**, `lệnh`, [mã ghi chú]
+    const re = /\*\*(.+?)\*\*|`([^`]+)`|\[([0-9a-f]{12}(?:\s*[,;]\s*[0-9a-f]{12})*)\]/g;
+    let i = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > i) cha.append(s.slice(i, m.index));
+      if (m[1] !== undefined) { const b = el('strong'); dong(m[1], b); cha.append(b); }
+      else if (m[2] !== undefined) cha.append(el('code', null, m[2]));
+      else m[3].split(/\s*[,;]\s*/).forEach((id) => {
+        if (!ten.has(id)) { cha.append(`[${id}]`); return; }
+        const t = ten.get(id);
+        const n = el('button', 'trich', t.length > 42 ? t.slice(0, 40).trimEnd() + '…' : t);
+        n.type = 'button';
+        n.title = `Mở ghi chú nguồn: ${t}`;
+        ganMo(n, id);
+        cha.append(n);
+      });
+      i = re.lastIndex;
+    }
+    if (i < s.length) cha.append(s.slice(i));
+  };
+  let ds = null, loaiDs = '', liCuoi = null, doan = null, khoi = null;
+  for (const l of String(chu || '').replace(/\r/g, '').split('\n')) {
+    if (khoi) { if (/^\s*```/.test(l)) khoi = null; else khoi.textContent += (khoi.textContent ? '\n' : '') + l; continue; }
+    if (/^\s*```/.test(l)) {
+      const pre = el('pre');
+      khoi = el('code');
+      pre.append(khoi);
+      khung.append(pre);
+      ds = liCuoi = doan = null;
+      continue;
+    }
+    if (!l.trim()) { doan = null; continue; }   // dòng trống: hết đoạn (danh sách vẫn nối tiếp nếu mục sau cũng là danh sách)
+    let m;
+    if ((m = l.match(/^\s*(\d+)[.)]\s+(.*)$/)) || (m = l.match(/^\s*[-*•]\s+()(.*)$/))) {
+      const loai = m[1] ? 'ol' : 'ul';
+      if (!ds || loaiDs !== loai) {
+        ds = el(loai);
+        if (m[1]) ds.start = +m[1];
+        loaiDs = loai;
+        khung.append(ds);
+      }
+      liCuoi = el('li');
+      dong(m[2], liCuoi);
+      ds.append(liCuoi);
+      doan = null;
+      continue;
+    }
+    if ((m = l.match(/^#{1,4}\s+(.*)$/))) {
+      const h = el('p', 'tl-de');
+      dong(m[1], h);
+      khung.append(h);
+      ds = liCuoi = doan = null;
+      continue;
+    }
+    if (/^\s/.test(l) && liCuoi) { liCuoi.append(el('br')); dong(l.trim(), liCuoi); continue; }   // dòng thụt vào: tiếp mục trên
+    ds = liCuoi = null;
+    if (doan) doan.append(el('br'));
+    else { doan = el('p'); khung.append(doan); }
+    dong(l.trim(), doan);
+  }
+  return khung;
+}
+// bản để đọc to / phụ đề: bỏ ký hiệu định dạng và mã ghi chú
+const chuTron = (s) => String(s || '').replace(MA_NGUON, '').replace(/```[a-z]*|\*\*|`/g, '')
+  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '');
+
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
   const out = $('#traLoi');
@@ -2501,8 +2635,8 @@ $('#nutHoi').addEventListener('click', async () => {
     out.textContent = r.error || 'Không hỏi được';
     noi('Em chưa hỏi được, anh xem dòng báo lỗi nhé.', "Sorry, I couldn't get an answer. Please see the error message.");
   } else {
-    out.appendChild(document.createTextNode(r.answer || r.note || ''));
-    noi(cauDau(r.answer || r.note || ''));
+    out.appendChild(veTraLoi(r.answer || r.note || '', r.used));
+    noi(cauDau(chuTron(r.answer || r.note || '')));
   }
   if (r.used?.length) {
     const d = document.createElement('div');
@@ -2725,8 +2859,8 @@ $('#vXong').addEventListener('change', napViec);
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file
-   một ghi chú. Một lần nạp là HOẶC file HOẶC chữ dán: đã chọn file thì ô dán mờ đi, không nạp — trước đây nạp cả hai
-   (thêm ghi chú lạ từ chữ sót trong ô dán) rồi hỏi qua hỏi lại, có lúc chặn luôn việc nạp. */
+   một ghi chú. Ô dán lúc nào cũng gõ được (từng bị tắt khi đã chọn file — bấm không vào, tưởng hỏng): có cả file lẫn chữ
+   dán thì nạp cả hai, chữ dán thành ghi chú riêng, và dòng nhắc nói trước điều đó — không hộp hỏi, không chặn. */
 let tepChon = [];
 const LA_CHU = /\.(md|markdown|txt)$/i, LA_TEP = /\.(pdf|docx)$/i, TOI_DA = 4 * 1024 * 1024;
 const base64 = (buf) => {
@@ -2761,17 +2895,23 @@ async function docTep(files) {
       + (bo - tran ? ` · bỏ ${bo - tran} file không nhận được${doc}` : '')
     : (bo ? `Bỏ ${bo} file — chỉ nhận .md .txt .pdf .docx dưới 4 MB, tổng một lần ~7 MB${doc}` : ''));
 }
-// Đã chọn file: ô dán mờ đi (không nạp), ghi rõ vì sao. Ô Tên chỉ bật khi lần nạp ra đúng một ghi chú.
+// Có file lẫn chữ dán: dòng nhắc nói trước sẽ ra thêm một ghi chú từ ô dán. Ô Tên đặt tên cho file (không có file thì
+// cho chữ dán), chỉ bật khi phần đó ra đúng một ghi chú; chữ mờ trong ô nói bỏ trống thì tên lấy từ đâu.
 function capNhatNap() {
-  const coTep = tepChon.length > 0, oDan = $('#napChu'), ten = $('#napTen');
-  oDan.disabled = coTep;
-  $('#napChuGhi').hidden = !(coTep && oDan.value.trim());
+  const chu = $('#napChu').value.trim(), coTep = tepChon.length > 0, coChu = !!chu, ten = $('#napTen'), ghi = $('#napChuGhi');
+  ghi.hidden = !(coTep && coChu);
+  if (!ghi.hidden) {                     // nêu tên ghi chú sẽ ra từ ô dán: chữ sót lại thì nhìn là thấy
+    const dau = chu.split('\n')[0].trim();
+    ghi.replaceChildren('Sẽ nạp ', el('b', null, 'cả file lẫn chữ dán'), ': chữ dán thành một ghi chú riêng (bắt đầu «'
+      + (dau.length > 50 ? dau.slice(0, 50) + '…' : dau) + '»). Chỉ muốn nạp file thì xoá chữ trong ô dán.');
+  }
   const mot = tepChon.length <= 1 && $('#napTach').value === 'khong';
   ten.disabled = !mot;
-  ten.placeholder = mot ? 'Hướng dẫn cài đặt OpenClaw trên VPS'
-    : tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng';
+  ten.placeholder = !mot ? (tepChon.length > 1 ? 'Nhiều file: mỗi file lấy tên riêng' : 'Đang tách nhiều ghi chú: mỗi ghi chú lấy tên riêng')
+    : coTep ? 'Bỏ trống: lấy tên trong file' : coChu ? 'Bỏ trống: lấy dòng đầu ô dán' : 'vd: Quy trình bảo trì thang máy';
 }
 $('#napTach').addEventListener('change', capNhatNap);
+$('#napChu').addEventListener('input', capNhatNap);
 // danh sách file đã chọn + nút bỏ chọn (file chọn từ lần trước còn nằm đó thì lần nạp sau nạp luôn — dễ quên)
 function veDsTep(chu) {
   const d = $('#dsTep');
@@ -2792,15 +2932,20 @@ const vung = $('#vungTha');
 ['dragleave', 'drop'].forEach((ev) => vung.addEventListener(ev, () => vung.classList.remove('keo')));
 vung.addEventListener('drop', (e) => { e.preventDefault(); docTep(e.dataTransfer.files); });
 
+let dangNap = false;
 async function napVao(thu) {
   const out = $('#napKq');
-  const chu = tepChon.length ? '' : $('#napChu').value.trim();   // đã chọn file: chỉ nạp file
+  const chu = $('#napChu').value.trim();
   if (!tepChon.length && !chu) { out.textContent = 'Chưa có file hay nội dung để nạp.'; return; }
+  if (dangNap) return;
   out.textContent = thu ? 'Đang xem trước…' : 'Đang nạp…';
+  // khoá hai nút trong lúc chờ: bấm đúp "Nạp vào kho" từng gửi hai lần — lần sau báo "Đã thêm 0 ghi chú · bỏ 1 bản trùng"
+  dangNap = true; $('#napThu').disabled = $('#napThat').disabled = true;
   const r = await api('/api/ingest', {
     files: tepChon, text: chu, category: $('#napNhom').value.trim(), kind: $('#napLoai').value, tags: $('#napThe').value.trim(),
     tach: $('#napTach').value, title: $('#napTen').disabled ? '' : $('#napTen').value.trim(), dry_run: thu,
   });
+  dangNap = false; $('#napThu').disabled = $('#napThat').disabled = false;
   out.innerHTML = '';
   if (!r.ok) { out.appendChild(el('p', 'say er', r.error || 'Không nạp được')); return; }
   const so = thu ? r.se_them : r.da_them;

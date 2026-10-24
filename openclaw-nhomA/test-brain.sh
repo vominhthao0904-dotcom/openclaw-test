@@ -137,6 +137,7 @@ check "duplicates trên ghi chú dài không treo" \
   'timeout 20 python3 "$BR_PY" duplicates >/dev/null; echo $?' "0"
 check "cú pháp FTS sai không làm chết lệnh" 'BR search "AND OR (((" | jq_ "d[\"ok\"]"' "True"
 check "tìm dấu nháy đơn" "BR search \"it's\" | jq_ 'd[\"ok\"]'" "True"
+check "tìm có ký tự điều khiển dán lẫn" "BR search \"\$(printf 'a\\001b')\" | jq_ 'd[\"ok\"]'" "True"
 check "source sai bị chặn" 'BR add --title x --content y --source bay | jq_ "d[\"ok\"]"' "False"
 check "thiếu nội dung bị chặn" 'BR add --title x --content "" | jq_ "d[\"ok\"]"' "False"
 

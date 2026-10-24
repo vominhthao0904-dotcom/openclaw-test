@@ -143,6 +143,19 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 
 /* ---------- trả lời ---------- */
 .answer{margin-top:16px;font-family:var(--doc);font-size:14.5px;line-height:1.72;white-space:pre-wrap}
+.answer .tl{white-space:normal}
+.answer .tl p{margin:0 0 10px}
+.answer .tl .tl-de{font-weight:600;color:var(--vang)}
+.answer .tl ol,.answer .tl ul{margin:0 0 10px;padding-left:22px}
+.answer .tl li{margin:0 0 8px}
+.answer .tl code{font:13px/1.5 ui-monospace,Consolas,monospace;background:rgba(10,20,36,.55);border:1px solid var(--son-3);
+  border-radius:4px;padding:1px 5px;white-space:pre-wrap;word-break:break-word}
+.answer .tl pre{margin:0 0 10px;padding:8px 10px;background:rgba(10,20,36,.55);border:1px solid var(--son-3);border-radius:6px;
+  overflow-x:auto}
+.answer .tl pre code{border:0;background:none;padding:0;white-space:pre}
+.answer .tl .trich{display:inline;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.4);border-radius:10px;
+  color:var(--vang);font:500 11.5px var(--ui);padding:0 7px;margin:0 2px;cursor:pointer;vertical-align:1px}
+.answer .tl .trich:hover{background:rgba(212,175,55,.25)}
 .answer .src{
   margin-top:14px;padding-top:12px;border-top:1px solid var(--son-3);
   font-family:var(--ui);font-size:12.5px;color:var(--trung-mo);white-space:normal
@@ -291,18 +304,22 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .tha .bo-tep{position:relative;z-index:1;background:none;border:0;padding:0 2px;color:var(--vang);font:inherit;
   text-decoration:underline;cursor:pointer}   /* nổi trên ô chọn file trong suốt phủ cả khung */
 /* menu chuột phải trên một ghi chú */
-#napChu:disabled,#napTen:disabled{opacity:.45;cursor:not-allowed}
+#napTen:disabled{opacity:.45;cursor:not-allowed}
 .ghi-dan{margin:-6px 0 12px;color:var(--vang)}
 .ghi-dan[hidden]{display:none}
 .hit.trong-bo{margin-left:16px;border-left:2px solid var(--son-3);padding-left:12px}
 .menu-gc{position:fixed;z-index:80;min-width:220px;max-width:280px;padding:6px;background:var(--son-2);
   border:1px solid var(--son-3);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
-.menu-gc[hidden]{display:none}
+.menu-gc[hidden],.menu-gc button[hidden]{display:none}
 .menu-gc button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:8px 10px;
   color:var(--trung);font:500 13.5px var(--ui);cursor:pointer}
 .menu-gc button:hover,.menu-gc button:focus-visible{background:rgba(212,175,55,.12);outline:none}
 .menu-gc button span{color:var(--trung-mo);font-weight:400}
 .menu-gc p{margin:4px 10px 4px;font-size:11.5px;line-height:1.4;color:var(--trung-mo)}
+/* ghi chú vừa cất kho (trong kết quả Nạp / Hỏi): mờ, gạch ngang */
+.da-cat{opacity:.55}
+.da-cat b,.trich.da-cat{text-decoration:line-through}
+[data-ghi-chu]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}   /* chạm giữ mở menu, không bôi chữ */
 .hang-nut{display:grid;grid-template-columns:auto 1fr;gap:9px}
 .nap-kq{margin-top:14px}
 .nap-kq .say{margin:0 0 6px}

@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **129** |
-| Test `test-web.sh` | 30 | **85** |
+| Test `test-web.sh` | 30 | **91** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -449,6 +449,52 @@ cắt ngang mặt. Làm lại theo 3 ảnh anh gửi:
   khung/giây — đã tối ưu, còn ~57.
 - Thử trình duyệt: nạp file + chữ sót + Tên (đúng ảnh anh) → 1 ghi chú đúng tên, không hỏi; chọn nhiều file / cộng thêm / trùng
   tên / quá tổng; Kho lưu gọn và bung; tìm "kinh doanh" — đạt cả.
+
+## Sau PR #18: ô Hỏi chạy thật — câu trả lời hiện ký hiệu thô
+- Ô Hỏi đã trả lời được trên máy anh (lỗi "state-lifecycle" lần trước không lặp lại — nhiều khả năng bận nhất thời). Nhưng câu
+  trả lời hiện nguyên ký hiệu Markdown (`**Cài rclone trên VPS**`, dấu backtick) và mã nguồn `[63d7736d5d92]` chỉ là chữ.
+- Nay câu trả lời được dựng thành phần tử trang (không dùng innerHTML — câu trả lời chỉ là dữ liệu, chèn thẻ HTML không chạy):
+  **đậm**, `dòng lệnh`, danh sách đánh số / gạch đầu dòng (dòng thụt vào nối tiếp mục trên, dòng trống giữa các mục không cắt
+  danh sách), khối lệnh ```; mã ghi chú (cả dạng `[id1, id2]`) thành nút vàng mang tên ghi chú, bấm mở, chuột phải có menu; mã
+  lạ giữ nguyên chữ. Câu Mây đọc to / phụ đề bỏ hết ký hiệu và mã. Thử trình duyệt 11 tình huống (kể cả thẻ `<img onerror>`
+  chèn trong câu trả lời — hiện dạng chữ, không chạy): đạt cả.
+
+## Sau PR #18: chọn file thì không bấm được vào ô dán; vai có nét đứt
+- *"Thêm được 2 file, nhưng con trỏ không vào cho nhấp vào ô dán nội dung"* — rồi *"Nhập 1 file cũng bị"*. Bản trước cố ý tắt
+  ô dán khi đã chọn file (tránh lần nạp ra ghi chú lạ từ chữ sót), nhưng ô bị tắt thì chỉ thấy con trỏ cấm, tưởng hỏng. Nay ô
+  dán **luôn gõ được**; có cả file lẫn chữ dán thì nạp cả hai, chữ dán thành ghi chú riêng (tên lấy dòng đầu), và dòng vàng dưới
+  ô dán báo trước kèm chữ đầu đoạn dán — chữ sót nhìn là thấy, không hộp hỏi, không chặn. Ô Tên đặt cho file khi có file, không
+  có file thì cho chữ dán (máy chủ theo đúng quy ước này, không còn lỗi "ra 2 ghi chú"); chữ mờ trong ô Tên nói bỏ trống thì tên
+  lấy từ đâu (trước đây chữ mờ là một tên mẫu, trên ảnh trông như đã gõ sẵn). +2 test web (87; exec 84); thử trình duyệt 14 tình
+  huống (chọn 1 file rồi gõ vào ô dán, xem trước / nạp ra đúng 2 ghi chú đúng tên, chỉ dán + Tên, 2 file + dán…): đạt cả.
+- Ảnh chụp gần phần vai: trên đỉnh hai vai còn vài **mẩu vân ngắn đứng lẻ** — đường vân chạy chéo dốc vai, chạm mép hai đầu nên
+  chỉ còn một khúc ngắn. Nay thêm **viền thân liền một nét** hai bên, từ dưới hàm xuống dốc vai tới cánh tay (mờ dần phía dưới
+  như vân bên cạnh), và bỏ các mẩu ngắn kẹt sát mép; vân thân chạm mép thì gặp viền, đỉnh vai gọn. Quay đầu hai bên vẫn liền
+  tai – hàm – cổ; tốc độ vẽ giữ ~55 khung hình/giây.
+
+## Rà soát kỹ toàn trang (sau "Kiểm tra rà soát thật kỹ để sửa cho dứt điểm lỗi")
+Chạy thật trên trình duyệt với kho giống của anh (18 ghi chú ở 5 vùng, bộ 26 trang PDF trong kho lưu, có việc quá hạn), máy
+tính 1366×768 và iPhone 390×844, Mây giả trả lời kiểu Markdown: 66 tình huống qua Thêm · Nạp · Tìm · Hỏi · Ôn/Kho lưu · Thư
+viện · Việc · Toàn cảnh · mặt A.I · thẻ chi tiết · menu chuột phải / chạm giữ. Thêm 737 yêu cầu dữ liệu sai kiểu vào mọi đường
+API. Tìm ra và đã sửa:
+- **Chuột phải vào ghi chú nằm sát mép khung: menu vừa hiện đã tắt.** Trình duyệt tự cuộn thẻ vào khung, mà cứ cuộn là menu
+  đóng. Nay bỏ qua cái cuộn nhỏ ngay lúc mở.
+- **iPhone chạm giữ không ra menu** (tài liệu có hứa): Safari trên iPhone không phát sự kiện chuột phải. Nay tự đếm 0,55 giây
+  chạm giữ (Android vẫn dùng của trình duyệt); mở menu kiểu này thì lúc nhấc tay không mở luôn ghi chú; kéo ngón tay để cuộn thì
+  không hiện menu; chạm giữ không bôi đen chữ.
+- **Ghi chú trong Kho lưu: menu vẫn là "Cất vào kho lưu"** (bấm thì không có gì xảy ra). Nay là **Lấy lại khỏi kho lưu**.
+- **Cất một ghi chú từ kết quả Tìm xong, nó vẫn nằm trong danh sách** (trông như chưa cất). Nay cất / lấy lại xong thì Tìm tự
+  chạy lại; các nút trỏ tới ghi chú đó trong kết quả Nạp, Hỏi mờ đi, gạch ngang, chuột phải thành *Lấy lại*.
+- **Bấm đúp "Nạp vào kho"**: gửi hai lần, dòng kết quả là của lần sau — *"Đã thêm 0 ghi chú · bỏ 1 bản trùng"*, tưởng không nạp
+  được. Nay khoá hai nút trong lúc chờ.
+- Chạy chồng: mở/đóng Kho lưu thật nhanh có lúc hiện danh sách dưới nút "xem lại"; bấm hai ghi chú liền nhau thì thẻ có thể hiện
+  ghi chú bấm trước; gõ Tìm nhanh thì kết quả của chữ gõ trước về muộn có thể đè kết quả mới. Nay chỉ lần sau cùng được vẽ.
+- Ô lọc vùng ở Tìm: vùng đang chọn vừa hết ghi chú thì ô trống trơn — nay về "Mọi vùng".
+- Máy chủ: mã ghi chú gửi lên dạng danh sách/object, câu hỏi dạng số, ký tự NUL trong ô tìm → lỗi 500. Nay báo lỗi gọn (737/737
+  yêu cầu sai kiểu không còn lỗi 500).
+- **Câu chữ riêng tư ô Hỏi**: trang ghi "Không gửi gì ra ngoài" — không đúng: câu hỏi và vài ghi chú liên quan đi tới Mây, tức
+  qua mô hình AI mà OpenClaw đang dùng (như mọi tin nhắn anh gửi Mây). Nay ghi đúng như vậy, cả ở bảng An toàn trong CAI-DAT.
+- +4 test web (91; exec 88), +1 test brain (129).
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

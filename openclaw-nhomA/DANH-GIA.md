@@ -608,12 +608,27 @@ Bản cũ: hai hình bầu dục có hoa văn tổ ong — không ra nếp cuộ
 - **Dây thần kinh, chấm, tia sáng**: ~1.100 hạt sáng dồn trên đỉnh nếp + 90 chấm lấp lánh; mạng sợi hồng – xanh nối 36 nốt; ánh sáng
   vàng – hồng chảy trong rãnh giữa và rãnh ngang; nguồn sáng ở khoảng lõm giữa với 24 tia toả, xoay chậm, chập chờn; vài nốt có
   tia chữ thập. Ghi chú (nơ-ron) thành chấm nhỏ lõi trắng, quầng màu vùng (trước là đốm màu loang).
-- **Thân não → lõi Bát Quái**: bó 9 sợi vàng kim (Dương) – xanh lam (Âm), sau mặt gần như ẩn (khỏi thành vạch dọc sống mũi), từ
-  cằm tách ra, xoè như rễ cắm vào vành lõi trên ngực; xung sáng chạy dọc (Dương xuống, Âm lên).
+- (Bó dây thần kinh từ thân não xuống lõi Bát Quái đã thử rồi bỏ — xem mục sau.)
 - Vân hộp sọ mờ hơn để thấy não như đầu trong suốt ở ảnh mẫu; khi Mây nói não sáng hơn, chấm lấp lánh nhanh hơn.
 - Dựng ảnh não một lần (~0,6–0,9 giây máy thử), chia lượt 12 ms nên không giật; bắt đầu ngay khi rê chuột vào lõi hay bật mặt
   A.I — xong trước khi chuyển cảnh 3,2 giây kết thúc. Mỗi khung hình chỉ dán ảnh theo góc quay đầu + lớp động: 39–43 khung/giây.
   Màn hình to lên nhiều (toàn màn hình) thì tự dựng lại cho nét.
+
+## Đầu – não – đường nối dữ liệu cân đối lại (rà soát tổng thể sau bộ não mới)
+Anh: "thiết lập thiết kế phần đầu cho cân đối với bộ não mới, các kết nối thông tin dữ liệu… hài hoà, cân đối, khoa học, trực
+quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
+- **Bỏ bó dây thần kinh từ lõi Bát Quái lên** — nhìn như tia sáng chui vào mũi. Không còn đường nào chạy qua mặt, cổ.
+- **Não ôm khít hộp sọ**: viền não lấy theo chính viền đầu, chừa lớp xương sọ 0,075 — đỉnh sát đỉnh đầu, rộng ~90% bề ngang hộp
+  sọ, thuỳ thái dương nằm sau thái dương, đáy ngang cung mày (trước: não nhỏ nằm giữa trán, hai bên còn trống). Vân mặt nằm trên
+  não mờ hẳn (sọ như kính), ngoài não giữ sáng: viền đầu, mắt, mũi, miệng rõ.
+- **Đường nối dữ liệu gom bó** (như dây thần kinh thật, cách các phần mềm vẽ mạng lưới gom cạnh cho đỡ rối): mỗi vùng MỘT trục từ
+  vòng tới cửa vào trên rìa não (theo hướng tâm vỏ não → vòng), có xung dữ liệu chạy vào rồi rẽ vào một nhánh; từ cửa vào toả nhánh
+  cong tới từng nơ-ron. Trước: mỗi ghi chú một đường thẳng từ vòng xuyên qua đầu — kho 218 ghi chú thành chùm tia rối.
+- **Lãnh thổ vùng**: quầng nơ-ron to, mờ, cộng ánh sáng — nơ-ron cùng vùng loang thành vùng sáng màu trên vỏ não như bản đồ não;
+  vùng màu lam trên nền não lam vẫn nổi. Rê chuột vào vòng vùng: trục, nhánh, lãnh thổ, liên kết của vùng đó rực lên, vùng khác mờ.
+- **Liên kết giữa ghi chú** ở mặt A.I thành cung khớp thần kinh pha màu hai vùng, có xung sáng nhỏ; vẽ sau bộ não (trước: vạch thẳng
+  xám nằm dưới não nên khuất). Mạng sợi trang trí trong não mờ đi để nhường đường dữ liệu thật.
+- Kiểm: kho 18 ghi chú / 5 vùng và kho 218 ghi chú / 8 vùng; laptop 1366×768, 1920×1080, iPhone; rê vào vùng; 38–41 khung/giây.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

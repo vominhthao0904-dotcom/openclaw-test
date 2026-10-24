@@ -432,14 +432,14 @@ function ve() {
   });
   cx.globalAlpha = 1;
 
-  // liên kết giữa các ghi chú
-  DATA.links.forEach(([a, b]) => {
+  // liên kết giữa các ghi chú (mặt A.I: vẽ trong veMat, sau bộ não, thành cung khớp thần kinh)
+  if (eMat < 0.95) DATA.links.forEach(([a, b]) => {
     const p = diem.get(a), q = diem.get(b);
     if (!p || !q) return;
     cx.beginPath();
     cx.moveTo(p.x, p.y);
     cx.lineTo(q.x, q.y);
-    cx.strokeStyle = 'rgba(238,243,250,.17)';
+    cx.strokeStyle = `rgba(238,243,250,${(0.17 * (1 - eMat)).toFixed(3)})`;
     cx.lineWidth = 1;
     cx.stroke();
   });
@@ -476,11 +476,15 @@ function ve() {
   nodes.forEach((nd) => {
     const p = diem.get(nd.note.id);
     const nb = nd === hover || nd === chon;
-    const toi = mo(nd);
+    const toi = mo(nd) || (eMat > 0.5 && hoverVung && nd.nhom !== hoverVung);   // mặt A.I: rê vào vòng vùng thì vùng khác mờ
     if (eMat > 0.05) {                   // mặt A.I: nơ-ron phát sáng
-      const rr = (nb ? nd.r + 2.4 : nd.r) * toCham * (3.2 - 1.3 * eMat);
-      cx.globalAlpha = eMat * (toi ? 0.15 : 0.75);
+      // quầng to, mờ, cộng ánh sáng: nốt cùng vùng loang thành "lãnh thổ" sáng màu vùng trên vỏ não (vùng màu lam trên nền não
+      // lam vẫn nổi); rê vào vòng vùng thì lãnh thổ đó rực lên
+      const rr = (nb ? nd.r + 2.4 : nd.r) * toCham * (3.2 + 2.6 * eMat), soi = hoverVung === nd.nhom;
+      cx.globalCompositeOperation = 'lighter';
+      cx.globalAlpha = eMat * (toi ? 0.05 : nb || soi ? 0.8 : 0.42);
       cx.drawImage(quangCham(nd.mau), p.x - rr, p.y - rr, rr * 2, rr * 2);
+      cx.globalCompositeOperation = 'source-over';
     }
     const rc = (nb ? nd.r + 2.4 : nd.r) * toCham * (1 - 0.45 * eMat);   // mặt A.I: nốt nhỏ, lõi trắng, quầng màu vùng
     cx.beginPath();
@@ -856,14 +860,14 @@ function dungMoHinh() {
     // lúc chuyển cảnh đường này nằm trên một đoạn của luồng dài tương ứng độ dài của nó (đường ngắn trải hết luồng thì thành
     // các nét thẳng cắt ngang luồng)
     const span = Math.min(1, tong / 4), s0 = ngau() * (1 - span);
-    // tách theo lớp sáng: phần hộp sọ (có não bên trong) mờ hơn một chút để thấy não
+    // tách theo lớp sáng: đoạn nằm trên bộ não mờ hẳn (sọ trong suốt — não là trọng tâm), ngoài não giữ sáng
     let ht = null, lop = -1;
     ds.forEach(([x, y, s]) => {
       const z = laDau ? Math.max(0, doSau(x, y)) : doSauCo(x, y);
-      const l = laDau ? Math.round(3 * em(-0.5, -0.1, y)) : 3;
+      const l = laDau && trongDaGiac(x, y, NAO.bao) && !trongDaGiac(x, y, NAO.lom) ? 0 : 3;
       if (l !== lop) {
         if (ht) ht.pts.push([x, y, z, s]);
-        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.3 + 0.7 * l / 3), s0, span };
+        ht = { cha: c, laDau, f: laDau ? 1 : null, mi, pts: [], sang: sang * (0.17 + 0.83 * l / 3), s0, span };
         manh.push(ht);
         lop = l;
       }
@@ -962,29 +966,34 @@ const bam = (s, hat) => {
 /* ---------- Bộ não trong hộp sọ ----------
    Theo các ảnh mẫu anh gửi: não nhìn chính diện, phát sáng kiểu hologram — hai bán cầu tách bởi rãnh giữa, rãnh ngang (Sylvius)
    tách thuỳ thái dương hai bên dưới; nếp cuộn nổi khối, rãnh tối mảnh; ánh sáng chảy trong các rãnh, tia sáng toả từ khoảng lõm
-   giữa đáy; hạt sáng dồn trên đỉnh nếp, sợi thần kinh nối các nốt; thân não là bó dây thần kinh chạy xuống lõi Bát Quái trên
-   ngực (như ảnh não có cuống đi xuống đế sáng).
+   giữa đáy; hạt sáng dồn trên đỉnh nếp, sợi thần kinh nối các nốt. Viền não ôm theo hộp sọ (cách viền đầu một lớp xương) —
+   não luôn cân với đầu. (Đã thử bó dây thần kinh từ thân não xuống lõi Bát Quái trên ngực — nhìn như tia sáng chui vào mũi, bỏ.)
    Vẽ sẵn một lần thành ảnh, rồi mỗi khung hình chỉ dán ảnh theo góc quay đầu + vài lớp động (lấp lánh, tia, xung sáng):
    - nếp cuộn: phản ứng – khuếch tán Gray-Scott trong mặt nạ hai thuỳ — các "giun" mảnh làm rãnh, phần rộng giữa làm nếp;
    - độ cao = vòm thuỳ (khoảng cách tới mép thuỳ) × độ cuộn (khoảng cách tới rãnh gần nhất) — nếp tròn đầy, rãnh sâu;
    - tô bóng theo pháp tuyến (đèn trên trái), màu xanh lơ → tím xuống dưới, viền sáng.
    Dựng mất vài trăm ms nên chia nhỏ qua nhiều lượt (không giật), bắt đầu ngay khi rê chuột vào lõi hay bật mặt A.I.
-   Toạ độ thiết kế: như mô hình đầu (đơn vị = bán kính đầu), rồi thu vào hộp sọ theo naoMH. */
-const NAO = {
-  // viền nửa phải (x ≥ 0): đỉnh vòm, hai bên tròn, thuỳ thái dương thòng xuống ôm thân não ở giữa đáy
-  VIEN: [[0, -1.12], [0.03, -1.135], [0.1, -1.14], [0.22, -1.125], [0.36, -1.085], [0.5, -1.0], [0.61, -0.87],
-    [0.68, -0.71], [0.705, -0.54], [0.69, -0.39], [0.63, -0.27], [0.53, -0.2], [0.41, -0.185], [0.29, -0.205], [0.19, -0.25],
-    [0.12, -0.29], [0.075, -0.315], [0.035, -0.328], [0, -0.33]],
-  // khoảng lõm đáy giữa (dưới chỗ rãnh giữa gặp hai rãnh ngang)
-  LOM: [[0, -0.605], [0.09, -0.6], [0.15, -0.565], [0.17, -0.49], [0.155, -0.4], [0.115, -0.31], [0.075, -0.22], [0.06, -0.12],
-    [0, -0.1]],
-  X0: -0.74, Y0: -1.17, X1: 0.74, Y1: -0.15,
-  SYL: (ax) => -0.6 + 0.2 * (ax / 0.7) ** 1.4 - 0.03 * Math.sin(ax / 0.7 * Math.PI),
-  CO: 0.98, Z: 0.3,          // đặt vào hộp sọ: đỉnh sát đỉnh đầu, đáy thuỳ thái dương trên cung mày; mặt phẳng não sâu trong đầu
-  TAM: [0, -0.5],             // nguồn sáng ở khoảng lõm giữa
-  anh: null, dang: false,
-};
-const naoMH = (x, y) => [x * NAO.CO, -1.17 + (y + 1.14) * NAO.CO];   // toạ độ thiết kế → mô hình đầu
+   Toạ độ: như mô hình đầu (đơn vị = bán kính đầu). */
+const NAO = (() => {
+  // viền nửa phải (x ≥ 0) ôm theo hộp sọ — cách viền đầu 0,075 (lớp xương sọ), nên não luôn cân với đầu; dưới đường rãnh ngang
+  // là thuỳ thái dương nằm sau thái dương, đáy ngang cung mày; giữa đáy là khoảng lõm
+  const vien = [[0, -1.235], [0.1, -1.233], [0.2, -1.22]];
+  for (let y = -1.19; y <= -0.42; y += 0.035) vien.push([nuaRong(y) - 0.075, y]);
+  vien.push([0.8, -0.33], [0.755, -0.235], [0.675, -0.16], [0.57, -0.12], [0.46, -0.125], [0.37, -0.155], [0.29, -0.21],
+    [0.22, -0.28], [0.15, -0.325], [0.07, -0.35], [0, -0.355]);
+  return {
+    VIEN: vien,
+    // khoảng lõm đáy giữa (dưới chỗ rãnh giữa gặp hai rãnh ngang): hai thuỳ thái dương tách hai bên, giữa là nguồn sáng
+    LOM: [[0, -0.53], [0.08, -0.525], [0.14, -0.49], [0.175, -0.42], [0.17, -0.34], [0.13, -0.26], [0.09, -0.17],
+      [0.07, -0.08], [0, -0.06]],
+    X0: -0.9, Y0: -1.27, X1: 0.9, Y1: -0.06,
+    SYL: (ax) => -0.53 + 0.15 * (ax / 0.84) ** 1.4 - 0.03 * Math.sin(ax / 0.84 * Math.PI),   // rãnh ngang (Sylvius)
+    Z: 0.3,                   // mặt phẳng não, sâu trong đầu (quay đầu thì não trượt ít hơn mặt — có chiều sâu)
+    TAM: [0, -0.43],          // nguồn sáng ở khoảng lõm giữa
+    GIUA: [0, -0.74],         // tâm vỏ não: các vùng kiến thức chia lãnh thổ quanh điểm này
+    anh: null, dang: false,
+  };
+})();
 function cong(ds, n) {                    // đường cong Catmull-Rom qua các điểm
   const kq = [];
   for (let i = 0; i < ds.length - 1; i++) {
@@ -1052,8 +1061,8 @@ function* dungNao(SPX) {
   };
   const moi = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
   const bao = duong(NAO.bao, true), lom = duong(NAO.lom, true), ranhDoc = new Path2D();
-  ranhDoc.moveTo(px(0), py(-1.16)); ranhDoc.lineTo(px(0), py(-0.58));
-  const ranhNgang = [-1, 1].map((b) => duong(Array.from({ length: 36 }, (_, i) => { const ax = 0.035 + 0.69 * i / 35; return [b * ax, SYL(ax)]; })));
+  ranhDoc.moveTo(px(0), py(-1.26)); ranhDoc.lineTo(px(0), py(-0.52));
+  const ranhNgang = [-1, 1].map((b) => duong(Array.from({ length: 40 }, (_, i) => { const ax = 0.035 + 0.83 * i / 39; return [b * ax, SYL(ax)]; })));
   // 1. mặt nạ vỏ não (điểm ảnh): bóng não trừ rãnh giữa, hai rãnh ngang, khoảng lõm đáy giữa
   const cm = moi(), gm = cm.getContext('2d', { willReadFrequently: true });
   gm.fillStyle = '#fff'; gm.fill(bao);
@@ -1065,7 +1074,7 @@ function* dungNao(SPX) {
   for (let i = 0; i < w * h; i++) M[i] = am[i * 4 + 3] > 127 ? 1 : 0;
   yield;
   // 2. nếp cuộn: Gray-Scott trên lưới thô, mỗi thuỳ riêng (ô sát mép phản xạ — không cấp thêm chất, rãnh không bám viền)
-  const G = 0.011, nx = Math.round((X1 - X0) / G) + 1, ny = Math.round((Y1 - Y0) / G) + 1, vung = new Int8Array(nx * ny);
+  const G = 0.012, nx = Math.round((X1 - X0) / G) + 1, ny = Math.round((Y1 - Y0) / G) + 1, vung = new Int8Array(nx * ny);
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const X = Math.min(w - 1, Math.round(i * G * SPX)), Y = Math.min(h - 1, Math.round(j * G * SPX)), x = X0 + i * G;
     vung[j * nx + i] = M[Y * w + X] ? (Y0 + j * G < SYL(Math.abs(x)) ? 1 : 2) * (x < 0 ? -1 : 1) : 0;
@@ -1163,15 +1172,19 @@ function* dungNao(SPX) {
         if (j < i && ngau() < 0.6) return;
         const b = nut[j], c = (ngau() - 0.5) * 0.5, mx = (a[0] + b[0]) / 2 - (b[1] - a[1]) * c, my = (a[1] + b[1]) / 2 + (b[0] - a[0]) * c;
         gp.beginPath(); gp.moveTo(px(a[0]), py(a[1])); gp.quadraticCurveTo(px(mx), py(my), px(b[0]), py(b[1]));
-        gp.strokeStyle = ngau() < 0.45 ? 'rgba(255,120,225,0.3)' : 'rgba(120,225,255,0.3)';
+        gp.strokeStyle = ngau() < 0.45 ? 'rgba(255,120,225,0.14)' : 'rgba(120,225,255,0.14)';   // nền mô thần kinh — mờ, nhường đường dữ liệu
         gp.stroke();
       });
   });
   gp.lineCap = 'round';
   for (const [rr, al] of [[0.02, 0.12], [0.008, 0.3], [0.0025, 0.75]]) {
     gp.lineWidth = rr * SPX;
-    gp.strokeStyle = `rgba(255,200,130,${al})`; gp.stroke(ranhDoc);
-    gp.strokeStyle = `rgba(255,170,200,${(al * 0.8).toFixed(2)})`; ranhNgang.forEach((p) => gp.stroke(p));
+    // rãnh giữa: sáng nhất gần nguồn sáng, nhạt dần lên đỉnh (khỏi trông như nối liền với trục của vòng vùng phía trên)
+    const doc = gp.createLinearGradient(0, py(-1.26), 0, py(-0.52));
+    doc.addColorStop(0, 'rgba(255,200,130,0)'); doc.addColorStop(0.55, `rgba(255,200,130,${(al * 0.35).toFixed(3)})`);
+    doc.addColorStop(1, `rgba(255,200,130,${al})`);
+    gp.strokeStyle = doc; gp.stroke(ranhDoc);
+    gp.strokeStyle = `rgba(230,160,255,${(al * 0.5).toFixed(2)})`; ranhNgang.forEach((p) => gp.stroke(p));
   }
   gp.restore();
   // 6. dữ liệu lớp động: chấm lấp lánh trên đỉnh nếp, nốt có tia chữ thập
@@ -1185,7 +1198,7 @@ function* dungNao(SPX) {
 }
 function batDauDungNao() {
   // ảnh đã có mà màn hình to lên nhiều (toàn màn hình, kéo cửa sổ) thì dựng lại cho nét; trong lúc dựng vẫn vẽ ảnh cũ
-  const can = keo(Math.round(MAT.u * DV * NAO.CO), 200, 460);
+  const can = keo(Math.round(MAT.u * DV), 200, 420);
   if (NAO.dang || !MAT.u || (NAO.anh && can <= NAO.anh.SPX * 1.4)) return;
   NAO.dang = true;
   const lam = dungNao(can);
@@ -1203,10 +1216,10 @@ function viTriNao(nd) {
   const n = Math.max(1, vongMau.length), id = String(nd.note.id), nh = (Math.PI + 1.1) / n;
   for (let lan = 0; lan < 40; lan++) {
     const th = -Math.PI - 0.55 + (nd.vong + 0.12 + 0.76 * bam(id, 1 + 4 * lan)) * nh;
-    const rho = 0.25 + 0.72 * Math.sqrt(bam(id, 2 + 4 * lan)), x = 0.66 * rho * Math.cos(th), y = -0.66 + 0.46 * rho * Math.sin(th);
-    if (trongNao(x, y)) return [...naoMH(x, y), NAO.Z + 0.06 * (bam(id, 3) - 0.5)];
+    const rho = 0.22 + 0.74 * Math.sqrt(bam(id, 2 + 4 * lan)), x = 0.8 * rho * Math.cos(th), y = NAO.GIUA[1] + 0.52 * rho * Math.sin(th);
+    if (trongNao(x, y)) return [x, y, NAO.Z + 0.06 * (bam(id, 3) - 0.5)];
   }
-  return [...naoMH(0.3 * (bam(id, 5) < 0.5 ? -1 : 1), -0.8), NAO.Z];
+  return [0.3 * (bam(id, 5) < 0.5 ? -1 : 1), -0.85, NAO.Z];
 }
 
 function capNhatMat(tg) {
@@ -1564,11 +1577,10 @@ function quangCham(mau) {
 function veNao(t, a) {
   batDauDungNao();
   const noiNhieu = loiNoi && giay() - loiNoi.t0 < loiNoi.dai ? 1 : 0;
-  veThanNao(t, a, noiNhieu);
   const A = NAO.anh;
   if (!A) return;
   // dán ảnh não lên mặt phẳng z = NAO.Z trong đầu, theo góc quay đầu (biến đổi afin qua ba điểm chiếu)
-  const [mx, my] = naoMH(NAO.X0, NAO.Y0), k = NAO.CO / A.SPX;
+  const mx = NAO.X0, my = NAO.Y0, k = 1 / A.SPX;
   const O = chieuDiem(mx, my, NAO.Z, 1), Px = chieuDiem(mx + 1, my, NAO.Z, 1), Py = chieuDiem(mx, my + 1, NAO.Z, 1);
   cx.save();
   cx.transform((Px.x - O.x) * k, (Px.y - O.y) * k, (Py.x - O.x) * k, (Py.y - O.y) * k, O.x, O.y);
@@ -1621,41 +1633,26 @@ function veNao(t, a) {
   }
   cx.restore();
 }
-/* Thân não: bó dây thần kinh từ khoảng lõm giữa đáy não xuống lõi Bát Quái trên ngực — sau mặt gần như ẩn (khỏi thành vạch dọc
-   sống mũi), từ cằm hiện rõ: các sợi tách ra, uốn nhẹ, xoè như rễ cắm vào vành trên của lõi. Sợi vàng kim (Dương) và xanh lam
-   (Âm) xen nhau; xung sáng chạy dọc sợi — Dương đi xuống, Âm đi lên. */
-function veThanNao(t, a, noiNhieu) {
-  const [, by] = naoMH(0, -0.56), SO = 9, NUA = 18, RK = rkHienTai;
-  for (let k = 0; k < SO; k++) {
-    const l = (k - (SO - 1) / 2) / ((SO - 1) / 2), duong = k % 2 === 0, mau = duong ? '242,206,107' : '90,170,255';
-    const diem = [];
-    for (let i = 0; i <= NUA; i++) diem.push(chieuDiem(l * 0.012, by + (1.05 - by) * i / NUA, 0.05, 1));   // sau mặt → cằm
-    const c0 = diem[NUA], g = l * 0.85, cuoi = { x: LX + Math.sin(g) * RK * 1.04, y: LY - Math.cos(g) * RK * 1.04 };
-    const giua = { x: c0.x + l * 0.07 * MAT.u + 0.02 * MAT.u * Math.sin(k * 2.3), y: (c0.y + cuoi.y) / 2 };
-    for (let i = 1; i <= NUA; i++) {     // cằm → lõi: đường cong bậc hai
-      const s = i / NUA, m = 1 - s;
-      diem.push({ x: m * m * c0.x + 2 * m * s * giua.x + s * s * cuoi.x, y: m * m * c0.y + 2 * m * s * giua.y + s * s * cuoi.y });
-    }
-    const n = diem.length - 1, gr = cx.createLinearGradient(diem[0].x, diem[0].y, cuoi.x, cuoi.y);
-    gr.addColorStop(0, `rgba(${mau},${(0.6 * a).toFixed(3)})`);
-    gr.addColorStop(0.06, `rgba(${mau},${(0.04 * a).toFixed(3)})`);
-    gr.addColorStop(0.5, `rgba(${mau},${(0.04 * a).toFixed(3)})`);
-    gr.addColorStop(0.62, `rgba(${mau},${(0.38 * a).toFixed(3)})`);
-    gr.addColorStop(1, `rgba(${mau},${(0.7 * a).toFixed(3)})`);
-    cx.strokeStyle = gr;
-    cx.lineWidth = 1;
-    cx.beginPath();
-    diem.forEach((p, i) => (i ? cx.lineTo(p.x, p.y) : cx.moveTo(p.x, p.y)));
-    cx.stroke();
-    if (itMotion) continue;
-    const s = ((duong ? t : -t) * (0.2 + 0.12 * noiNhieu) + k * 0.137) % 1, u = 0.5 + 0.5 * (s < 0 ? s + 1 : s);   // chỉ chạy từ cằm xuống
-    const p = diem[Math.round(u * n)], r = 3.5 + 2 * noiNhieu;
-    const q = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    q.addColorStop(0, `rgba(255,255,255,${(0.9 * a * em(0.5, 0.58, u)).toFixed(3)})`);
-    q.addColorStop(1, `rgba(${mau},0)`);
-    cx.fillStyle = q;
-    cx.beginPath(); cx.arc(p.x, p.y, r, 0, Math.PI * 2); cx.fill();
-  }
+/* Liên kết giữa hai ghi chú ở mặt A.I: cung khớp thần kinh cong ra ngoài, pha màu hai vùng, có xung sáng nhỏ chạy qua lại.
+   Vẽ sau bộ não (trước đây là vạch thẳng xám, nằm dưới não nên khuất). */
+function veKhop(t, a, diem) {
+  if (!DATA.links.length) return;
+  const theoId = new Map(nodes.map((nd) => [nd.note.id, nd]));
+  cx.lineWidth = 1.1;
+  DATA.links.forEach(([i, j], k) => {
+    const A = theoId.get(i), B = theoId.get(j), p = diem.get(i), q = diem.get(j);
+    if (!A || !B || !p || !q) return;
+    const toi = (mo(A) && mo(B)) || (hoverVung && A.nhom !== hoverVung && B.nhom !== hoverVung), dx = q.x - p.x, dy = q.y - p.y, c = { x: (p.x + q.x) / 2 - dy * 0.22, y: (p.y + q.y) / 2 + dx * 0.22 };
+    const g = cx.createLinearGradient(p.x, p.y, q.x, q.y);
+    g.addColorStop(0, rgba(A.mau, a * (toi ? 0.08 : 0.6))); g.addColorStop(1, rgba(B.mau, a * (toi ? 0.08 : 0.6)));
+    cx.strokeStyle = g;
+    cx.beginPath(); cx.moveTo(p.x, p.y); cx.quadraticCurveTo(c.x, c.y, q.x, q.y); cx.stroke();
+    if (itMotion || toi) return;
+    const s0 = (t * 0.3 + k * 0.173) % 2, s = s0 < 1 ? s0 : 2 - s0, m = 1 - s;
+    const x = m * m * p.x + 2 * m * s * c.x + s * s * q.x, y = m * m * p.y + 2 * m * s * c.y + s * s * q.y;
+    cx.fillStyle = `rgba(255,255,255,${(0.8 * a).toFixed(3)})`;
+    cx.beginPath(); cx.arc(x, y, 1.4, 0, Math.PI * 2); cx.fill();
+  });
 }
 
 /* Các vùng: vòng tròn quanh đầu (trái → phải theo thứ tự vòng quỹ đạo), nối mạng tới từng nơ-ron của vùng trong não;
@@ -1679,22 +1676,49 @@ function veVung(a, t, diem) {
     MH.vungXY.push({ ten, x: CX + rx * Math.cos(goc0), y: tamY + ry * Math.sin(goc0), r: rv });
   });
   cx.globalCompositeOperation = 'lighter';
-  cx.lineWidth = 1;
+  // Nối dữ liệu như dây thần kinh thật (gom bó, đỡ rối): mỗi vùng MỘT trục từ vòng tới cửa vào trên rìa não — điểm viền theo
+  // hướng tâm vỏ não → vòng — rồi từ cửa vào toả nhánh cong tới từng nơ-ron của vùng. Xung dữ liệu chạy dọc trục rồi rẽ vào
+  // một nhánh. (Trước đây mỗi ghi chú một đường thẳng từ vòng xuyên qua đầu: vùng nhiều ghi chú thành chùm tia rối.)
+  const G0 = chieuDiem(NAO.GIUA[0], NAO.GIUA[1], NAO.Z, 1);
+  const bien = NAO.bao.filter((_, i) => i % 3 === 0).map(([x, y]) => chieuDiem(x, y, NAO.Z, 1));
   MH.vungXY.forEach((v) => {
-    const mau = mauCua(v.ten), toi = noiBat && noiBat !== v.ten, sang = v.ten === nhay || v.ten === hoverVung;
+    const mau = mauCua(v.ten), sang = v.ten === nhay || v.ten === hoverVung;
+    const toi = (noiBat && noiBat !== v.ten) || (hoverVung && hoverVung !== v.ten);
     const ds = nodes.filter((nd) => nd.nhom === v.ten).map((nd) => diem.get(nd.note.id)).filter(Boolean);
     if (!ds.length) return;
+    const g = Math.atan2(v.y - G0.y, v.x - G0.x);
+    let E = bien[0], gan = 9;
+    bien.forEach((p) => { const d = Math.abs(((Math.atan2(p.y - G0.y, p.x - G0.x) - g) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); if (d < gan) { gan = d; E = p; } });
+    const dai = Math.hypot(E.x - v.x, E.y - v.y) || 1, ux = (E.x - v.x) / dai, uy = (E.y - v.y) / dai;
+    const S = { x: v.x + ux * (v.r + 5), y: v.y + uy * (v.r + 5) };
+    const k = toi ? 0.12 : sang ? 1.6 : 1;
+    // trục: quầng + lõi
+    cx.beginPath(); cx.moveTo(S.x, S.y); cx.lineTo(E.x, E.y);
+    cx.strokeStyle = rgba(mau, a * 0.1 * k); cx.lineWidth = 4; cx.stroke();
+    cx.strokeStyle = rgba(mau, a * 0.42 * k); cx.lineWidth = 1.3; cx.stroke();
+    // nhánh: cong nhẹ, lệch luân phiên hai bên
+    const nhanh = ds.map((p, i) => {
+      const dx = p.x - E.x, dy = p.y - E.y, c = (i % 2 ? 0.14 : -0.14);
+      return { p, c: { x: E.x + dx * 0.45 - dy * c, y: E.y + dy * 0.45 + dx * c } };
+    });
     cx.beginPath();
-    ds.forEach((p) => { cx.moveTo(v.x, v.y); cx.lineTo(p.x, p.y); });
-    cx.strokeStyle = rgba(mau, a * (toi ? 0.03 : sang ? 0.45 : 0.1));
-    cx.stroke();
+    nhanh.forEach(({ p, c }) => { cx.moveTo(E.x, E.y); cx.quadraticCurveTo(c.x, c.y, p.x, p.y); });
+    cx.strokeStyle = rgba(mau, a * 0.2 * k); cx.lineWidth = 1; cx.stroke();
+    // cửa vào: chấm sáng nhỏ
+    cx.fillStyle = rgba(mau, a * 0.8 * Math.min(1, k));
+    cx.beginPath(); cx.arc(E.x, E.y, 2.2, 0, Math.PI * 2); cx.fill();
     if (itMotion || toi) return;
-    const tb = ds.reduce((s, p) => ({ x: s.x + p.x / ds.length, y: s.y + p.y / ds.length }), { x: 0, y: 0 });
-    const s = (t * 0.45 + bam(v.ten, 7)) % 1;
-    cx.fillStyle = rgba(mau, a * 0.9);
-    cx.beginPath();
-    cx.arc(v.x + (tb.x - v.x) * s, v.y + (tb.y - v.y) * s, 2, 0, Math.PI * 2);
-    cx.fill();
+    const pha = (t * 0.4 + bam(v.ten, 7)) % 1, lan = Math.floor(t * 0.4 + bam(v.ten, 7));
+    let x, y;
+    if (pha < 0.45) { const s = pha / 0.45; x = S.x + (E.x - S.x) * s; y = S.y + (E.y - S.y) * s; }
+    else {
+      const { p, c } = nhanh[lan % nhanh.length], s = (pha - 0.45) / 0.55, m = 1 - s;
+      x = m * m * E.x + 2 * m * s * c.x + s * s * p.x; y = m * m * E.y + 2 * m * s * c.y + s * s * p.y;
+    }
+    const q = cx.createRadialGradient(x, y, 0, x, y, 5);
+    q.addColorStop(0, `rgba(255,255,255,${(0.95 * a).toFixed(3)})`); q.addColorStop(0.4, rgba(mau, 0.7 * a)); q.addColorStop(1, rgba(mau, 0));
+    cx.fillStyle = q;
+    cx.beginPath(); cx.arc(x, y, 5, 0, Math.PI * 2); cx.fill();
   });
   cx.beginPath();                        // chòm sao nối các vòng kề nhau
   MH.vungXY.forEach((v, i) => { if (i) cx.lineTo(v.x, v.y); else cx.moveTo(v.x, v.y); });
@@ -1841,6 +1865,7 @@ function veMat(tg, diem) {
     cx.fill(vien);
     cx.globalCompositeOperation = 'lighter';
     veNao(t, phu);
+    veKhop(t, phu, diem);
     // vòng HUD — ba vòng nét đứt: xanh lam, vàng kim (màu luồng Dương), cam (màu lõi); xoay xen kẽ chiều, nhanh chậm khác nhau.
     // Vòng khép kín quanh đầu như vầng hào quang: phần đi qua sau cổ, vai bị thân che (trước đây chỉ là cung hở, dừng ngang
     // hàm — anh hỏi "ba vòng tròn nên nối phía sau"). Nửa trên vẽ thẳng; chỉ cung dưới (đi sau cổ) mới cắt theo bóng thân —

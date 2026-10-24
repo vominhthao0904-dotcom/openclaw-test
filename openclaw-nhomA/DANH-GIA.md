@@ -494,7 +494,23 @@ API. Tìm ra và đã sửa:
   yêu cầu sai kiểu không còn lỗi 500).
 - **Câu chữ riêng tư ô Hỏi**: trang ghi "Không gửi gì ra ngoài" — không đúng: câu hỏi và vài ghi chú liên quan đi tới Mây, tức
   qua mô hình AI mà OpenClaw đang dùng (như mọi tin nhắn anh gửi Mây). Nay ghi đúng như vậy, cả ở bảng An toàn trong CAI-DAT.
-- +4 test web (91; exec 88), +1 test brain (129).
+- +4 test web (91; exec 88), +1 test brain (129; máy có crontab chạy thêm 1 mục lịch Drive → 130).
+
+## Sau PR #19: `kiemtra.sh` báo oan 23/27 trên máy nhiều agent
+- Mây cài PR #19 đúng (kho không đổi, 130/130, 91/91), nhưng `kiemtra.sh` báo 4 skill "OpenClaw chưa thấy". Máy anh có nhiều
+  agent; `openclaw skills list` không kèm `--agent` thì OpenClaw 2026.9.6 chọn agent theo thứ tự: `--agent`, rồi **thư mục đang
+  đứng** (nằm trong workspace của agent nào thì xem kho agent đó), rồi agent mặc định. Mây kiểm lại (chỉ đọc): Telegram và agent
+  mặc định đều là `main` — nên chỗ lệch không phải agent mặc định mà nhiều khả năng là thư mục đang đứng lúc chạy script (thư
+  mục giải nén gói) nằm trong workspace của agent khác. 4 skill nằm trong workspace của `main`; thêm `--agent main` thì 27/27,
+  và Mây trên Telegram dùng đủ 4 skill.
+- Nay script tự tìm agent có workspace chứa thư mục skills (`openclaw agents list --json`) rồi kiểm đúng agent đó, in dòng
+  *(kiểm kho skill của agent: …)*; thêm tuỳ chọn `--agent <id>`; không tự tìm được thì gợi ý `--agent main` ngay trong dòng
+  báo lỗi. Ghi rõ `--agent` thì OpenClaw bỏ qua thư mục đang đứng, nên đúng cho cả hai trường hợp. Thử với openclaw giả 2 agent (lệnh trơn trả kho agent khác): bản cũ báo oan, bản mới 4/4; `agents list` hỏng thì về cách
+  cũ, không lỗi. Lệnh kiểm bằng mắt trong CAI-DAT thêm `--agent main`.
+- test-brain ra 130 trên VPS mà tài liệu ghi 129: một mục (đặt lịch Drive giữ nguyên lịch khác) chỉ chạy khi có `crontab`.
+  Tài liệu ghi rõ.
+- Tab Ôn: máy chủ lỗi thì trước đây cũng hiện *"Chưa có gì để ôn"* (tưởng kho trống) — nay hiện đúng dòng lỗi. Hàng ôn trống
+  trên máy anh là đúng: ghi chú phải cũ hơn 3 ngày mới vào hàng chờ, mà kho mới dùng từ 21/10.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

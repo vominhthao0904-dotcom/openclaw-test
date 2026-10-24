@@ -4,13 +4,16 @@
 #
 # Dùng:  bash kiemtra.sh
 #        bash kiemtra.sh --dir /duong/dan/skills     (nếu workspace nằm chỗ khác)
+#        bash kiemtra.sh --agent main                (máy nhiều agent: kiểm kho skill của đúng agent này)
 
 set -uo pipefail
 
 SKILLS_DIR="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}/skills"
+AGENT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) SKILLS_DIR="${2:?--dir cần đường dẫn}"; shift 2 ;;
+    --agent) AGENT="${2:?--agent cần mã agent, ví dụ main}"; shift 2 ;;
     *) echo "Tham số lạ: $1" >&2; exit 2 ;;
   esac
 done
@@ -49,13 +52,38 @@ done
 echo
 echo "PHẦN 2 — OpenClaw đã nhận 4 skill này chưa?"
 if command -v openclaw >/dev/null 2>&1; then
-  DS="$(timeout 60 openclaw skills list 2>&1)"
+  # Máy có nhiều agent: `openclaw skills list` trơn chọn agent theo THƯ MỤC ĐANG ĐỨNG (nằm trong workspace của agent nào thì
+  # xem kho của agent đó), rồi mới tới agent mặc định — có thể xem nhầm kho của agent khác với agent sở hữu thư mục skills ở
+  # trên, nên báo "chưa thấy" oan cả 4 (đã gặp: 23/27 dù agent mặc định là main; thêm --agent main thì 27/27). Tìm agent có
+  # workspace chứa thư mục skills này (openclaw agents list --json) rồi hỏi đúng agent đó; không tìm được thì hỏi như cũ.
+  if [ -z "$AGENT" ]; then
+    AGENT="$(timeout 60 openclaw agents list --json 2>/dev/null | python3 -c '
+import json, os, sys
+t, ds = sys.stdin.read(), None
+for i, ch in enumerate(t):                 # bỏ qua các dòng thông báo in trước JSON (kiểu "[plugins] …")
+    if ch == "[" and (i == 0 or t[i - 1] == "\n"):
+        try:
+            ds = json.JSONDecoder().raw_decode(t[i:])[0]
+            break
+        except ValueError:
+            pass
+if not isinstance(ds, list):
+    sys.exit()
+goc = os.path.realpath(os.path.dirname(sys.argv[1]))
+khop = [a.get("id") for a in ds if isinstance(a, dict) and a.get("workspace")
+        and os.path.realpath(os.path.expanduser(a["workspace"])) == goc]
+if len(khop) == 1 and khop[0]:
+    print(khop[0])
+' "$SKILLS_DIR" 2>/dev/null)"
+  fi
+  [ -n "$AGENT" ] && echo "  (kiểm kho skill của agent: $AGENT)"
+  DS="$(timeout 60 openclaw skills list ${AGENT:+--agent "$AGENT"} 2>&1)"
   for s in "${NHOM_A[@]}"; do
     pad "  $s" 32
     # so khớp ngay trong bash, không qua ống "printf | grep -q": danh sách dài (nhiều skill có sẵn) thì grep thấy
     # tên rồi thoát sớm, printf dính SIGPIPE, pipefail coi cả ống là lỗi -> báo "chưa thấy" oan dù skill đã ready
     if [[ "$DS" == *"$s"* ]]; then ok
-    else hong "OpenClaw chưa thấy — thiếu gói phần mềm, hoặc chưa chạy: openclaw gateway restart"; fi
+    else hong "OpenClaw chưa thấy — thiếu gói phần mềm, hoặc chưa chạy: openclaw gateway restart${AGENT:+ (đang kiểm agent $AGENT)}${AGENT:- (máy nhiều agent thì chạy lại: bash kiemtra.sh --agent main)}"; fi
   done
 else
   echo "  Không tìm thấy lệnh 'openclaw' — bỏ qua phần này."

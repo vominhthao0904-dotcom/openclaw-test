@@ -245,8 +245,8 @@ else
   check "Hỏi ghi chú dài: gửi đúng đoạn liên quan" \
     'post /api/ask "{\"question\":\"Thuỷ điện Hoà Bình công suất bao nhiêu\"}" | jq_ "\"moc=co\" in d[\"answer\"]"' "True"
   python3 "$SB/scripts/brain.py" add --title "Ghi chú gây lỗi" --content "Hồ chứa GIA-LOI thử báo lỗi." >/dev/null
-  check "Hỏi lỗi: báo đúng lý do, không phải dòng Help" \
-    'post /api/ask "{\"question\":\"hồ chứa thử báo lỗi\"}" | jq_ "(d[\"ok\"], d[\"error\"].endswith(\"Gateway not reachable\"), len(d[\"used\"]) > 0)"' "(False, True, True)"
+  check "Hỏi lỗi: đúng lý do (không phải dòng Help) + cách kiểm Gateway" \
+    'post /api/ask "{\"question\":\"hồ chứa thử báo lỗi\"}" | jq_ "(d[\"ok\"], \"Help\" not in d[\"error\"] and \"Gateway not reachable\" in d[\"error\"], \"openclaw gateway status\" in d[\"error\"], len(d[\"used\"]) > 0)"' "(False, True, True, True)"
 fi
 # web bật từ exec của agent (OPENCLAW_SHELL=exec): ô Hỏi không gọi openclaw, báo rõ cách sửa, vẫn đưa ghi chú liên quan
 check "Hỏi khi web bật từ lệnh của agent: báo cách sửa" \

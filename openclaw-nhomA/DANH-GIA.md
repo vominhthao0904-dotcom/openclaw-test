@@ -10,7 +10,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **129** |
+| Test `test-brain.sh` | 50 | **135** |
 | Test `test-web.sh` | 30 | **91** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
@@ -511,6 +511,41 @@ API. Tìm ra và đã sửa:
   Tài liệu ghi rõ.
 - Tab Ôn: máy chủ lỗi thì trước đây cũng hiện *"Chưa có gì để ôn"* (tưởng kho trống) — nay hiện đúng dòng lỗi. Hàng ôn trống
   trên máy anh là đúng: ghi chú phải cũ hơn 3 ngày mới vào hàng chờ, mà kho mới dùng từ 21/10.
+
+## Sau PR #20: mở lại trang ở tab Ôn thì mất nút "Kho lưu"
+- Ảnh của anh: tab Ôn chỉ còn "Chưa có gì để ôn", mất nút *Kho lưu (26)* (ảnh trước vẫn có). Anh tải lại trang lúc đang ở tab
+  Ôn — trang tự mở lại đúng tab đó. Hai lỗi chồng nhau:
+  1. Đoạn "mở lại tab lần trước" nằm giữa file, chạy trước khi các biến của Kho lưu được khởi tạo → lỗi JavaScript *"Cannot
+     access … before initialization"*. Bản cũ cũng dính (biến `moKhoLuu`), chỉ là lỗi nằm im; bộ đếm chống chạy chồng thêm ở
+     PR #19 làm lỗi lộ ra mỗi lần.
+  2. Kể cả không lỗi, tab Ôn được vẽ lúc kho chưa tải xong (tưởng 0 ghi chú cất kho) rồi không vẽ lại.
+- Sửa: đưa đoạn mở lại tab xuống cuối file (sau mọi khai báo); tải kho xong mà tab Ôn đang mở thì vẽ lại hộp "Chưa xếp chỗ" và
+  nút Kho lưu.
+- Bài thử mới: mở lại trang ở **từng tab** (Thêm · Nạp · Tìm · Hỏi · Ôn), máy tính và iPhone, đòi đúng tab, đủ nội dung, không
+  lỗi JavaScript (12/12); tải lại 3 lần ở tab Ôn vẫn có nút Kho lưu. Cả bộ rà soát trình duyệt chạy lại: 101/101.
+
+## Rà soát toàn diện lần 2 ("Kiểm tra thật kỹ, sửa 1 lần luôn")
+Lỗi tab Ôn lọt qua lần rà trước vì chưa thử mở lại trang — lần này thử theo danh sách thay vì theo lỗi: mọi trạng thái trình
+duyệt nhớ (tab × ẩn tên × dừng xoay × tốc độ × tiếng: 20 tổ hợp, mở lại trang), phím tắt (/, M, T, nhấp đúp, Esc, bảng tốc độ),
+kho lớn 218 ghi chú 8 vùng (Thư viện xem thêm tới hết không trùng, 4 kiểu sắp xếp, cây khớp số từng vùng / nhóm con, Việc, mặt
+A.I ~46 khung/giây), kho trống, mọi nút trên thẻ chi tiết (xong / mở lại việc, nhớ rồi, đường dẫn nhóm, nguồn, trích dẫn, sửa
+sang nhóm mới, xoá trắng rồi lưu, menu bằng Shift+F10), Nạp file Word / PDF thật (tên tiếng Việt, kéo thả, file > 4 MB, tổng
+> 7 MB, .doc đời cũ, PDF hỏng), 4 kiểu lỗi ô Hỏi, 5 cỡ màn hình (1280×520, 1920×1080, máy tính bảng, iPhone, Android 360×640).
+Tổng 197 tình huống trình duyệt — đạt cả sau khi sửa:
+- **Word "QUY TRÌNH SỬA CHỮA THANG MÁY…" thành ghi chú tên "Tiếp nhận sự cố"** — tiêu đề mục đầu tiên bị coi là tên tài liệu.
+  Nay tiêu đề đầu chỉ là tên khi phía sau không còn tiêu đề cùng cấp; kiểu **Title** của Word luôn là tên tài liệu (trước đây
+  lẫn với Heading 1); title trong frontmatter không bị tiêu đề mục đè; chữ dán không tên file thì tiêu đề đầu vẫn làm tên.
+- **Tên lấy từ tên file mất dấu " - "** ("…THANG MÁY LƯU ĐỒ…") — nay giữ; gạch nối kiểu slug ("bai-hoc") vẫn thành khoảng trắng.
+- **PDF "Mỗi trang 1 ghi chú" ra 0 ghi chú** khi các trang quá ngắn (trang < 40 chữ bị bỏ như bìa/trang trắng) — nay không
+  trang nào đủ dài thì cả file một ghi chú.
+- PDF hỏng / có mật khẩu: báo tiếng Việt cách xử lý (mở trên máy, In → Lưu thành PDF), dòng lỗi gốc chỉ kèm theo.
+- Ô Hỏi khi Gateway OpenClaw tắt: thêm gợi ý tiếng Việt (đợi rồi hỏi lại; vẫn lỗi thì `openclaw gateway status`).
+- **Ba vòng quanh đầu hở phía dưới** (anh hỏi: "Ba vòng tròn nên nối phía sau còn bị đứt thiếu?") — trước đây là cung từ ~4
+  giờ qua đỉnh tới ~8 giờ. Nay vòng khép kín; cung dưới đi sau cổ, vai thì bị bóng thân che như vầng hào quang thật. Chỉ cung
+  dưới cắt theo bóng thân (cắt cả vòng theo viền đầu + thân mỗi khung làm chậm rõ); nét đứt nối tiếp đúng nhịp chỗ nối.
+- **Dải chip vùng đè lên đồ thị** trên điện thoại (2–4 hàng chip, kho nhiều vùng che cả lõi) và laptop màn thấp — điện thoại:
+  dải chip nằm dưới đồ thị; máy tính: bị đè thì đồ thị tự dồn vào khoảng trống giữa thanh chế độ và dải chip.
+- +6 test brain (135; VPS có crontab 136), test web cập nhật mục lỗi Gateway (91).
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

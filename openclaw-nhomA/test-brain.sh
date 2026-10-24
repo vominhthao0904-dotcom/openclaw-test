@@ -291,6 +291,28 @@ printf 'day khong phai file zip' > "$TMP/cu.docx"
 printf '# 1. Cần chuẩn bị gì?\nMột VPS Ubuntu.\n\n# 2. Cài đặt\nChạy lệnh cài.\n' > "$TMP/huong-dan-vps.md"
 check "cả file 1 ghi chú: mục đánh số không thành tên" \
   'BR nap "$TMP/huong-dan-vps.md" --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Huong dan vps']"
+# tên tài liệu: tiêu đề đầu chỉ là tên khi không có tiêu đề cùng cấp phía sau; kiểu Title của Word là tên; tên file giữ " - "
+python3 - "$TMP" <<'PY2'
+import sys, zipfile
+W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+def docx(path, doan):
+    than = "".join((f'<w:p><w:pPr><w:pStyle w:val="{k}"/></w:pPr>' if k else "<w:p>") + f"<w:r><w:t>{c}</w:t></w:r></w:p>" for k, c in doan)
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("word/document.xml", f'<?xml version="1.0" encoding="UTF-8"?><w:document {W}><w:body>{than}</w:body></w:document>')
+docx(sys.argv[1] + "/QUY TRÌNH SỬA CHỮA - LƯU ĐỒ.docx", [("Heading1", "Tiếp nhận sự cố"), ("", "Ghi nhận lỗi."), ("Heading1", "Sửa chữa"), ("", "Thay linh kiện.")])
+docx(sys.argv[1] + "/co-title.docx", [("Title", "Sổ tay vận hành"), ("Heading1", "Mục một"), ("", "Nội dung một."), ("Heading1", "Mục hai"), ("", "Nội dung hai.")])
+PY2
+check "cả file 1 ghi chú: mở đầu bằng mục → tên file, giữ \" - \"" \
+  'BR nap "$TMP/QUY TRÌNH SỬA CHỮA - LƯU ĐỒ.docx" --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['QUY TRÌNH SỬA CHỮA - LƯU ĐỒ']"
+check "Word kiểu Title là tên tài liệu" \
+  'BR nap "$TMP/co-title.docx" --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Sổ tay vận hành']"
+check "Word kiểu Title + tách mục: các mục giữ tên mục" \
+  'BR nap "$TMP/co-title.docx" --tach heading --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Mục một', 'Mục hai']"
+printf '# Quy trình bảo trì\nKiểm tra.\n\n## Bôi trơn\nRay.\n' > "$TMP/ten-va-muc.md"
+check "tiêu đề đầu duy nhất cấp 1 vẫn là tên" \
+  'BR nap "$TMP/ten-va-muc.md" --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Quy trình bảo trì']"
+check "dán nhiều mục cùng cấp: tiêu đề đầu làm tên" \
+  'printf "# Mục A\nNội dung A.\n\n# Mục B\nNội dung B.\n" | BR nap - --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Mục A']"
 check "dán một dòng ngắn: dòng đó là tên" \
   'printf "Hướng dẫn cài đặt trên VPS" | BR nap - --tach khong --dry-run | jq_ "[g[\"title\"] for g in d[\"ghi_chu\"]]"' "['Hướng dẫn cài đặt trên VPS']"
 check "Word hỏng / .doc đổi đuôi: báo lỗi rõ" 'BR nap "$TMP/cu.docx" | jq_ "(d[\"ok\"], \".docx\" in str(d[\"loi\"]))"' "(False, True)"
@@ -319,6 +341,11 @@ PDF
   check "nạp PDF: mỗi trang 1 ghi chú" 'BR nap "$TMP/hai-trang.pdf" --tach trang --dry-run | jq_ "len(d[\"ghi_chu\"])"' "2"
   check "nạp PDF: mặc định cả file 1 ghi chú" 'BR nap "$TMP/hai-trang.pdf" --dry-run | jq_ "len(d[\"ghi_chu\"])"' "1"
   check "PDF: tên lấy từ thông tin file (có dấu)" 'BR nap "$TMP/hai-trang.pdf" --dry-run | jq_ "d[\"ghi_chu\"][0][\"title\"]"' "Sổ tay thử PDF"
+  # trang quá ngắn (bìa, trang trắng) bị bỏ khi tách trang; không trang nào đủ dài thì cả file 1 ghi chú — không ra 0
+  python3 -c 'import sys; d = open(sys.argv[1], "rb").read()
+for t in (b"Trang mot", b"Trang hai"): d = d.replace(t + b": noi dung kiem tra doc chu cua file PDF.", (t + b".").ljust(50))
+open(sys.argv[2], "wb").write(d)' "$TMP/hai-trang.pdf" "$TMP/trang-ngan.pdf"
+  check "PDF trang quá ngắn, tách trang: cả file 1 ghi chú" 'BR nap "$TMP/trang-ngan.pdf" --tach trang --dry-run | jq_ "len(d[\"ghi_chu\"])"' "1"
 else
   echo "  (máy này chưa có pdftotext / pypdf — bỏ qua test PDF)"
 fi

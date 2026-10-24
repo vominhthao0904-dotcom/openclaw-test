@@ -1375,7 +1375,9 @@ def _frontmatter(text):
 
 
 def _tieu_de_tu_ten(path):
-    t = re.sub(r"[-_]+", " ", Path(path).stem).strip()
+    # gạch nối kiểu tên file ("bai-hoc", "huong_dan") thành khoảng trắng; " - " có cách hai bên là dấu ngăn hai vế của tên
+    # tài liệu ("QUY TRÌNH … THANG MÁY - LƯU ĐỒ …") — giữ nguyên (trước đây mất, thành "…THANG MÁY LƯU ĐỒ…")
+    t = re.sub(r"\s+", " ", re.sub(r"_+|(?<!\s)-+(?!\s)", " ", Path(path).stem)).strip()
     return t[:1].upper() + t[1:] if t else "Không tên"
 
 
@@ -1384,18 +1386,25 @@ TEN_DAN = "Ghi chú dán vào"                 # tên mặc định của chữ 
 SO_MUC = re.compile(r"(?i)^(?:\d+(?:[.)]|\s)|[ivxlc]+[.)]\s|(?:phần|chương|bước|mục|bài|part|chapter|step|section)\s+\d)")
 
 
-def _tach_markdown(text, tach, mac_dinh_tieu_de, dung_dong_dau=False):
-    """Tách Markdown theo tiêu đề # / ##. Mỗi mục có nội dung thành một ghi chú."""
+def _tach_markdown(text, tach, mac_dinh_tieu_de, dung_dong_dau=False, co_ten=False):
+    """Tách Markdown theo tiêu đề # / ##. Mỗi mục có nội dung thành một ghi chú.
+    co_ten: mac_dinh_tieu_de là tên tài liệu ghi rõ (kiểu Title của Word, title trong frontmatter) — không để tiêu đề mục đè."""
     dong = text.splitlines()
     vi_tri = [i for i, l in enumerate(dong) if re.match(r"^#{1,2}\s+\S", l)]
     if not vi_tri or tach == "khong" or (tach != "heading" and len(vi_tri) < 2):
         tieu_de = mac_dinh_tieu_de
-        if vi_tri and vi_tri[0] < 3:            # tiêu đề nằm ngay đầu file thì dùng làm tên ghi chú
+        cap = lambda i: len(dong[i]) - len(dong[i].lstrip("#"))
+        # tiêu đề nằm ngay đầu file là TÊN tài liệu khi phía sau không còn tiêu đề nào cùng cấp ("# Tên" + các "## mục").
+        # File mở đầu bằng mục ("# Tiếp nhận sự cố" … "# Sửa chữa") thì đó là mục đầu — tên lấy tên file (trước đây file
+        # "QUY TRÌNH SỬA CHỮA THANG MÁY" thành ghi chú tên "Tiếp nhận sự cố")
+        # (chữ dán không tên file thì tiêu đề đầu vẫn hơn "Ghi chú dán vào")
+        dau_file = bool(vi_tri) and vi_tri[0] < 3
+        if dau_file and not co_ten and (all(cap(i) > cap(vi_tri[0]) for i in vi_tri[1:]) or mac_dinh_tieu_de == TEN_DAN):
             dau = re.sub(r"^#+\s*", "", dong[vi_tri[0]]).strip()
             if not SO_MUC.match(dau):           # mục đánh số: giữ trong nội dung, tên lấy tên file / tên tài liệu
                 tieu_de = dau
                 dong = dong[:vi_tri[0]] + dong[vi_tri[0] + 1:]
-        elif dung_dong_dau:
+        elif dung_dong_dau and not dau_file:
             # văn bản thường: dòng đầu ngắn, không kết thúc bằng dấu câu -> đó là tên (giữ được dấu tiếng Việt,
             # tên file thường bị bỏ dấu)
             dau = next((i for i, l in enumerate(dong) if l.strip()), None)
@@ -1462,7 +1471,7 @@ def _doc_docx(path):
     if tt.file_size > 40 * 1024 * 1024:           # chặn file nén "bom" (nhỏ khi nén, khổng lồ khi bung)
         raise ValueError("nội dung Word quá lớn")
     goc = ET.fromstring(z.read(tt))
-    ten = ""
+    ten, ten_title = "", ""
     try:
         core = ET.fromstring(z.read("docProps/core.xml"))
         ten = gon(core.findtext("{http://purl.org/dc/elements/1.1/}title") or "")
@@ -1485,7 +1494,10 @@ def _doc_docx(path):
         kieu = para.find(f"{W}pPr/{W}pStyle")
         kieu = kieu.get(W + "val", "") if kieu is not None else ""
         cap = para.find(f"{W}pPr/{W}outlineLvl")
-        m = re.match(r"(?i)^(?:heading|tieude|tiêuđề|title)\s*(\d?)$", kieu.replace(" ", ""))
+        if re.match(r"(?i)^(?:title|tựađề|tuade)$", kieu.replace(" ", "")):
+            ten_title = ten_title or text     # kiểu Title: tên tài liệu, không lẫn vào các mục Heading 1
+            continue
+        m = re.match(r"(?i)^(?:heading|tieude|tiêuđề)\s*(\d?)$", kieu.replace(" ", ""))
         muc = int(cap.get(W + "val", "9")) + 1 if cap is not None else (int(m.group(1) or 1) if m else 0)
         if 1 <= muc <= 2:
             dong.append("#" * muc + " " + text)
@@ -1493,7 +1505,7 @@ def _doc_docx(path):
             dong.append("- " + text)
         else:   # dòng thường mở đầu bằng "#" (vd chú thích trong lệnh mẫu) không phải tiêu đề: thêm khoảng trắng để khỏi bị tách
             dong.append(" " + text if text.startswith("#") else text)
-    return ten, unicodedata.normalize("NFC", re.sub(r"\n{3,}", "\n\n", "\n".join(dong)).strip())
+    return (ten_title or ten), unicodedata.normalize("NFC", re.sub(r"\n{3,}", "\n\n", "\n".join(dong)).strip()), bool(ten_title)
 
 
 def _doc_pdf(f):
@@ -1502,7 +1514,12 @@ def _doc_pdf(f):
     if shutil.which("pdftotext"):
         r = subprocess.run(["pdftotext", "-enc", "UTF-8", str(Path(f).resolve()), "-"], capture_output=True, text=True)
         if r.returncode:
-            raise ValueError("pdftotext lỗi: " + (r.stderr or "").strip()[:150])
+            # nói tiếng Việt cách xử lý; dòng lỗi gốc (tiếng Anh) chỉ để kèm cho người sửa — trước đây chỉ có dòng gốc
+            goc = ((r.stderr or "").strip().splitlines() or [""])[0][:100]
+            khoa = "assword" in (r.stderr or "")
+            raise ValueError(("PDF có mật khẩu — mở bằng máy tính, bỏ mật khẩu (hoặc In → Lưu thành PDF) rồi nạp lại"
+                              if khoa else "PDF hỏng hoặc không đọc được — mở thử trên máy tính, In → Lưu thành PDF rồi nạp lại")
+                             + (f" (chi tiết: {goc})" if goc else ""))
         return [unicodedata.normalize("NFC", x).strip() for x in r.stdout.split("\f")]
     try:
         from pypdf import PdfReader
@@ -1511,7 +1528,7 @@ def _doc_pdf(f):
     try:
         return [unicodedata.normalize("NFC", (pg.extract_text() or "")).strip() for pg in PdfReader(str(f)).pages]
     except Exception as e:                       # pypdf ném nhiều kiểu lỗi khi file hỏng/mã hoá
-        raise ValueError(f"không đọc được PDF ({type(e).__name__})")
+        raise ValueError(f"PDF hỏng hoặc có mật khẩu — mở thử trên máy tính, In → Lưu thành PDF rồi nạp lại (chi tiết: {type(e).__name__})")
 
 
 def _tieu_de_pdf(f):
@@ -1548,25 +1565,29 @@ def doc_nguon(path, tach):
             raise ValueError("không phải văn bản UTF-8")
         meta, than = _frontmatter(text)
         tieu_de = meta.get("title") or meta.get("tieu_de") or ten
-        muc = _tach_markdown(than, tach, tieu_de, dung_dong_dau=not (meta.get("title") or meta.get("tieu_de")))
+        co = bool(meta.get("title") or meta.get("tieu_de"))
+        muc = _tach_markdown(than, tach, tieu_de, dung_dong_dau=not co, co_ten=co)
         chung = {"category": meta.get("category") or meta.get("nhom") or "",
                  "tags": meta.get("tags") or meta.get("the") or "", "kind": meta.get("kind") or meta.get("loai"),
                  "url": meta.get("url") or meta.get("source") or meta.get("nguon") or "",
                  "cite": meta.get("cite") or meta.get("trich_dan") or "", "due": meta.get("due") or meta.get("han")}
         return [{"title": t, "content": c, **chung} for t, c in muc]
     if duoi == ".docx":
-        tieu_de, text = _doc_docx(f)
+        tieu_de, text, co_title = _doc_docx(f)
         if not text:
             raise ValueError("file Word không có chữ")
-        return [{"title": t, "content": c} for t, c in _tach_markdown(text, tach, tieu_de or ten, dung_dong_dau=not tieu_de)]
+        return [{"title": t, "content": c} for t, c in
+                _tach_markdown(text, tach, tieu_de or ten, dung_dong_dau=not tieu_de, co_ten=co_title)]
     if duoi == ".pdf":
         trang = _doc_pdf(f)
         if not any(trang):
             raise ValueError("PDF không có lớp chữ (PDF scan) — cần OCR trước")
         ten = _tieu_de_pdf(f) or ten
         if tach == "trang":
-            return [{"title": f"{ten} — trang {i}", "content": t, "cite": f"{ten}, tr. {i}"}
-                    for i, t in enumerate(trang, 1) if len(t) > 40]
+            ds = [{"title": f"{ten} — trang {i}", "content": t, "cite": f"{ten}, tr. {i}"}
+                  for i, t in enumerate(trang, 1) if len(t) > 40]
+            if ds:                                # trang quá ngắn (bìa, trang trắng) bỏ; không trang nào đủ dài thì
+                return ds                         # cả file một ghi chú — trước đây ra 0 ghi chú
         return [{"title": ten, "content": "\n\n".join(t for t in trang if t), "cite": ten}]
     if duoi in (".html", ".htm"):
         tieu_de, noi_dung = _doc_html(f.read_text(encoding="utf-8", errors="replace"))
@@ -1626,7 +1647,8 @@ def cmd_nap(a, db):
                 text = sys.stdin.read()
                 meta, than = _frontmatter(text)
                 ds = [{"title": t, "content": c} for t, c in
-                      _tach_markdown(than, a.tach, meta.get("title") or a.title or TEN_DAN)]
+                      _tach_markdown(than, a.tach, meta.get("title") or a.title or TEN_DAN,
+                                     co_ten=bool(meta.get("title") or a.title))]
                 ten_f = "(dán vào)"
             else:
                 ds, ten_f = doc_nguon(f, a.tach), str(f)

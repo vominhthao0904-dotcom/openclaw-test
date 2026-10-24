@@ -660,15 +660,25 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
 ## Mặt A.I dùng đúng ảnh mẫu anh chọn
 Anh gửi ảnh mẫu đầu A.I và dặn "sửa giống y chang như ảnh mẫu này", rồi gửi thêm ba mẫu và chọn mẫu "đầu đội mũ giáp, bộ não
 trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ tay không thể "y chang" một bức tranh, nên dùng chính ảnh đó:
-- **Ảnh**: `public/dau-ai.webp` (939×1127, ~400 KB) — tách khỏi nền: phần người giữ nguyên, nền tối và vầng sáng quanh người
+- **Ảnh**: `public/dau-ai.webp` (1145×1374, ~580 KB — đủ độ phân giải của ảnh mẫu, làm nét nhẹ) — tách khỏi nền: phần người giữ nguyên, nền tối và vầng sáng quanh người
   trong suốt dần theo độ sáng nên hoà vào nền trang, giữ được vầng hào quang của ảnh; mép vai và đáy mờ dần. Ảnh do anh gửi,
   nằm trong gói skill (repo công khai) — anh không muốn để công khai thì báo em.
 - **Khớp dữ liệu vào ảnh** (đo trên ảnh): hai mắt trùng mắt mô hình đầu (lúc chuyển cảnh đầu hai luồng bay đúng vào mắt), lõi
   Bát Quái sống đặt đúng tâm và cỡ Bát Quái giữa ngực (phủ kín hình tĩnh), viền bộ não trong vòm kính để đặt chấm ghi chú, khe
   miệng để sáng lên khi Mây nói.
-- **Chấm ghi chú** (anh: "các chấm che hết não, dày đặc quá, đậm quá — xem các chấm sáng theo ảnh mẫu"): thành chấm sáng li ti
-  lõi trắng, quầng nhỏ ánh màu vùng, lấp lánh lệch nhịp — như chấm sáng sẵn trong não ảnh; không còn viền tối, không phủ quầng
-  màu cả vùng (chỉ khi rê vào vòng vùng).
+- **Chấm ghi chú** (anh: "các chấm che hết não, dày đặc quá, đậm quá — xem các chấm sáng theo ảnh mẫu"): chấm nhỏ, không phủ
+  quầng màu cả vùng (chỉ khi rê vào vòng vùng). Lần 2 (anh: "các chấm cần nhỏ, rõ màu nhưng không đậm quá", "khoa học"): mỗi
+  chấm như một hạt cườm — lõi đặc đúng màu vùng (khớp màu vòng vùng, nhìn màu biết ghi chú thuộc vùng nào), viền xanh đêm mảnh
+  tách khỏi nền não sáng, đốm sáng li ti lệch trên-trái, quầng nhạt cùng màu; lấp lánh khẽ lệch nhịp. Quầng vẽ thường chứ không
+  cộng sáng (nền não đã sáng, cộng sáng thì mất màu — bản trước chấm trông xám). Mép trên của vùng đặt chấm lùi xuống ~0,05
+  bán kính đầu: viền não đo trước đây lấy cả lớp kính vòm ngay trên đỉnh não, kho lớn có chấm nằm lơ lửng trên kính.
+- **Mắt có hồn hơn** (anh: "mắt thiết kế có hồn hơn"): đo khe mắt trên ảnh (mí trên, mí dưới, khoé trong, khoé ngoài); mọi ánh
+  sáng thêm vào mắt chỉ nằm trong khe đó — mí che bớt mống mắt như mắt thật, không tràn ra mi. Mống mắt thở nhẹ (sáng lên rồi
+  dịu xuống), đốm long lanh trắng nhìn theo con trỏ chuột, ~7 giây một vệt sáng lướt ngang mống mắt; Mây nói thì mống mắt sáng
+  hẳn và hiện vòng mống mắt.
+- **Bát Quái hai màu chủ đạo vàng kim – xanh lam** (anh: "màu bát quái lấy 2 màu chủ đạo là blue và vàng kim"): lấy màu đo trên
+  Bát Quái của ảnh mẫu — Dương vàng kim `#F1C558`, Âm xanh lam `#0A47A0`, vành và nền hào xanh đêm; khí chạy quanh vành vàng /
+  xanh; quầng quanh lõi đổi từ cam sang vàng kim → xanh lơ như quầng trong ảnh. Không còn màu cam trong lõi.
 - **Chuyển cảnh**: hai luồng Âm Dương + vòng Tiên Thiên như cũ, các sợi gỡ thành đường vân đầu rồi ảnh hiện dần từ đỉnh xuống
   (mép quét sáng), đường vân mờ đi. Thoát thì ngược lại. Ảnh chưa tải được thì dùng đầu đường vân như trước.
 - Bỏ ba vòng nét đứt (ảnh đã có vầng hào quang); bỏ bộ não vẽ bằng phản ứng – khuếch tán (não của ảnh thay thế); đầu đứng yên

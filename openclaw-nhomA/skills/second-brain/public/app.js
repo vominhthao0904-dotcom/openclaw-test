@@ -455,8 +455,10 @@ function ve() {
   const tho = itMotion ? 0 : Math.sin(tg * 0.7);
   const rq = RK * (1.75 + 0.12 * tho);
   const quang = cx.createRadialGradient(LX, LY, RK * 0.6, LX, LY, rq);
-  quang.addColorStop(0, `rgba(240,127,45,${(0.3 + 0.07 * tho).toFixed(3)})`);
-  quang.addColorStop(1, 'rgba(240,127,45,0)');
+  // quầng xanh lơ – vàng kim như quầng quanh Bát Quái trong ảnh mẫu (trước đây cam)
+  quang.addColorStop(0, `rgba(241,197,88,${(0.22 + 0.05 * tho).toFixed(3)})`);
+  quang.addColorStop(0.45, `rgba(71,177,228,${(0.2 + 0.05 * tho).toFixed(3)})`);
+  quang.addColorStop(1, 'rgba(71,177,228,0)');
   cx.fillStyle = quang;
   cx.beginPath(); cx.arc(LX, LY, rq, 0, Math.PI * 2); cx.fill();
   // (Thái Cực vẽ sau cùng — nằm trên mọi chấm và nhãn)
@@ -510,17 +512,21 @@ function ve() {
     const rc = (nb ? nd.r + 2.4 : nd.r) * toCham * (1 - 0.45 * eMat);   // mặt A.I: nốt nhỏ, lõi trắng, quầng màu vùng
     // Đầu ảnh mẫu: nơ-ron là chấm sáng nhỏ như chấm sáng trong bộ não của ảnh — lõi trắng li ti, quầng nhỏ ánh màu vùng, lấp lánh
     // lệch nhịp. (Trước đây chấm màu viền tối: kho đông che kín não, đậm — anh: "các chấm che hết não, dày đặc quá, đậm quá".)
+    // Lần 2 (anh: "các chấm cần nhỏ, rõ màu nhưng không đậm quá", "rõ màu, khoa học"): chấm màu vùng (đọc được ghi chú thuộc
+    // vùng nào, khớp màu vòng vùng) như hạt cườm nhỏ — lõi màu đặc, viền xanh đêm mảnh tách khỏi nền não sáng, một đốm sáng
+    // li ti lệch trên-trái, quầng nhạt cùng màu (vẽ thường, không "lighter": nền não đã sáng, cộng sáng thì mất màu), lấp lánh khẽ.
     if (eMat > 0.05 && ANH_DAU.ok) {
-      const lap = itMotion ? 0.8 : 0.62 + 0.38 * Math.sin(tg * (0.8 + 1.6 * bam(nd.note.id, 9)) + 6.28 * bam(nd.note.id, 8));
-      const a = eMat * (toi ? 0.15 : nb ? 1 : lap), lo = nb ? 2.4 : keo(MAT.u / 110, 0.7, 1.2), rq = lo * (nb ? 5 : 3.6);
-      cx.globalCompositeOperation = 'lighter';
-      cx.globalAlpha = a * (nb ? 0.9 : 0.55);
+      const lap = itMotion ? 0.92 : 0.84 + 0.16 * Math.sin(tg * (0.8 + 1.6 * bam(nd.note.id, 9)) + 6.28 * bam(nd.note.id, 8));
+      const a = eMat * (toi ? 0.18 : nb ? 1 : lap), lo = nb ? 3.2 : keo(MAT.u / 70, 1.4, 2.3), rq = lo * 3.2;
+      cx.globalAlpha = a * 0.3;
       cx.drawImage(quangCham(nd.mau), p.x - rq, p.y - rq, rq * 2, rq * 2);
+      cx.globalAlpha = a * 0.55;
+      cx.beginPath(); cx.arc(p.x, p.y, lo + 0.75, 0, Math.PI * 2); cx.fillStyle = '#071a3d'; cx.fill();
       cx.globalAlpha = a;
-      cx.fillStyle = '#fff';
-      cx.beginPath(); cx.arc(p.x, p.y, lo, 0, Math.PI * 2); cx.fill();
-      cx.globalCompositeOperation = 'source-over';
-      if (nb) { cx.beginPath(); cx.arc(p.x, p.y, lo + 3, 0, Math.PI * 2); cx.strokeStyle = TRUNG; cx.lineWidth = 1.2; cx.stroke(); }
+      cx.beginPath(); cx.arc(p.x, p.y, lo, 0, Math.PI * 2); cx.fillStyle = nd.mau; cx.fill();
+      cx.globalAlpha = a * 0.75;
+      cx.beginPath(); cx.arc(p.x - lo * 0.3, p.y - lo * 0.3, lo * 0.32, 0, Math.PI * 2); cx.fillStyle = '#fff'; cx.fill();
+      if (nb) { cx.globalAlpha = 1; cx.beginPath(); cx.arc(p.x, p.y, lo + 3, 0, Math.PI * 2); cx.strokeStyle = TRUNG; cx.lineWidth = 1.2; cx.stroke(); }
       if (eMat >= 1) { cx.globalAlpha = 1; return; }
       cx.globalAlpha = 1 - eMat;           // lúc chuyển cảnh: chấm quỹ đạo mờ dần thành chấm sáng
     }
@@ -1017,7 +1023,7 @@ const bam = (s, hat) => {
    Anh gửi bốn ảnh mẫu, chọn ảnh "đầu đội mũ giáp trắng – xanh, bộ não phát sáng trong vòm kính, Bát Quái giữa ngực, vầng hào
    quang sau đầu" và dặn "sửa giống y chang như ảnh mẫu". Dùng chính ảnh đó (public/dau-ai.webp: tách khỏi nền — nền tối và vầng
    sáng quanh người thành trong suốt dần, hoà vào nền trang; mép vai và đáy mờ dần) làm đầu khi đã thành hình; các lớp dữ liệu vẽ
-   chồng lên: nơ-ron ghi chú là các chấm sáng nhỏ trong bộ não của ảnh (như chấm sáng trong ảnh mẫu), trục thần kinh từ vòng vùng
+   chồng lên: nơ-ron ghi chú là các chấm nhỏ màu vùng trong bộ não của ảnh (như hạt cườm, rõ màu mà không đậm), trục thần kinh từ vòng vùng
    vào rìa não, cung liên kết, lõi Bát Quái sống (có khí vận hành) đặt đúng chỗ Bát Quái trên ngực, mắt và khe miệng sáng lên khi
    Mây nói. Toạ độ: như mô hình đầu (đơn vị = bán kính đầu); ảnh đặt sao cho hai mắt trùng mắt mô hình (±0,34; 0,03) — lúc chuyển
    cảnh các đường vân gỡ ra thành đầu rồi ảnh hiện dần lên đúng chỗ. Đầu không quay theo chuột (ảnh phẳng); đường vân chỉ còn dùng
@@ -1025,7 +1031,12 @@ const bam = (s, hat) => {
 const ANH_DAU = { img: new Image(), ok: false,
   X: -1.899, Y: -1.4295, R: 3.798, C: 4.5577,                     // góc trên trái, rộng, cao (đơn vị đầu)
   BQ: [-0.008, 2.3377], BQR: 0.2916,                                      // Bát Quái giữa ngực: tâm, bán kính (đo trên ảnh)
-  MAT: [[-0.34, 0.03], [0.34, 0.03]] };                                     // hai mắt
+  MAT: [[-0.34, 0.047], [0.34, 0.047]], MONG: 0.085,                      // tâm hai mống mắt, bán kính mống mắt
+  // khe mắt trái (đo trên ảnh, đi vòng từ khoé ngoài theo mí trên rồi mí dưới); mắt phải lấy đối xứng. Ánh sáng thêm vào mắt
+  // chỉ nằm trong khe này — mí che bớt mống mắt như mắt thật, vòng sáng không tràn ra mi.
+  KHE_MAT: [[-0.484, 0.018], [-0.442, 0.001], [-0.393, -0.007], [-0.343, -0.011], [-0.293, -0.009], [-0.252, 0.004],
+    [-0.217, 0.036], [-0.187, 0.077], [-0.172, 0.106], [-0.21, 0.118], [-0.26, 0.122], [-0.318, 0.12], [-0.372, 0.11],
+    [-0.419, 0.092], [-0.455, 0.066], [-0.476, 0.039]] };
 ANH_DAU.img.decoding = 'async';
 ANH_DAU.img.onload = () => { ANH_DAU.ok = true; };
 ANH_DAU.img.src = 'dau-ai.webp';
@@ -1059,8 +1070,9 @@ function trongDaGiac(x, y, d) {
   }
   return c;
 }
-// điểm nằm trên vỏ não: trong viền, ngoài rãnh giữa hai bán cầu, cách mép một chút (chấm không nằm ngay trên viền)
-const trongNao = (x, y) => Math.abs(x) > 0.03 && [[0, 0], [0.035, 0], [-0.035, 0], [0, 0.035], [0, -0.035]]
+// điểm nằm trên vỏ não: trong viền, ngoài rãnh giữa hai bán cầu, cách mép một chút (chấm không nằm ngay trên viền). Mép trên
+// cách xa hơn: viền đo trên ảnh lấy cả lớp kính vòm sáng ngay trên đỉnh não (~0,05) — chấm nằm đó trông như lơ lửng trên kính.
+const trongNao = (x, y) => Math.abs(x) > 0.03 && [[0, 0], [0.035, 0], [-0.035, 0], [0, 0.035], [0, -0.085]]
   .every(([dx, dy]) => trongDaGiac(x + dx, y + dy, NAO.bao));
 
 // Mỗi ghi chú một nốt cố định trên vỏ não, rải đều trong "lãnh thổ" của vùng: vỏ não chia hình quạt quanh tâm theo thứ tự các
@@ -1668,6 +1680,53 @@ function anhDauDungCo(w, h) {
   }
   return A.dem;
 }
+// Mắt ảnh mẫu "có hồn": vòng sáng mảnh quanh mống mắt thở theo nhịp (nói thì sáng hơn), đốm sáng long lanh phía trên-trái
+// mống mắt dịch nhẹ theo con trỏ như mắt nhìn theo, lấp lánh khẽ; thỉnh thoảng một vệt sáng lướt qua mống mắt
+function veMatAnh(a, mieng, t) {
+  const u = MAT.u, r = ANH_DAU.MONG * u, noi = mieng > 0 ? 1 : 0, tho = itMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.1);
+  const huong = chuot && !itMotion ? { x: keo((chuot.x - CX) / (W * 0.5), -1, 1), y: keo((chuot.y - MAT.oy) / (H * 0.5), -1, 1) } : { x: 0, y: 0 };
+  cx.save();
+  cx.globalCompositeOperation = 'lighter';
+  ANH_DAU.MAT.forEach(([mx, my], i) => {
+    const p = chieuDiem(mx, my, 0, 1), dx = Math.sign(mx);
+    cx.save();
+    cx.beginPath();
+    ANH_DAU.KHE_MAT.forEach(([x, y], j) => { const q = chieuDiem(-dx * x, y, 0, 1); j ? cx.lineTo(q.x, q.y) : cx.moveTo(q.x, q.y); });
+    cx.closePath(); cx.clip();
+    // ánh trong mống mắt: lặng thì thở nhẹ, Mây nói thì sáng hẳn lên
+    const ga = a * (noi ? 0.3 : 0.06 + 0.06 * tho);
+    const gm = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    gm.addColorStop(0, `rgba(140,225,255,${ga.toFixed(3)})`); gm.addColorStop(1, 'rgba(140,225,255,0)');
+    cx.fillStyle = gm; cx.beginPath(); cx.arc(p.x, p.y, r, 0, Math.PI * 2); cx.fill();
+    // vòng mống mắt
+    cx.beginPath(); cx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    cx.strokeStyle = `rgba(110,215,255,${(a * (0.16 + 0.14 * tho + 0.25 * noi)).toFixed(3)})`;
+    cx.lineWidth = Math.max(1, 0.012 * u);
+    cx.stroke();
+    // đốm long lanh
+    const lx = p.x - 0.32 * r + huong.x * 0.12 * r, ly = p.y - 0.34 * r + huong.y * 0.1 * r, lr = Math.max(1.2, 0.2 * r);
+    const lap = itMotion ? 1 : 0.85 + 0.15 * Math.sin(t * 2.3 + i);
+    const g = cx.createRadialGradient(lx, ly, 0, lx, ly, lr * 2.2);
+    g.addColorStop(0, `rgba(255,255,255,${(0.95 * a * lap).toFixed(3)})`); g.addColorStop(0.45, `rgba(220,245,255,${(0.5 * a * lap).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(200,240,255,0)');
+    cx.fillStyle = g; cx.beginPath(); cx.arc(lx, ly, lr * 2.2, 0, Math.PI * 2); cx.fill();
+    // vệt sáng lướt qua mống mắt, ~7 giây một lần
+    if (!itMotion) {
+      const pha = (t / 7 + i * 0.04) % 1;
+      if (pha < 0.08) {
+        const k = pha / 0.08, x0 = p.x - r + 2 * r * k;
+        cx.save(); cx.beginPath(); cx.arc(p.x, p.y, r, 0, Math.PI * 2); cx.clip();
+        const gl = cx.createLinearGradient(x0 - r * 0.3, 0, x0 + r * 0.3, 0);
+        gl.addColorStop(0, 'rgba(255,255,255,0)'); gl.addColorStop(0.5, `rgba(255,255,255,${(0.35 * a * Math.sin(Math.PI * k)).toFixed(3)})`);
+        gl.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = gl; cx.fillRect(x0 - r * 0.3, p.y - r, r * 0.6, 2 * r);
+        cx.restore();
+      }
+    }
+    cx.restore();
+  });
+  cx.restore();
+}
 // khe miệng trong ảnh: luôn sáng nhẹ (như anh muốn "1 vạch sáng hơn"), Mây nói thì sáng rực theo nhịp miệng
 function veKheAnh(a, mieng) {
   if (a <= 0.01) return;
@@ -1957,8 +2016,10 @@ function veMat(tg, diem) {
       cx.fillStyle = `rgba(120,200,255,${(keo(mieng * 2, 0, 0.3) * phu).toFixed(3)})`;
       cx.fill();
     }
-    // mắt: lõi trắng, quầng xanh, vệt loé ngang; chớp mắt; đang nói thì sáng hơn
-    const sang = phu * (mieng > 0 ? 1 : 0.88) * (chiAnh ? 0.55 : 1);   // mắt trong ảnh đã sáng sẵn: chỉ thêm nhịp sáng nhẹ
+    // mắt: lõi trắng, quầng xanh, vệt loé ngang; chớp mắt; đang nói thì sáng hơn. Đầu ảnh mẫu: giữ nguyên mống mắt, lông mi
+    // của ảnh (quầng trắng phủ lên làm mất hồn — anh: "mắt thiết kế có hồn hơn"), chỉ thêm ánh long lanh (veMatAnh)
+    if (chiAnh) { veMatAnh(phu, mieng, t); cx.restore(); return; }
+    const sang = phu * (mieng > 0 ? 1 : 0.88);
     [mT, mP].forEach((p) => {
       const r = u * (chiAnh ? 0.15 : 0.2);
       cx.save();
@@ -1972,7 +2033,6 @@ function veMat(tg, diem) {
       cx.fillStyle = g;
       cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.fill();
       cx.restore();
-      if (chiAnh) return;                // ảnh mẫu không có vệt loé ngang qua mắt
       const fl = cx.createLinearGradient(p.x - u * 0.5, 0, p.x + u * 0.5, 0);
       fl.addColorStop(0, 'rgba(150,220,255,0)');
       fl.addColorStop(0.5, `rgba(220,245,255,${(0.55 * sang * MAT.chop).toFixed(3)})`);
@@ -2039,7 +2099,8 @@ const BAT_QUAI = [
   ['Ly', [1, 0, 1], 180, 'Đông', 3],
   ['Đoài', [1, 1, 0], -135, 'Đông Nam', 2],
 ];
-const MAU_DUONG = '#E6C46A', MAU_AM = '#2563C4', NAVY_LOI = '#0C2147', NAVY_VANH = '#0F2B5B';
+// hai màu chủ đạo vàng kim – xanh lam (đo trên Bát Quái của ảnh mẫu anh chọn: vàng 241,197,88; lam 6,68,149; vành tối)
+const MAU_DUONG = '#F1C558', MAU_AM = '#0A47A0', NAVY_LOI = '#0B1E33', NAVY_VANH = '#112638';
 let hoverLoi = false;
 
 /* Lõi nhỏ gọn cỡ chữ BRAIN cũ khi nhìn tổng thể; rê chuột vào thì phóng to mượt để xem rõ quẻ. */

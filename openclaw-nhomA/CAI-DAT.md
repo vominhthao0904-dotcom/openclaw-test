@@ -300,7 +300,7 @@ Script kiểm tra 5 phần:
 
 **Phần 1 — Thư mục skill đã chép lên chưa.** Xem 4 thư mục có nằm đúng chỗ không. Hỏng ở đây nghĩa là `install.sh` chưa chạy hoặc chạy sai thư mục.
 
-**Phần 2 — OpenClaw đã nhận chưa.** Chạy `openclaw skills list` rồi dò từng tên. Hỏng ở đây mà phần 1 đạt thì gần như chắc chắn là **quên restart**.
+**Phần 2 — OpenClaw đã nhận chưa.** Chạy `openclaw skills list` rồi dò từng tên. Máy có **nhiều agent** thì script tự tìm agent sở hữu thư mục skills (thường là `main`) và kiểm đúng kho skill của agent đó — dòng *(kiểm kho skill của agent: main)*; không tự tìm được thì chạy `bash kiemtra.sh --agent main`. Hỏng ở đây mà phần 1 đạt thì gần như chắc chắn là **quên restart**.
 
 **Phần 3 — Công cụ đã cài chưa.** `pdftotext`, `pdftoppm`, `ffmpeg`, `ffprobe`, `pillow`, `python-pptx`.
 
@@ -329,7 +329,7 @@ Script chỉ đọc và thử trên file tạm, **không đụng vào dữ liệ
 `kiemtra.sh` kiểm tra skill đã cài. Hai script dưới đây kiểm tra *bản thân phần mềm* — chạy khi anh nghi ngờ có lỗi, hoặc sau khi tôi gửi bản cập nhật:
 
 ```bash
-bash test-brain.sh     # 129 trường hợp: tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), gộp các ghi chú trang, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
+bash test-brain.sh     # 129 trường hợp (VPS có crontab: 130): tìm không dấu, ghi bằng giọng nói, sao lưu Drive mã hoá (khi có rclone), phân loại nhóm/loại, chống trùng y hệt, nạp nhiều nguồn (cả Word .docx, PDF), gộp các ghi chú trang, việc, kho rỗng, thẻ tiếng Việt, cất kho/xoá/lấy lại,
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
@@ -362,9 +362,9 @@ Con số có thể khác 27 trong hai trường hợp bình thường, không ph
 ### Kiểm tra thêm bằng mắt
 
 ```bash
-openclaw skills list | grep -E "second-brain|pdf-extract|css-video|pptx-deck"
+openclaw skills list --agent main | grep -E "second-brain|pdf-extract|css-video|pptx-deck"
 ```
-Phải thấy đủ 4 dòng.
+Phải thấy đủ 4 dòng. (`--agent main`: máy có nhiều agent thì lệnh trơn chỉ xem kho skill của agent mặc định — có thể không phải `main`, nơi 4 skill được cài.)
 
 ### Khi có dòng CHƯA ĐẠT
 

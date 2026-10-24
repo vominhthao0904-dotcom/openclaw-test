@@ -494,7 +494,18 @@ API. Tìm ra và đã sửa:
   yêu cầu sai kiểu không còn lỗi 500).
 - **Câu chữ riêng tư ô Hỏi**: trang ghi "Không gửi gì ra ngoài" — không đúng: câu hỏi và vài ghi chú liên quan đi tới Mây, tức
   qua mô hình AI mà OpenClaw đang dùng (như mọi tin nhắn anh gửi Mây). Nay ghi đúng như vậy, cả ở bảng An toàn trong CAI-DAT.
-- +4 test web (91; exec 88), +1 test brain (129).
+- +4 test web (91; exec 88), +1 test brain (129; máy có crontab chạy thêm 1 mục lịch Drive → 130).
+
+## Sau PR #19: `kiemtra.sh` báo oan 23/27 trên máy nhiều agent
+- Mây cài PR #19 đúng (kho không đổi, 130/130, 91/91), nhưng `kiemtra.sh` báo 4 skill "OpenClaw chưa thấy". Máy anh có nhiều
+  agent; `openclaw skills list` trơn xem kho skill của **agent mặc định** (OpenClaw 2026.9.6: `--agent`, rồi thư mục đang đứng,
+  rồi agent mặc định), còn 4 skill nằm trong workspace của `main`. Thêm `--agent main` thì 27/27.
+- Nay script tự tìm agent có workspace chứa thư mục skills (`openclaw agents list --json`) rồi kiểm đúng agent đó, in dòng
+  *(kiểm kho skill của agent: …)*; thêm tuỳ chọn `--agent <id>`; không tự tìm được thì gợi ý `--agent main` ngay trong dòng
+  báo lỗi. Thử với openclaw giả 2 agent (mặc định là agent khác): bản cũ báo oan, bản mới 4/4; `agents list` hỏng thì về cách
+  cũ, không lỗi. Lệnh kiểm bằng mắt trong CAI-DAT thêm `--agent main`.
+- test-brain ra 130 trên VPS mà tài liệu ghi 129: một mục (đặt lịch Drive giữ nguyên lịch khác) chỉ chạy khi có `crontab`.
+  Tài liệu ghi rõ.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -95,8 +95,7 @@ def api_notes(conn, _q, _body):
     cats = {(r["category"] or "").strip() or "Chưa phân loại": r["n"] for r in conn.execute(
         f"SELECT category, count(*) n FROM notes WHERE {brain.CON} GROUP BY category")}
     links = [[r["a"], r["b"]] for r in conn.execute("SELECT a,b FROM links")]
-    cho = conn.execute(f"SELECT count(*) c FROM notes WHERE {brain.CON} AND "
-                       "(trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='')").fetchone()["c"]
+    cho = conn.execute(f"SELECT count(*) c FROM notes WHERE {brain.CON} AND {brain.CHO_XEP}").fetchone()["c"]
     kho = conn.execute("SELECT count(*) c FROM notes WHERE status='archived'").fetchone()["c"]
     cay, _ = brain.cay_nhom(conn)
     dem_loai = {r[0]: r[1] for r in conn.execute(
@@ -143,7 +142,7 @@ def api_library(conn, q, _body):
     lim, off = _so(q, "limit", 40, 1, 100), _so(q, "offset", 0, 0, 10 ** 6)
     w = " AND ".join(where)
     tong = conn.execute(f"SELECT count(*) FROM notes WHERE {w}", params).fetchone()[0]
-    rows = conn.execute("SELECT id,title,category,tags,source,url,cite,kind,due,done_at,created_at,updated_at,"
+    rows = conn.execute("SELECT id,title,category,tags,source,url,cite,kind,due,done_at,waiting_at,created_at,updated_at,"
                         "reviewed_at,status,substr(replace(content,char(10),' '),1,220) AS preview "
                         f"FROM notes WHERE {w} ORDER BY {sap}, rowid DESC LIMIT ? OFFSET ?",
                         params + [lim, off]).fetchall()
@@ -172,7 +171,11 @@ def api_tasks(conn, q, _body):
 
 
 def api_task_done(conn, _q, body):
+    """{id, xong: true/false} đánh dấu xong / mở lại; {id, cho: true/false} đang chờ / hết chờ."""
     with _lock:
+        if "cho" in body:
+            n = brain.danh_dau_cho(conn, str(body.get("id") or ""), bool(body.get("cho")))
+            return {"ok": True} if n else {"ok": False, "error": "Không thấy việc này, hoặc việc đã xong"}
         n = brain.danh_dau_viec(conn, str(body.get("id") or ""), bool(body.get("xong", True)))
     return {"ok": bool(n)} if n else {"ok": False, "error": "Không thấy việc này"}
 
@@ -357,25 +360,28 @@ def api_add(conn, _q, body):
         return {"ok": False, "error": str(e)}
     title = brain.gon(str(body.get("title") or ""))
     content = str(body.get("content") or "").strip()
-    if not title or not content:
-        return {"ok": False, "error": "Cần cả chủ đề và nội dung"}
     kind = brain.chuan_kind(body.get("kind") or "kien-thuc")
     if not kind:
         return {"ok": False, "error": "Loại không hợp lệ"}
+    if kind == "viec" and title and not content:
+        content = title                    # việc tạo nhanh ở cột Việc: chỉ có tên (và hạn) — nội dung lấy luôn tên
+    if not title or not content:
+        return {"ok": False, "error": "Cần cả chủ đề và nội dung"}
     try:
         due = brain.chuan_han(str(body.get("due") or ""))
     except ValueError as e:
         return {"ok": False, "error": str(e)}
     nguon = body.get("source") if body.get("source") in brain.SOURCES else "web"
     with _lock:
-        trung = brain.trung_hoan_toan(conn, title, content)
+        vh = (due or "") if kind == "viec" else None
+        trung = brain.trung_hoan_toan(conn, title, content, viec_han=vh)
         if trung:
             return {"ok": False, "trung_id": trung["id"],
                     "error": f"Kho đã có ghi chú y hệt: “{trung['title']}” — không lưu bản trùng."}
         nhom, moi, goi_y, canh_bao = brain.chuan_nhom(conn, str(body.get("category") or ""))
         tags = brain.norm_tags(str(body.get("tags") or ""))
         goi_y += brain.goi_y_the(conn, tags)
-        giong = brain.tim_tuong_tu(conn, title, content)
+        giong = brain.tim_tuong_tu(conn, title, content, viec_han=vh)
         nid = uuid.uuid4().hex[:12]
         brain.them_note(conn, nid, title, content, nhom, tags, nguon, str(body.get("url") or "").strip(),
                         kind=kind, cite=brain.gon(str(body.get("cite") or "")), due=due)

@@ -400,6 +400,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .ten-viec b{display:block;font-weight:600;font-size:14.5px}
 .ten-viec span{display:block;color:var(--trung-mo);font-size:12.5px;margin-top:2px}
 .khoi-viec.da_xong .ten-viec b{text-decoration:line-through;color:var(--trung-mo)}
+.khoi-viec.dang_cho h3{color:#9DB4E0}
+.dong-viec.dang-cho{border-style:dashed}
+.dong-viec .nut-cho{flex:none;align-self:center;padding:5px 12px;font-size:12.5px;white-space:nowrap}
+.loc-viec{margin:4px 0 16px}
 
 /* ---------- thẻ chi tiết: nguồn gốc kiến thức ---------- */
 .vun{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 30px 10px 0;font-size:12.5px}
@@ -434,6 +438,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   #do{height:62dvh}
   /* điện thoại: dải chip vùng nằm DƯỚI đồ thị — đè lên thì 2–4 hàng chip che các vòng ngoài, kho nhiều vùng che cả lõi */
   .duoi{position:static;padding:8px 16px 16px;padding-right:60px}
+  /* mặt A.I trên điện thoại: phụ đề có ô riêng dưới khung mặt — đè lên thì 3–4 dòng che kín lõi Bát Quái */
+  body.mat-ai:not(.tap-trung) .xem[data-xem="do"]{padding-bottom:112px}
+  body.mat-ai:not(.tap-trung) .loi-may{bottom:10px;font-size:14px;line-height:1.45}
   .thu-vien{grid-template-columns:1fr;padding-top:60px}
   .cay{border-right:0;border-bottom:1px solid var(--son-3);max-height:220px}
   .ke{padding:12px 16px 28px}
@@ -450,6 +457,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
   .nut-toc{width:36px;height:36px}
   input[type=checkbox]{width:22px;height:22px}
   .chip{min-height:36px}
+  .dong-viec .nut-cho{min-height:36px}
   .nut-cay,.mui{min-height:38px}
   .tabs button{min-height:44px}
 }
@@ -511,3 +519,11 @@ body.mat-ai .noi-may{display:grid}
 .mic.dang-nghe,.noi-may.dang-nghe{color:#fff;background:var(--do);opacity:1;animation:nhip-mic 1.2s ease-in-out infinite}
 @keyframes nhip-mic{0%,100%{box-shadow:0 0 0 0 rgba(240,127,45,.55)}50%{box-shadow:0 0 0 8px rgba(240,127,45,0)}}
 @media (prefers-reduced-motion:reduce){.mic.dang-nghe,.noi-may.dang-nghe{animation:none}}
+
+/* tạo việc nhanh ở cột Việc */
+.them-viec{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,170px) auto;gap:8px;margin:10px 0 4px}
+.them-viec .go{width:auto;padding:10px 18px;white-space:nowrap}
+.them-viec input{min-width:0}
+#sayViec{margin:4px 0 6px;min-height:1.2em}
+#sayViec .nho{margin-left:6px}
+@media (max-width:700px){.them-viec{grid-template-columns:1fr 1fr}.them-viec input[name=title]{grid-column:1 / -1}.them-viec .go{grid-column:1 / -1}}

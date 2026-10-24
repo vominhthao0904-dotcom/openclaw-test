@@ -995,7 +995,11 @@ function capNhatMat(tg) {
   anQD = 1 - em(0, 0.3, kMat);
   // bố cục: vòng tròn các vùng trên đỉnh đầu (≈ −2 đơn vị) tới lò phản ứng trên ngực, nằm gọn giữa thanh chuyển và phụ đề
   const rong = W - lechDich, hep = rong < 600;
-  const tren = 50, duoi = H - (tapTrung ? 18 : 60);      // trên chừa chỗ cho thanh chuyển / thông báo toàn màn hình
+  // trên chừa chỗ cho thanh chuyển / thông báo toàn màn hình (toàn màn hình không có thanh chuyển: chừa ít hơn); dưới chừa đủ
+  // phụ đề 2 dòng (câu trả lời dài) — trước đây chừa 60px (toàn màn hình 18px): phụ đề 2 dòng đè lên lõi Bát Quái.
+  // Điện thoại: phụ đề nằm trong ô riêng dưới khung (CSS) — không cần chừa.
+  const phuDeNgoai = !tapTrung && matchMedia('(max-width:900px)').matches;
+  const tren = tapTrung ? 34 : 50, duoi = H - (phuDeNgoai ? 18 : tapTrung ? 96 : 90);
   MAT.u = Math.max(30, Math.min((duoi - tren - 60) / 4.14, hep ? rong / 2.35 : (rong / 2 - 70) / 2.2));
   MAT.oy = tren + 24 + 2.0 * MAT.u + Math.max(0, duoi - tren - 60 - 4.14 * MAT.u) / 2;
   const t = giay();
@@ -1303,9 +1307,12 @@ function datMat(bat) {
     if (coDocNoi) speechSynthesis.cancel();
   }
 }
+// Máy chỉ có giọng tiếng Việt qua mạng: bấm loa lần đầu, hoặc BẬT LẠI sau khi tắt (tắt tiếng là bỏ quyền), thì hỏi có dùng
+// không. Trước đây bật lại thì im lặng dùng giọng tiếng Anh, phải bấm thêm lần nữa mới được hỏi (Hướng dẫn ghi "bật lại sẽ hỏi lại").
 $('#batTieng').addEventListener('click', () => {
-  if (coTieng && giongMang && !giongViet && !choMang && !daHoiMang) hoiGiongMang();
-  else datTieng(!coTieng);
+  const canHoi = giongMang && !giongViet && !choMang && !daHoiMang;
+  if (!coTieng) { datTieng(true); if (canHoi) hoiGiongMang(); return; }
+  if (canHoi) hoiGiongMang(); else datTieng(false);
 });
 datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
@@ -2112,7 +2119,8 @@ async function moChiTiet(id) {
     const quaHan = !n.done_at && n.due && n.due < new Date().toISOString().slice(0, 10);
     const o = el('span', null, n.due ? ngayDep(n.due) : 'không đặt hạn');
     o.appendChild(el('em', n.done_at ? 'xong' : quaHan ? 'tre' : 'mo',
-      n.done_at ? ` · đã xong ${ngayTu(n.done_at)}` : quaHan ? ' · quá hạn' : ' · đang mở'));
+      n.done_at ? ` · đã xong ${ngayTu(n.done_at)}` : (quaHan ? ' · quá hạn' : '') +
+        (n.waiting_at ? ` · đang chờ từ ${ngayTu(n.waiting_at)}` : quaHan ? '' : ' · đang mở')));
     han.append(el('b', null, 'Hạn'), o);
     han.hidden = false;
   } else han.hidden = true;
@@ -2142,6 +2150,12 @@ async function moChiTiet(id) {
   xong.hidden = n.kind !== 'viec';
   xong.dataset.xong = n.done_at ? '0' : '1';
   xong.textContent = n.done_at ? 'Mở lại việc' : 'Đánh dấu xong';
+  const cho = $('#ctCho');
+  cho.dataset.id = n.id;
+  cho.hidden = n.kind !== 'viec' || !!n.done_at;
+  cho.dataset.cho = n.waiting_at ? '0' : '1';
+  cho.textContent = n.waiting_at ? 'Hết chờ — làm tiếp' : 'Đang chờ';
+  cho.title = n.waiting_at ? 'Đưa về Chưa làm' : 'Đang chờ người khác / chờ kết quả';
   const daCat = n.status === 'archived';
   $('#ctCat').dataset.id = n.id;
   $('#ctCat').hidden = daCat;
@@ -2228,6 +2242,14 @@ $('#ctNho').addEventListener('click', async (e) => {
 $('#ctXong').addEventListener('click', async (e) => {
   const b = e.target, id = b.dataset.id;
   const r = await api('/api/task', { id, xong: b.dataset.xong === '1' });
+  if (!r.ok) return alert(r.error || 'Không cập nhật được');
+  await nap();
+  await moChiTiet(id);
+});
+
+$('#ctCho').addEventListener('click', async (e) => {
+  const b = e.target, id = b.dataset.id;
+  const r = await api('/api/task', { id, cho: b.dataset.cho === '1' });
   if (!r.ok) return alert(r.error || 'Không cập nhật được');
   await nap();
   await moChiTiet(id);
@@ -2373,7 +2395,7 @@ $('#choPhanLoai').addEventListener('click', () => moTab('on'));
 function veHopCho() {
   const box = $('#hopCho');
   box.innerHTML = '';
-  const ds = DATA.notes.filter((n) => !(n.category || '').trim() || !(n.tags || []).length);
+  const ds = DATA.notes.filter((n) => n.kind !== 'viec' && (!(n.category || '').trim() || !(n.tags || []).length));
   if (!ds.length) return;
   const khung = document.createElement('div');
   khung.className = 'hop-cho';
@@ -2652,7 +2674,8 @@ function veTraLoi(chu, used) {
 }
 // bản để đọc to / phụ đề: bỏ ký hiệu định dạng và mã ghi chú
 const chuTron = (s) => String(s || '').replace(MA_NGUON, '').replace(/```[a-z]*|\*\*|`/g, '')
-  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '');
+  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '')
+  .replace(/[ \t]+([.,;:!?…])/g, '$1');      // bỏ mã nguồn xong còn sót khoảng trắng trước dấu câu ("theo ghi chú .")
 
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
@@ -2838,11 +2861,11 @@ function theGhiChu(n) {
   const dau = el('div', 'dau');
   dau.append(el('span', 'nhan', tenLoai(n.kind)), el('span', 'duong-nho', duongDep(n.category)));
   const meta = [];
-  if (n.kind === 'viec') meta.push(n.done_at ? 'đã xong' : n.due ? `hạn ${ngayDep(n.due)}` : 'chưa đặt hạn');
+  if (n.kind === 'viec') meta.push(n.done_at ? 'đã xong' : (n.waiting_at ? 'đang chờ · ' : '') + (n.due ? `hạn ${ngayDep(n.due)}` : 'chưa đặt hạn'));
   meta.push(`sửa ${ngayTu(n.updated_at) || ''}`);
   if (n.url) meta.push('có nguồn');
   if (n.cite) meta.push('có trích dẫn');
-  b.append(dau, el('h3', null, n.title), el('p', null, n.preview || ''),
+  b.append(dau, el('h3', null, n.title), el('p', null, n.preview !== n.title ? n.preview || '' : ''),   // việc tạo nhanh: nội dung = tên
     el('div', 'chan', meta.join(' · ') + ((n.tags || []).length ? '  ' + n.tags.map((t) => '#' + t).join(' ') : '')));
   ganMo(b, n.id);
   return b;
@@ -2851,44 +2874,115 @@ function theGhiChu(n) {
 $('#kSap').addEventListener('change', (e) => { LOC.sort = e.target.value; napThuVien(); });
 $('#kThem').addEventListener('click', () => napThuVien(true));
 
-/* ---------------- Việc ---------------- */
-const NHOM_VIEC = [['qua_han', 'Quá hạn'], ['hom_nay', 'Hôm nay'], ['7_ngay_toi', '7 ngày tới'],
-  ['sau_nay', 'Sau này'], ['khong_han', 'Không đặt hạn'], ['da_xong', 'Đã xong']];
+/* ---------------- Việc ----------------
+   Bộ lọc: Chưa làm (xếp theo hạn) · Đang chờ (đợi người khác / đợi kết quả) · Đã xong · Tất cả. Trình duyệt nhớ bộ lọc. */
+const NHOM_CHUA = [['qua_han', 'Quá hạn'], ['hom_nay', 'Hôm nay'], ['7_ngay_toi', '7 ngày tới'],
+  ['sau_nay', 'Sau này'], ['khong_han', 'Không đặt hạn']];
+const LOC_VIEC = {
+  chua: { nhom: NHOM_CHUA, trong: 'Không có việc nào chưa làm.' },
+  cho: { nhom: [['dang_cho', 'Đang chờ']], trong: 'Không có việc nào đang chờ. Việc đợi người khác / đợi kết quả: bấm Chờ ở dòng việc.' },
+  xong: { nhom: [['da_xong', 'Đã xong']], trong: 'Chưa có việc nào xong.' },
+  tat: { nhom: [...NHOM_CHUA, ['dang_cho', 'Đang chờ'], ['da_xong', 'Đã xong']], trong: 'Chưa có việc nào.' },
+};
+let locViec = 'chua', luotViec = 0;
+try { const x = localStorage.getItem('sb.locViec'); if (LOC_VIEC[x]) locViec = x; } catch (_) { /* mặc định Chưa làm */ }
 async function napViec() {
-  const r = await api('/api/tasks' + ($('#vXong').checked ? '?tat_ca=1' : ''));
+  const luot = ++luotViec;                 // bấm lọc liên tục: chỉ vẽ kết quả của lần bấm cuối
+  const r = await api('/api/tasks' + (locViec === 'xong' || locViec === 'tat' ? '?tat_ca=1' : ''));
+  if (luot !== luotViec) return;
   const box = $('#vDs');
   box.innerHTML = '';
+  const dem = r.ok ? r.dem : {};
+  const so = { chua: dem.chua_lam, cho: dem.dang_cho, xong: dem.da_xong, tat: (dem.chua_lam + dem.dang_cho + dem.da_xong) || 0 };
+  document.querySelectorAll('#vLoc .chip').forEach((b) => {
+    const on = b.dataset.loc === locViec;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
+    b.querySelector('u').textContent = r.ok ? so[b.dataset.loc] : '';
+  });
   if (!r.ok) { box.appendChild(el('p', 'none', r.error || 'Không nạp được')); return; }
   let co = false;
-  NHOM_VIEC.forEach(([k, ten]) => {
+  LOC_VIEC[locViec].nhom.forEach(([k, ten]) => {
     const ds = r[k] || [];
     if (!ds.length) return;
     co = true;
     const khoi = el('section', 'khoi-viec ' + k);
-    khoi.appendChild(el('h3', null, `${ten} · ${ds.length}`));
-    ds.forEach((v) => {
-      const dong = el('div', 'dong-viec');
-      const o = el('input');
-      o.type = 'checkbox';
-      o.checked = k === 'da_xong';
-      o.setAttribute('aria-label', 'Đánh dấu xong: ' + v.title);
-      o.addEventListener('change', async () => {
-        o.disabled = true;
-        await api('/api/task', { id: v.id, xong: o.checked });
-        await nap();
-      });
-      const t = el('button', 'ten-viec');
-      t.type = 'button';
-      t.append(el('b', null, v.title), el('span', null, [v.due ? 'hạn ' + ngayDep(v.due) : '', duongDep(v.category), v.tom_tat].filter(Boolean).join(' · ')));
-      ganMo(t, v.id);
-      dong.append(o, t);
-      khoi.appendChild(dong);
-    });
+    const conNua = k === 'da_xong' && dem.da_xong > ds.length ? ` (${ds.length} việc xong gần nhất)` : '';
+    khoi.appendChild(el('h3', null, `${ten} · ${k === 'da_xong' ? dem.da_xong : ds.length}${conNua}`));
+    ds.forEach((v) => khoi.appendChild(dongViec(v, k)));
     box.appendChild(khoi);
   });
-  if (!co) box.appendChild(el('p', 'none', 'Không có việc nào đang mở.'));
+  if (!co) {
+    const p = el('p', 'none', LOC_VIEC[locViec].trong);
+    if (locViec === 'chua' && dem.dang_cho) p.append(` ${dem.dang_cho} việc đang chờ — bấm Đang chờ để xem.`);
+    box.appendChild(p);
+  }
 }
-$('#vXong').addEventListener('change', napViec);
+function dongViec(v, k) {
+  const xong = k === 'da_xong', cho = k === 'dang_cho';
+  const dong = el('div', 'dong-viec' + (cho ? ' dang-cho' : ''));
+  const o = el('input');
+  o.type = 'checkbox';
+  o.checked = xong;
+  o.setAttribute('aria-label', (xong ? 'Mở lại việc: ' : 'Đánh dấu xong: ') + v.title);
+  o.addEventListener('change', async () => {
+    o.disabled = true;
+    await api('/api/task', { id: v.id, xong: o.checked });
+    await nap();
+  });
+  const t = el('button', 'ten-viec');
+  t.type = 'button';
+  // việc chưa có nhóm thì thôi ghi "Chưa xếp chỗ"; việc tạo nhanh có nội dung = tên thì không lặp lại tên
+  t.append(el('b', null, v.title), el('span', null, [
+    xong ? 'xong ' + ngayTu(v.done_at) : cho ? 'đang chờ từ ' + ngayTu(v.waiting_at) : '',
+    v.due ? (cho && v.qua_han ? 'quá hạn ' : 'hạn ') + ngayDep(v.due) : '',
+    (v.category || '').trim() && duongDep(v.category),
+    v.tom_tat !== v.title && v.tom_tat].filter(Boolean).join(' · ')));
+  ganMo(t, v.id);
+  dong.append(o, t);
+  if (!xong) {                             // việc đã xong không cần "chờ"
+    const c = el('button', 'nhe nut-cho', cho ? 'Làm tiếp' : 'Chờ');
+    c.type = 'button';
+    c.title = cho ? 'Hết chờ — đưa về Chưa làm' : 'Đang chờ người khác / chờ kết quả';
+    c.setAttribute('aria-label', (cho ? 'Hết chờ: ' : 'Đánh dấu đang chờ: ') + v.title);
+    c.addEventListener('click', async () => {
+      c.disabled = true;
+      const r = await api('/api/task', { id: v.id, cho: !cho });
+      if (!r.ok) { c.disabled = false; alert(r.error || 'Không cập nhật được'); return; }
+      await nap();
+    });
+    dong.appendChild(c);
+  }
+  return dong;
+}
+$('#vLoc').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip');
+  if (!b || b.dataset.loc === locViec) return;
+  locViec = b.dataset.loc;
+  try { localStorage.setItem('sb.locViec', locViec); } catch (_) { /* không nhớ được thì thôi */ }
+  napViec();
+});
+// Tạo việc ngay ở cột Việc (trước đây chỉ có dòng hướng dẫn sang tab Thêm — anh hỏi "không nhập / tạo việc được?").
+// Chỉ cần tên; hạn, nhóm tuỳ chọn; máy chủ lấy tên làm nội dung.
+$('#formViec').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target, o = (ten) => f.elements.namedItem(ten), nut = f.querySelector('.go'), say = $('#sayViec');
+  const ten = o('title').value.trim();
+  if (!ten || nut.disabled) return;
+  nut.disabled = true; say.textContent = 'Đang thêm…'; say.className = 'say';
+  const han = o('due').value;
+  const r = await api('/api/add', { title: ten, content: '', kind: 'viec', due: han, category: o('category').value.trim() });
+  nut.disabled = false;
+  if (!r.ok) {
+    say.textContent = r.error || 'Không thêm được'; say.className = 'say er';
+    if (r.trung_id) { const b = el('button', 'nho', 'Mở việc đã có'); b.type = 'button'; ganMo(b, r.trung_id); say.append(' ', b); }
+    return;
+  }
+  say.textContent = `Đã thêm «${ten}»` + (han ? ` — hạn ${ngayDep(han)}.` : ' — không đặt hạn.'); say.className = 'say ok';
+  f.reset();
+  await nap();                             // nap() vẽ lại danh sách Việc và số "việc đang mở"
+  o('title').focus();
+});
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file

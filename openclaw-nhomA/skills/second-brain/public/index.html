@@ -214,9 +214,22 @@
     <section class="xem viec-xem" data-xem="viec" hidden>
       <header class="ke-dau">
         <div><p class="duong">Công việc</p><h2>Việc cần làm</h2></div>
-        <label class="sap"><input type="checkbox" id="vXong"> Hiện việc đã xong</label>
       </header>
-      <p class="hint">Thêm việc: tab <b>Thêm</b>, chọn loại <b>Việc</b>, đặt hạn. Hoặc nói với Mây: “nhắc anh gọi chị Lan thứ sáu”.</p>
+      <form class="them-viec" id="formViec" autocomplete="off">
+        <input name="title" required maxlength="200" placeholder="Việc cần làm — vd: Gọi chị Lan báo giá" aria-label="Việc cần làm">
+        <input name="due" type="date" aria-label="Hạn (tuỳ chọn)" title="Hạn (tuỳ chọn)">
+        <input name="category" list="dsNhom" maxlength="150" placeholder="Nhóm (tuỳ chọn)" aria-label="Nhóm (tuỳ chọn)">
+        <button class="go" type="submit">Thêm việc</button>
+      </form>
+      <p class="say" id="sayViec" role="status" aria-live="polite"></p>
+      <p class="hint">Gõ việc rồi Enter (hạn, nhóm tuỳ chọn). Cần ghi chi tiết: tab <b>Thêm</b>, chọn loại <b>Việc</b>.
+        Hoặc nhắn Mây: “nhắc anh gọi chị Lan thứ sáu”. Việc đang đợi người khác / đợi kết quả: bấm <b>Chờ</b> ở dòng việc.</p>
+      <div class="chip-loai loc-viec" id="vLoc" role="group" aria-label="Lọc việc">
+        <button type="button" class="chip" data-loc="chua">Chưa làm <u></u></button>
+        <button type="button" class="chip" data-loc="cho">Đang chờ <u></u></button>
+        <button type="button" class="chip" data-loc="xong">Đã xong <u></u></button>
+        <button type="button" class="chip" data-loc="tat">Tất cả <u></u></button>
+      </div>
       <div id="vDs"></div>
     </section>
   </main>
@@ -275,6 +288,7 @@
       <button id="ctSuaMo" type="button" class="nho">Sửa</button>
       <button id="ctNho" type="button" class="nho">Nhớ rồi</button>
       <button id="ctXong" type="button" class="nho" hidden>Đánh dấu xong</button>
+      <button id="ctCho" type="button" class="nhe" hidden>Đang chờ</button>
       <button id="ctCat" type="button" class="nhe">Cất vào kho lưu</button>
       <button id="ctLay" type="button" class="nhe" hidden>Lấy lại khỏi kho lưu</button>
     </footer>

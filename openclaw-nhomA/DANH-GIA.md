@@ -10,8 +10,8 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 
 | | Bản gốc | Bản này |
 |---|---|---|
-| Test `test-brain.sh` | 50 | **135** |
-| Test `test-web.sh` | 30 | **91** |
+| Test `test-brain.sh` | 50 | **139** |
+| Test `test-web.sh` | 30 | **95** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -546,6 +546,26 @@ Tổng 197 tình huống trình duyệt — đạt cả sau khi sửa:
 - **Dải chip vùng đè lên đồ thị** trên điện thoại (2–4 hàng chip, kho nhiều vùng che cả lõi) và laptop màn thấp — điện thoại:
   dải chip nằm dưới đồ thị; máy tính: bị đè thì đồ thị tự dồn vào khoảng trống giữa thanh chế độ và dải chip.
 - +6 test brain (135; VPS có crontab 136), test web cập nhật mục lỗi Gateway (91).
+
+## Rà soát lần 3 (giọng nói, mặt A.I) và tạo việc ngay ở cột Việc
+Lần này thử kỹ phần nói / nghe (giả lập giọng trong máy, giọng qua mạng, không có giọng nào, micro bị từ chối, nói lệnh) và
+phụ đề ở mọi cỡ màn hình. Lỗi tìm được và đã sửa:
+- **Tắt tiếng rồi bật lại không hỏi lại giọng tiếng Việt qua mạng** — tài liệu ghi "bật lại sẽ hỏi lại" nhưng nút loa chỉ bật
+  tiếng, vẫn đọc tiếng Anh. Nay bấm loa bật lại là hỏi (máy không có giọng Việt, có giọng qua mạng); bấm Huỷ thì lần sau bấm loa
+  để tắt như thường.
+- **Phụ đề có khoảng trắng trước dấu câu** ("theo ghi chú .") khi câu trả lời Markdown có liên kết / chữ đậm ở cuối câu.
+- **Phụ đề dài đè lên lõi Bát Quái** (laptop, toàn màn hình, điện thoại) — nay chừa chỗ cho 2–3 dòng phụ đề dưới mặt; điện
+  thoại: phụ đề nằm hẳn dưới khung mặt.
+- **Cột Việc không tạo được việc** (anh hỏi: "Cột việc cần làm: không nhập/tạo việc được?") — trước chỉ có dòng hướng dẫn sang
+  tab Thêm. Nay có ô tạo việc ngay trên đầu cột: tên + hạn + nhóm (tuỳ chọn), Enter là xong, con trỏ quay lại ô tên để gõ việc
+  tiếp. Việc tạo nhanh chỉ cần tên (nội dung lấy luôn tên; dòng việc không lặp lại tên).
+- **Việc lặp lại bị chặn như bản trùng** ("Nộp báo cáo tuần" tuần này và tuần sau) — nay cùng tên khác hạn là việc mới; cùng
+  tên cùng hạn mới là trùng. Áp dụng cả khi Mây thêm việc (`add`), sửa việc và nhập lại bản sao lưu; `duplicates` và
+  cảnh báo "gần giống" cũng không còn gợi ý gộp hai lần của cùng một việc lặp lại.
+- **Việc chưa có nhóm bị đếm vào "Chưa xếp chỗ"** (trang web, `inbox`, `stats`) — việc sống theo hạn, không cần xếp vào vùng;
+  nay không tính, dòng việc cũng không ghi "Chưa xếp chỗ".
+- +4 test brain (139; VPS có crontab 140), +4 test web (95; exec 92). Trình duyệt: 12 bước tạo việc (máy tính + iPhone) cùng toàn
+  bộ các lượt rà trước chạy lại.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

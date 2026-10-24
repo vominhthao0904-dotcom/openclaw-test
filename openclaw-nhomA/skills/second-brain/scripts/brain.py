@@ -43,6 +43,9 @@ MAX_TANG = 3                                   # Vùng / Nhóm / Nhóm con — s
 COLS = ("id,title,content,category,tags,source,url,created_at,updated_at,reviewed_at,status,"
         "kind,cite,due,done_at,content_hash")
 CON = "status='active'"                        # ghi chú đang dùng; 'archived' là đã cất kho
+# "chưa xếp chỗ" = thiếu nhóm hoặc thẻ. Việc (kind viec) không tính: việc đã có chỗ ở danh sách Việc, tạo nhanh chỉ có tên +
+# hạn — tính vào thì mỗi việc vặt lại thành một lời nhắc phân loại
+CHO_XEP = "coalesce(kind,'')<>'viec' AND (trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='')"
 
 
 def now():
@@ -354,10 +357,20 @@ def them_note(db, nid, title, content, category="", tags="", source="chat", url=
                 kind or "kien-thuc", cite or "", due, done_at, van_tay(title, content)))
 
 
-def trung_hoan_toan(db, title, content, bo_qua=None):
-    r = db.execute("SELECT id,title,status FROM notes WHERE content_hash=?" + (" AND id<>?" if bo_qua else ""),
-                   (van_tay(title, content),) + ((bo_qua,) if bo_qua else ())).fetchone()
-    return dict(r) if r else None
+def viec_lap_lai(r, viec_han):
+    """viec_han: đang thêm/sửa một VIỆC thì là hạn của nó ("" nếu không hạn), không phải việc thì None.
+    Việc cũ cùng tên mà khác hạn là việc lặp lại ("nộp báo cáo tuần"), không phải bản trùng."""
+    return viec_han is not None and r["kind"] == "viec" and (r["due"] or "") != viec_han
+
+
+def trung_hoan_toan(db, title, content, bo_qua=None, viec_han=None):
+    """Ghi chú y hệt (cùng tên + nội dung) đã có trong kho, hoặc None."""
+    rows = db.execute("SELECT id,title,status,kind,due FROM notes WHERE content_hash=?" + (" AND id<>?" if bo_qua else ""),
+                      (van_tay(title, content),) + ((bo_qua,) if bo_qua else ())).fetchall()
+    for r in rows:
+        if not viec_lap_lai(r, viec_han):
+            return {"id": r["id"], "title": r["title"], "status": r["status"]}
+    return None
 
 
 def doc_json(path):
@@ -484,7 +497,7 @@ def _co(w, vb):
     return f" {w} " in vb
 
 
-def tim_tuong_tu(db, title, content, bo_qua=None, limit=3, nguong=0.5):
+def tim_tuong_tu(db, title, content, bo_qua=None, limit=3, nguong=0.5, viec_han=None):
     """Tìm ghi chú đã có gần giống — để cảnh báo trùng, không chặn.
 
     Cùng thước đo với lệnh duplicates: tỉ lệ từ đặc trưng trùng nhau trên ghi chú ngắn hơn.
@@ -494,13 +507,13 @@ def tim_tuong_tu(db, title, content, bo_qua=None, limit=3, nguong=0.5):
         return []
     q = " OR ".join(f'"{w}"' for w in mine)
     try:
-        rows = db.execute("SELECT n.id,n.title,n.content FROM notes_fts f JOIN notes n ON n.rowid=f.rowid "
+        rows = db.execute("SELECT n.id,n.title,n.content,n.kind,n.due FROM notes_fts f JOIN notes n ON n.rowid=f.rowid "
                           f"WHERE notes_fts MATCH ? AND n.{CON} ORDER BY bm25(notes_fts) LIMIT 30", (q,)).fetchall()
     except sqlite3.OperationalError:
         return []
     A, ra = set(mine), []
     for x in rows:
-        if bo_qua and x["id"] == bo_qua:
+        if (bo_qua and x["id"] == bo_qua) or viec_lap_lai(x, viec_han):
             continue
         B = set(dac_trung(x["title"] + " " + x["content"]))
         chung = A & B
@@ -527,7 +540,8 @@ def cmd_add(a, db):
     except ValueError as e:
         out({"ok": False, "error": str(e)}, 2)
     # Lớp 1: trùng y hệt -> không thêm bản thứ hai (trừ khi --force)
-    trung = trung_hoan_toan(db, title, content)
+    vh = (due or "") if kind == "viec" else None
+    trung = trung_hoan_toan(db, title, content, viec_han=vh)
     if trung and not a.force:
         out({"ok": True, "trung_hoan_toan": trung["id"], "title": trung["title"], "da_them": False,
              "note": "Kho đã có ghi chú y hệt" + (" (đang ở kho lưu — unarchive để dùng lại)" if trung["status"] == "archived" else "")
@@ -536,7 +550,7 @@ def cmd_add(a, db):
     tags = norm_tags(a.tags)
     goi_y += goi_y_the(db, tags)
     # Lớp 2: gần giống -> vẫn lưu, nhưng nhắc
-    giong = tim_tuong_tu(db, title, content.strip())
+    giong = tim_tuong_tu(db, title, content.strip(), viec_han=vh)
     nid = uuid.uuid4().hex[:12]
     them_note(db, nid, title, content, nhom, tags, a.source, (a.url or "").strip(),
               kind=kind, cite=gon(a.cite), due=due)
@@ -712,7 +726,7 @@ def sua_note(db, r, title=None, content=None, category=None, tags=None, url=None
             return False, {"error": str(e)}
     else:
         due = r["due"]
-    trung = trung_hoan_toan(db, title, content, bo_qua=r["id"])
+    trung = trung_hoan_toan(db, title, content, bo_qua=r["id"], viec_han=(due or "") if kind == "viec" else None)
     if trung:
         return False, {"error": f"Sửa xong sẽ y hệt ghi chú '{trung['title']}' ({trung['id']}) — gộp bằng merge thay vì sửa"}
     db.execute("UPDATE notes SET title=?, content=?, category=?, tags=?, url=?, kind=?, cite=?, due=?, "
@@ -848,16 +862,14 @@ def cmd_suggest_links(a, db):
 def cmd_inbox(a, db):
     """Ghi chú bắt vội, chưa phân loại — cần dọn thì kho mới dùng được lâu dài."""
     rows = db.execute(
-        f"SELECT * FROM notes WHERE {CON} AND (trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='') "
-        "ORDER BY created_at ASC LIMIT ?", (a.limit,)).fetchall()
+        f"SELECT * FROM notes WHERE {CON} AND {CHO_XEP} ORDER BY created_at ASC LIMIT ?", (a.limit,)).fetchall()
     ds = []
     for r in rows:
         d = row_dict(r)
         d["content"] = rut_gon(d["content"])
         d["thieu"] = [x for x, v in (("nhóm", r["category"]), ("thẻ", r["tags"])) if not (v or "").strip()]
         ds.append(d)
-    tong = db.execute(f"SELECT count(*) c FROM notes WHERE {CON} AND "
-                      "(trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='')").fetchone()["c"]
+    tong = db.execute(f"SELECT count(*) c FROM notes WHERE {CON} AND {CHO_XEP}").fetchone()["c"]
     out({"ok": True, "cho_phan_loai": tong, "count": len(ds), "notes": ds,
          "note": "Dùng edit --category/--tags để xếp chỗ. Hỏi người dùng nhóm nào, đừng tự đoán."})
 
@@ -953,8 +965,9 @@ def cmd_duplicates(a, db):
     Không so từng cặp một (kho 2000 ghi chú là 2 triệu phép so, ngốn hàng trăm MB RAM).
     Thay vào đó mỗi ghi chú chỉ hỏi FTS lấy vài ứng viên gần nhất rồi mới so kỹ.
     """
-    rows = db.execute(f"SELECT id,title,content,tags FROM notes WHERE {CON}").fetchall()
+    rows = db.execute(f"SELECT id,title,content,tags,kind,due FROM notes WHERE {CON}").fetchall()
     bo = {r["id"]: set(dac_trung(r["title"] + " " + r["content"])) for r in rows}
+    han = {r["id"]: r["due"] or "" for r in rows if r["kind"] == "viec"}      # việc lặp lại khác hạn không phải cặp trùng
     ten = {r["id"]: r["title"] for r in rows}
 
     # chỉ mục ngược: từ -> các ghi chú chứa nó
@@ -979,7 +992,7 @@ def cmd_duplicates(a, db):
             if n_chung < 2:                       # chung đúng 1 từ thì chưa đáng xét
                 continue
             khoa = (x, y) if x < y else (y, x)
-            if khoa in da_xet:
+            if khoa in da_xet or (x in han and y in han and han[x] != han[y]):
                 continue
             da_xet.add(khoa)
             chung = s & bo[y]
@@ -1243,7 +1256,8 @@ def cmd_import(a, db):
         if not title or not content:
             skipped += 1
             continue
-        if trung_hoan_toan(db, title, content):
+        la_viec = chuan_kind(it.get("kind")) == "viec"
+        if trung_hoan_toan(db, title, content, viec_han=str(it.get("due") or "") if la_viec else None):
             skipped += 1
             continue
         nid = (it.get("id") or uuid.uuid4().hex[:12])[:12]
@@ -1742,8 +1756,7 @@ def cmd_stats(a, db):
          "suc_khoe_kho": {
              "them_7_ngay_qua": q(f"SELECT count(*) FROM notes WHERE {CON} AND created_at>=?", days_ago(7)),
              "them_30_ngay_qua": q(f"SELECT count(*) FROM notes WHERE {CON} AND created_at>=?", days_ago(30)),
-             "cho_phan_loai": q(f"SELECT count(*) FROM notes WHERE {CON} AND "
-                                "(trim(coalesce(category,''))='' OR trim(coalesce(tags,''))='')"),
+             "cho_phan_loai": q(f"SELECT count(*) FROM notes WHERE {CON} AND {CHO_XEP}"),
              "chua_on_lan_nao": q(f"SELECT count(*) FROM notes WHERE {CON} AND reviewed_at IS NULL"),
              "khong_noi_voi_ghi_chu_nao": q(
                  f"SELECT count(*) FROM notes n WHERE n.{CON} AND "

@@ -241,6 +241,13 @@ check "việc quá hạn vào đúng nhóm" 'BR viec | jq_ "len(d.get(\"qua_han\
 VID=$(BR list --kind viec | jq_ 'd["notes"][0]["id"]')
 check "đánh dấu xong thì hết việc mở" 'BR viec --xong '"$VID"' >/dev/null; BR viec | jq_ "d[\"dang_mo\"]"' "0"
 check "hạn sai định dạng bị từ chối" 'BR add --title y --content z --kind viec --due "mai" | jq_ "d[\"ok\"]"' "False"
+check "việc không tính vào hộp chưa xếp chỗ" 'BR inbox | jq_ "any(n[\"kind\"]==\"viec\" for n in d[\"notes\"])"' "False"
+check "việc lặp lại: cùng tên, khác hạn thêm được" \
+  'BR add --title "Nộp báo cáo tuần phòng kinh doanh" --content "báo cáo doanh số tuần" --kind viec --due 2030-01-05 >/dev/null; BR add --title "Nộp báo cáo tuần phòng kinh doanh" --content "báo cáo doanh số tuần" --kind viec --due 2030-01-12 | jq_ "(\"id\" in d, \"similar_existing\" in d)"' "(True, False)"
+check "việc cùng tên + cùng hạn: không thêm" \
+  'BR add --title "Nộp báo cáo tuần phòng kinh doanh" --content "báo cáo doanh số tuần" --kind viec --due 12/1/2030 | jq_ "d.get(\"da_them\")"' "False"
+check "duplicates bỏ qua việc lặp lại" \
+  'BR duplicates | jq_ "any(\"phòng kinh doanh\" in c[\"tieu_de_a\"] for c in d[\"cap\"])"' "False"
 check "tìm theo loại" 'BR search "gốc" --kind kien-thuc | jq_ "d[\"count\"] >= 1"' "True"
 
 echo

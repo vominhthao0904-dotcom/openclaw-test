@@ -58,7 +58,7 @@ $BR add --title "Câu khẳng định" --content "Điều gì đúng + VÌ SAO +
 
 | Kết quả có | Nghĩa | Làm gì |
 |---|---|---|
-| `trung_hoan_toan` | Kho đã có bản **y hệt** — không thêm gì | Báo người dùng ghi chú đó đã có (dẫn id). Không `--force` trừ khi họ yêu cầu |
+| `trung_hoan_toan` | Kho đã có bản **y hệt** — không thêm gì (việc cùng tên mà khác `--due` là việc lặp lại, vẫn thêm) | Báo người dùng ghi chú đó đã có (dẫn id). Không `--force` trừ khi họ yêu cầu |
 | `similar_existing` | Có ghi chú **gần giống** | Hỏi: gộp (`merge --from <id mới> --into <id cũ> --yes` — bản mới được cất kho) hay giữ cả hai rồi `link` |
 | `goi_y` / `canh_bao` | Nhóm/thẻ có thể gõ nhầm, nhóm quá sâu | Sửa bằng `edit --id … --category …` |
 | `nhom_moi` | Vừa tạo nhóm mới | Nói với người dùng tên nhóm mới |
@@ -199,7 +199,7 @@ $BR link --a <id1> --b <id2>     |   $BR suggest-links --id <id>
 # cất / xoá / lấy lại
 $BR archive --id <id>  |  $BR unarchive --id <id>  |  $BR list --archived  |  $BR delete --id <id> --yes  |  $BR restore --file <id>
 # duy trì
-$BR inbox                    # thiếu nhóm/thẻ
+$BR inbox                    # thiếu nhóm/thẻ (không gồm việc — việc sống theo hạn)
 $BR review [--category] [--kind] [--tag]   |   $BR review --done <id1,id2>
 $BR digest --days 7          # đã ghi gì trong tuần, gom theo nhóm
 $BR duplicates [--nguong 0.5]   |   $BR merge --from <id bỏ> --into <id giữ> --yes

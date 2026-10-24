@@ -995,7 +995,11 @@ function capNhatMat(tg) {
   anQD = 1 - em(0, 0.3, kMat);
   // bố cục: vòng tròn các vùng trên đỉnh đầu (≈ −2 đơn vị) tới lò phản ứng trên ngực, nằm gọn giữa thanh chuyển và phụ đề
   const rong = W - lechDich, hep = rong < 600;
-  const tren = 50, duoi = H - (tapTrung ? 18 : 60);      // trên chừa chỗ cho thanh chuyển / thông báo toàn màn hình
+  // trên chừa chỗ cho thanh chuyển / thông báo toàn màn hình (toàn màn hình không có thanh chuyển: chừa ít hơn); dưới chừa đủ
+  // phụ đề 2 dòng (câu trả lời dài) — trước đây chừa 60px (toàn màn hình 18px): phụ đề 2 dòng đè lên lõi Bát Quái.
+  // Điện thoại: phụ đề nằm trong ô riêng dưới khung (CSS) — không cần chừa.
+  const phuDeNgoai = !tapTrung && matchMedia('(max-width:900px)').matches;
+  const tren = tapTrung ? 34 : 50, duoi = H - (phuDeNgoai ? 18 : tapTrung ? 96 : 90);
   MAT.u = Math.max(30, Math.min((duoi - tren - 60) / 4.14, hep ? rong / 2.35 : (rong / 2 - 70) / 2.2));
   MAT.oy = tren + 24 + 2.0 * MAT.u + Math.max(0, duoi - tren - 60 - 4.14 * MAT.u) / 2;
   const t = giay();
@@ -1303,9 +1307,12 @@ function datMat(bat) {
     if (coDocNoi) speechSynthesis.cancel();
   }
 }
+// Máy chỉ có giọng tiếng Việt qua mạng: bấm loa lần đầu, hoặc BẬT LẠI sau khi tắt (tắt tiếng là bỏ quyền), thì hỏi có dùng
+// không. Trước đây bật lại thì im lặng dùng giọng tiếng Anh, phải bấm thêm lần nữa mới được hỏi (Hướng dẫn ghi "bật lại sẽ hỏi lại").
 $('#batTieng').addEventListener('click', () => {
-  if (coTieng && giongMang && !giongViet && !choMang && !daHoiMang) hoiGiongMang();
-  else datTieng(!coTieng);
+  const canHoi = giongMang && !giongViet && !choMang && !daHoiMang;
+  if (!coTieng) { datTieng(true); if (canHoi) hoiGiongMang(); return; }
+  if (canHoi) hoiGiongMang(); else datTieng(false);
 });
 datTieng(coTieng);
 document.addEventListener('keydown', (e) => {
@@ -2373,7 +2380,7 @@ $('#choPhanLoai').addEventListener('click', () => moTab('on'));
 function veHopCho() {
   const box = $('#hopCho');
   box.innerHTML = '';
-  const ds = DATA.notes.filter((n) => !(n.category || '').trim() || !(n.tags || []).length);
+  const ds = DATA.notes.filter((n) => n.kind !== 'viec' && (!(n.category || '').trim() || !(n.tags || []).length));
   if (!ds.length) return;
   const khung = document.createElement('div');
   khung.className = 'hop-cho';
@@ -2652,7 +2659,8 @@ function veTraLoi(chu, used) {
 }
 // bản để đọc to / phụ đề: bỏ ký hiệu định dạng và mã ghi chú
 const chuTron = (s) => String(s || '').replace(MA_NGUON, '').replace(/```[a-z]*|\*\*|`/g, '')
-  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '');
+  .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '')
+  .replace(/[ \t]+([.,;:!?…])/g, '$1');      // bỏ mã nguồn xong còn sót khoảng trắng trước dấu câu ("theo ghi chú .")
 
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
@@ -2879,7 +2887,9 @@ async function napViec() {
       });
       const t = el('button', 'ten-viec');
       t.type = 'button';
-      t.append(el('b', null, v.title), el('span', null, [v.due ? 'hạn ' + ngayDep(v.due) : '', duongDep(v.category), v.tom_tat].filter(Boolean).join(' · ')));
+      // việc chưa có nhóm thì thôi ghi "Chưa xếp chỗ"; việc tạo nhanh có nội dung = tên thì không lặp lại tên
+      t.append(el('b', null, v.title), el('span', null, [v.due ? 'hạn ' + ngayDep(v.due) : '', (v.category || '').trim() && duongDep(v.category),
+        v.tom_tat !== v.title && v.tom_tat].filter(Boolean).join(' · ')));
       ganMo(t, v.id);
       dong.append(o, t);
       khoi.appendChild(dong);
@@ -2889,6 +2899,27 @@ async function napViec() {
   if (!co) box.appendChild(el('p', 'none', 'Không có việc nào đang mở.'));
 }
 $('#vXong').addEventListener('change', napViec);
+// Tạo việc ngay ở cột Việc (trước đây chỉ có dòng hướng dẫn sang tab Thêm — anh hỏi "không nhập / tạo việc được?").
+// Chỉ cần tên; hạn, nhóm tuỳ chọn; máy chủ lấy tên làm nội dung.
+$('#formViec').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target, o = (ten) => f.elements.namedItem(ten), nut = f.querySelector('.go'), say = $('#sayViec');
+  const ten = o('title').value.trim();
+  if (!ten || nut.disabled) return;
+  nut.disabled = true; say.textContent = 'Đang thêm…'; say.className = 'say';
+  const han = o('due').value;
+  const r = await api('/api/add', { title: ten, content: '', kind: 'viec', due: han, category: o('category').value.trim() });
+  nut.disabled = false;
+  if (!r.ok) {
+    say.textContent = r.error || 'Không thêm được'; say.className = 'say er';
+    if (r.trung_id) { const b = el('button', 'nho', 'Mở việc đã có'); b.type = 'button'; ganMo(b, r.trung_id); say.append(' ', b); }
+    return;
+  }
+  say.textContent = `Đã thêm «${ten}»` + (han ? ` — hạn ${ngayDep(han)}.` : ' — không đặt hạn.'); say.className = 'say ok';
+  f.reset();
+  await nap();                             // nap() vẽ lại danh sách Việc và số "việc đang mở"
+  o('title').focus();
+});
 
 /* ---------------- Nạp: dán văn bản / chọn file .md .txt .pdf .docx ----------------
    .md/.txt: trình duyệt đọc chữ rồi gửi lên. PDF / Word: gửi nguyên file (base64), máy chủ đọc chữ. Mặc định mỗi file

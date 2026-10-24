@@ -595,6 +595,26 @@ Tạo việc, bộ lọc và nút Chờ chạy đúng trên máy anh (Chrome, Wi
   nên tắt / bật loa trên Chrome không có hộp hỏi — hộp hỏi giọng qua mạng chỉ có ở Edge.
 - Trình duyệt: 9 bước mới (16 góc xoay khi rê lõi, câu hỏi giờ / ngày qua ô Hỏi và giọng nói, câu kiến thức vẫn hỏi kho).
 
+## Bộ não mới trong mặt A.I (theo ảnh mẫu anh gửi)
+Anh: "Ảnh bộ não hiện tại chưa đẹp, chưa đúng, sửa lại theo các ý tưởng hình ảnh bộ não anh gửi" — kèm ảnh não hologram, não mạch
+điện, não nhìn chính diện có cuống sáng, não trong đầu trong suốt; dặn "tập trung vào kiểu dây thần kinh, chấm, tia sáng".
+Bản cũ: hai hình bầu dục có hoa văn tổ ong — không ra nếp cuộn não. Bản mới:
+- **Hình não nhìn chính diện** (khớp với đầu nhìn thẳng): hai bán cầu tách bởi rãnh giữa, rãnh ngang (Sylvius) tách hai thuỳ thái
+  dương bên dưới, khoảng lõm giữa đáy là thân não — như ảnh não chính diện có cuống sáng.
+- **Nếp cuộn thật**: sinh bằng phản ứng – khuếch tán (Gray-Scott) trong mặt nạ từng thuỳ; các đường mảnh làm rãnh, phần rộng giữa
+  làm nếp; độ cao theo khoảng cách tới rãnh và mép thuỳ nên nếp tròn đầy, rãnh tối mảnh; tô bóng đèn trên trái, xanh lơ ngả tím
+  xuống dưới, viền sáng kiểu hologram (đã thử 12 kiểu trước khi chọn — kiểu đường viền nếp ra hoa văn san hô, kiểu khắc rãnh
+  trên lưới thô bị nhoè, nên bỏ).
+- **Dây thần kinh, chấm, tia sáng**: ~1.100 hạt sáng dồn trên đỉnh nếp + 90 chấm lấp lánh; mạng sợi hồng – xanh nối 36 nốt; ánh sáng
+  vàng – hồng chảy trong rãnh giữa và rãnh ngang; nguồn sáng ở khoảng lõm giữa với 24 tia toả, xoay chậm, chập chờn; vài nốt có
+  tia chữ thập. Ghi chú (nơ-ron) thành chấm nhỏ lõi trắng, quầng màu vùng (trước là đốm màu loang).
+- **Thân não → lõi Bát Quái**: bó 9 sợi vàng kim (Dương) – xanh lam (Âm), sau mặt gần như ẩn (khỏi thành vạch dọc sống mũi), từ
+  cằm tách ra, xoè như rễ cắm vào vành lõi trên ngực; xung sáng chạy dọc (Dương xuống, Âm lên).
+- Vân hộp sọ mờ hơn để thấy não như đầu trong suốt ở ảnh mẫu; khi Mây nói não sáng hơn, chấm lấp lánh nhanh hơn.
+- Dựng ảnh não một lần (~0,6–0,9 giây máy thử), chia lượt 12 ms nên không giật; bắt đầu ngay khi rê chuột vào lõi hay bật mặt
+  A.I — xong trước khi chuyển cảnh 3,2 giây kết thúc. Mỗi khung hình chỉ dán ảnh theo góc quay đầu + lớp động: 39–43 khung/giây.
+  Màn hình to lên nhiều (toàn màn hình) thì tự dựng lại cho nét.
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục

@@ -333,7 +333,7 @@ bash test-brain.sh     # 147 trường hợp (VPS có crontab: 148): tìm không
                        # file hỏng, ghi chú rất dài, biến môi trường gõ sai,
                        # trùng lặp tiếng Việt, quyền file của kho,
                        # bản sao .sqlite đầy đủ, doctor phát hiện/sửa chỉ mục lệch…
-bash test-web.sh       # 99 trường hợp (Mây chạy trong exec: 96 — 3 test gọi Mây tự bỏ qua): lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), ô Hỏi gọi openclaw agent đúng cách và báo rõ khi bị chặn, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
+bash test-web.sh       # 100 trường hợp (Mây chạy trong exec: 97 — 3 test gọi Mây tự bỏ qua): lõi Bát Quái đúng Kinh Dịch, khí âm dương tiêu trưởng đúng chiều, thư viện, việc, nạp qua web (cả Word), ô Hỏi gọi openclaw agent đúng cách và báo rõ khi bị chặn, mã truy cập, leo thư mục, chặn trang lạ gửi lệnh,
                        # chặn đọc trộm qua DNS rebinding, header bảo mật,
                        # đầu vào xấu, server có sống sót không…
 ```

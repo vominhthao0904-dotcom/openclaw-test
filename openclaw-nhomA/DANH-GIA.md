@@ -11,7 +11,7 @@ hoặc cho kết quả kém hơn mức có thể. Tất cả đã sửa và có 
 | | Bản gốc | Bản này |
 |---|---|---|
 | Test `test-brain.sh` | 50 | **147** |
-| Test `test-web.sh` | 30 | **99** |
+| Test `test-web.sh` | 30 | **100** |
 | Mục `kiemtra.sh` | 22 | **27** (thêm phần An toàn, phân loại/nạp) |
 | Tìm cụm chữ trong PDF 300 trang | 3,5 giây | **0,1 giây** |
 | Nhận ra ghi chú tiếng Việt viết lại cùng ý | Không | **Có** |
@@ -656,6 +656,24 @@ quan"; "Sao có các tia sáng từ bát quái lên lỗ mũi kỳ vậy?".
   hạ cùng môi dưới khi Mây nói; các vân quanh miệng giữ nguyên.
   - Bài thử hỏi giờ hỏng một lần đúng lúc sang phút mới (máy trả lời 6 giờ 24, bài thử đọc 6 giờ 25) — sửa bài thử chấp nhận cả phút
     trước và sau khi hỏi.
+
+## Mặt A.I dùng đúng ảnh mẫu anh chọn
+Anh gửi ảnh mẫu đầu A.I và dặn "sửa giống y chang như ảnh mẫu này", rồi gửi thêm ba mẫu và chọn mẫu "đầu đội mũ giáp, bộ não
+trong vòm kính, Bát Quái giữa ngực" ("Đúng rồi. Ảnh này"). Vẽ tay không thể "y chang" một bức tranh, nên dùng chính ảnh đó:
+- **Ảnh**: `public/dau-ai.webp` (939×1127, ~400 KB) — tách khỏi nền: phần người giữ nguyên, nền tối và vầng sáng quanh người
+  trong suốt dần theo độ sáng nên hoà vào nền trang, giữ được vầng hào quang của ảnh; mép vai và đáy mờ dần. Ảnh do anh gửi,
+  nằm trong gói skill (repo công khai) — anh không muốn để công khai thì báo em.
+- **Khớp dữ liệu vào ảnh** (đo trên ảnh): hai mắt trùng mắt mô hình đầu (lúc chuyển cảnh đầu hai luồng bay đúng vào mắt), lõi
+  Bát Quái sống đặt đúng tâm và cỡ Bát Quái giữa ngực (phủ kín hình tĩnh), viền bộ não trong vòm kính để đặt chấm ghi chú, khe
+  miệng để sáng lên khi Mây nói.
+- **Chấm ghi chú** (anh: "các chấm che hết não, dày đặc quá, đậm quá — xem các chấm sáng theo ảnh mẫu"): thành chấm sáng li ti
+  lõi trắng, quầng nhỏ ánh màu vùng, lấp lánh lệch nhịp — như chấm sáng sẵn trong não ảnh; không còn viền tối, không phủ quầng
+  màu cả vùng (chỉ khi rê vào vòng vùng).
+- **Chuyển cảnh**: hai luồng Âm Dương + vòng Tiên Thiên như cũ, các sợi gỡ thành đường vân đầu rồi ảnh hiện dần từ đỉnh xuống
+  (mép quét sáng), đường vân mờ đi. Thoát thì ngược lại. Ảnh chưa tải được thì dùng đầu đường vân như trước.
+- Bỏ ba vòng nét đứt (ảnh đã có vầng hào quang); bỏ bộ não vẽ bằng phản ứng – khuếch tán (não của ảnh thay thế); đầu đứng yên
+  (ảnh phẳng không quay theo chuột); nhãn ghi chú khi rê chuột có nền tối (khỏi chồng lên tên vòng vùng — ảnh anh chụp trước).
+- Nhanh hơn hẳn vì không còn vẽ hàng nghìn đường vân mỗi khung: máy thử 1x 59–60 khung/giây (bản trước 21–33), 2x ~35.
 
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng

@@ -78,6 +78,8 @@ check "trang chính trả 200" 'curl -sS -o /dev/null -w "%{http_code}" "$U/"' "
 check "app.js trả 200" 'curl -sS -o /dev/null -w "%{http_code}" "$U/app.js"' "200"
 check "styles.css đúng kiểu nội dung" \
   'curl -sS -o /dev/null -w "%{content_type}" "$U/styles.css"' "text/css; charset=utf-8"
+check "ảnh đầu A.I đúng kiểu image/webp" \
+  'curl -sS -o /dev/null -w "%{content_type}" "$U/dau-ai.webp"' "image/webp"
 check "tệp không có trả 404" 'curl -sS -o /dev/null -w "%{http_code}" "$U/khongco.js"' "404"
 
 echo

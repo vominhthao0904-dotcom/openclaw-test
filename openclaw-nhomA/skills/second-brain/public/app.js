@@ -502,10 +502,13 @@ function ve() {
     cx.globalAlpha = 1;
   });
 
+  // rê chuột vào lõi: tên tám quẻ hiện quanh vành — nhãn ghi chú nằm dưới các ô tên đó thì tạm ẩn (trước đây "Tốn · Tây Nam"
+  // đè lên chữ đầu của tên ghi chú bên cạnh); bỏ chuột ra là nhãn hiện lại
+  const tenQue = hoverLoi && RK > banKinhLoiTo() - 1 ? oTenQue(RK) : [];
   cx.font = `500 ${coChu.toFixed(1)}px "Be Vietnam Pro",sans-serif`;
   cx.textBaseline = 'middle';
   // ô chữ đã chiếm chỗ — bắt đầu bằng chính lõi Bát Quái, để không nhãn nào bị lõi che mất một nửa
-  const daVe = [{ x0: LX - RK - 6, x1: LX + RK + 6, y0: LY - RK - 6, y1: LY + RK + 6 }];
+  const daVe = [{ x0: LX - RK - 6, x1: LX + RK + 6, y0: LY - RK - 6, y1: LY + RK + 6 }, ...tenQue];
   const uuTien = nodes.slice().sort((a, b) =>
     (b === hover || b === chon) - (a === hover || a === chon) || a.thu - b.thu || a.vong - b.vong);
   const daGhi = new Set();          // tên đã ghi — các trang của cùng một file chỉ ghi tên một lần
@@ -540,7 +543,7 @@ function ve() {
     const x0 = trai ? p.x - cach - w : p.x + cach;
     const nua = coChu * 0.72;     // nửa chiều cao ô chữ, theo cỡ chữ
     const o = { x0: x0 - 7, x1: x0 + w + 7, y0: p.y - nua, y1: p.y + nua };
-    if (!nb && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
+    if ((!nb || tenQue.length) && daVe.some((q) => o.x0 < q.x1 && o.x1 > q.x0 && o.y0 < q.y1 && o.y1 > q.y0)) return;
     daVe.push(o);
     daGhi.add(khoa);
     soNhan++;
@@ -561,7 +564,7 @@ function ve() {
   const w = hinh.width / DV * s;
   cx.drawImage(hinh, LX - w / 2, LY - w / 2, w, w);
   if (!itMotion) veKhi(RK);
-  if (hoverLoi && RK > banKinhLoiTo() - 1) veTenQue(RK);
+  if (tenQue.length) veTenQue(tenQue);
 }
 
 /* ---------------- Chế độ MẶT A.I — nút ẩn: bấm lõi Bát Quái (hoặc phím M) ----------------
@@ -1280,7 +1283,7 @@ function lenhGiong(cau) {
   } else {
     $('#oHoi').value = c;                  // câu hỏi: hỏi Mây như tab Hỏi — trả lời xong Mây đọc câu đầu
     moTab('hoi');
-    noi('Để em xem trong kho…', 'Let me check your notes.');
+    if (!traLoiTaiCho(c)) noi('Để em xem trong kho…', 'Let me check your notes.');   // hỏi giờ / ngày: trả lời ngay
     $('#nutHoi').click();
   }
 }
@@ -1864,25 +1867,40 @@ function hinhThaiCuc(R) {
   return c;
 }
 
-/* Rê chuột vào lõi: hiện tên tám quẻ và phương vị quanh vành. */
-function veTenQue(R) {
-  cx.font = '600 11.5px "Be Vietnam Pro",sans-serif';
-  cx.textBaseline = 'middle';
-  BAT_QUAI.forEach(([ten, , goc, huong]) => {
+/* Rê chuột vào lõi: hiện tên tám quẻ và phương vị quanh vành. oTenQue tính chỗ từng ô chữ (để nhãn ghi chú tránh),
+   veTenQue vẽ. Ô cuối là dòng "Thái Cực · Tiên Thiên Bát Quái" dưới lõi. */
+const CHU_QUE = '600 11.5px "Be Vietnam Pro",sans-serif', CHU_THAI_CUC = '500 11px "Be Vietnam Pro",sans-serif';
+function oTenQue(R) {
+  cx.font = CHU_QUE;
+  const ra = BAT_QUAI.map(([ten, , goc, huong]) => {
     const a = goc * Math.PI / 180, rr = R + 15;
     const x = LX + Math.cos(a) * rr, y = LY + Math.sin(a) * rr;
-    cx.textAlign = Math.abs(Math.cos(a)) < 0.3 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right';
-    cx.fillStyle = 'rgba(10,20,36,.78)';
+    const canh = Math.abs(Math.cos(a)) < 0.3 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right';
     const t = `${ten} · ${huong}`, w = cx.measureText(t).width;
-    const x0 = cx.textAlign === 'center' ? x - w / 2 : cx.textAlign === 'left' ? x : x - w;
-    cx.fillRect(x0 - 5, y - 9, w + 10, 18);
-    cx.fillStyle = MAU_DUONG;
-    cx.fillText(t, x, y);
+    const x0 = canh === 'center' ? x - w / 2 : canh === 'left' ? x : x - w;
+    return { t, x, y, canh, x0: x0 - 5, x1: x0 + w + 5, y0: y - 9, y1: y + 9 };
+  });
+  cx.font = CHU_THAI_CUC;
+  const t = 'Thái Cực · Tiên Thiên Bát Quái', w = cx.measureText(t).width, y = LY + R + 42;
+  ra.push({ t, x: LX, y, canh: 'center', x0: LX - w / 2 - 4, x1: LX + w / 2 + 4, y0: y - 8, y1: y + 8, phu: true });
+  return ra;
+}
+function veTenQue(ds) {
+  cx.textBaseline = 'middle';
+  ds.forEach((o) => {
+    cx.textAlign = o.canh;
+    if (o.phu) {
+      cx.font = CHU_THAI_CUC;
+      cx.fillStyle = 'rgba(238,243,250,.75)';
+    } else {
+      cx.font = CHU_QUE;
+      cx.fillStyle = 'rgba(10,20,36,.78)';
+      cx.fillRect(o.x0, o.y0, o.x1 - o.x0, o.y1 - o.y0);
+      cx.fillStyle = MAU_DUONG;
+    }
+    cx.fillText(o.t, o.x, o.y);
   });
   cx.textAlign = 'center';
-  cx.fillStyle = 'rgba(238,243,250,.75)';
-  cx.font = '500 11px "Be Vietnam Pro",sans-serif';
-  cx.fillText('Thái Cực · Tiên Thiên Bát Quái', LX, LY + R + 42);
 }
 
 let tCu = 0;
@@ -2677,10 +2695,35 @@ const chuTron = (s) => String(s || '').replace(MA_NGUON, '').replace(/```[a-z]*|
   .replace(/^\s*#{1,4}\s+/gm, '').replace(/^\s*(\d+[.)]|[-*•])\s+/gm, '')
   .replace(/[ \t]+([.,;:!?…])/g, '$1');      // bỏ mã nguồn xong còn sót khoảng trắng trước dấu câu ("theo ghi chú .")
 
+/* Hỏi giờ / ngày ("mấy giờ rồi", "hôm nay thứ mấy"): trả lời ngay theo đồng hồ máy, không gửi Mây. Trước đây câu này đi hỏi
+   kho và nhận về "chưa có thông tin về giờ trong các ghi chú". Chỉ bắt đúng câu hỏi ngắn — "giờ làm việc của kho bãi" vẫn hỏi kho. */
+const DUOI_HOI = String.raw`(?:\s+(?:rồi|vậy|nhỉ|thế|ạ|anh|em|mây|bạn|hả|à))*`;
+const HOI_GIO = new RegExp(String.raw`^(?:(?:bây giờ|giờ|hiện tại|hiện giờ|lúc này)\s+(?:là\s+)?)?mấy giờ` + DUOI_HOI + '$', 'iu');
+const HOI_NGAY = new RegExp(String.raw`^(?:(?:hôm nay|nay|bữa nay)\s+(?:là\s+)?)?(ngày|thứ)\s+(?:mấy|bao nhiêu)(?:\s+tháng\s+mấy)?` + DUOI_HOI + '$', 'iu');
+function traLoiTaiCho(cau) {
+  const c = String(cau).replace(/[.?!…]+$/u, '').replace(/\s+/g, ' ').trim();
+  const d = new Date(), thu = d.toLocaleDateString('vi-VN', { weekday: 'long' });
+  const ngay = `${thu}, ngày ${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
+  const ngayAnh = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  if (HOI_GIO.test(c)) {
+    return { vi: `Bây giờ là ${d.getHours()} giờ ${String(d.getMinutes()).padStart(2, '0')}, ${ngay}.`,
+      en: `It is ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}, ${ngayAnh}.` };
+  }
+  if (HOI_NGAY.test(c)) return { vi: `Hôm nay là ${ngay}.`, en: `Today is ${ngayAnh}.` };
+  return null;
+}
+
 $('#nutHoi').addEventListener('click', async () => {
   const q = $('#oHoi').value.trim();
   const out = $('#traLoi');
   if (!q) { out.textContent = 'Chưa nhập câu hỏi.'; return; }
+  const taiCho = traLoiTaiCho(q);
+  if (taiCho) {
+    out.textContent = '';
+    out.append(el('p', null, taiCho.vi), el('p', 'hint', 'Theo đồng hồ máy anh — câu này không cần hỏi kho.'));
+    noi(taiCho.vi, taiCho.en);
+    return;
+  }
   $('#nutHoi').disabled = true;
   out.textContent = 'Mây đang đọc ghi chú…';
   const r = await api('/api/ask', { question: q });

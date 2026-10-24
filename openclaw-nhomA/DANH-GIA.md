@@ -581,6 +581,20 @@ Anh hỏi: "Thiếu bộ lọc: việc đã làm, việc chưa làm, việc ch�
 - +8 test brain (147; VPS có crontab 148; có test kho của bản trước tự thêm cột, giữ dữ liệu), +4 test web (99; exec 96).
   Trình duyệt: 22 bước lọc / chờ / xong / mở lại / nhớ lọc / thẻ chi tiết / Thư viện / iPhone.
 
+## Kiểm theo ảnh anh chụp sau khi cài PR #22
+Tạo việc, bộ lọc và nút Chờ chạy đúng trên máy anh (Chrome, Windows); phụ đề nằm dưới tượng, không đè lõi. Từ ảnh còn 3 chỗ, đã sửa:
+- **Rê chuột vào lõi: tên quẻ đè tên ghi chú** — "Tốn · Tây Nam" che chữ đầu của "Email khách hàng Phúc Khang…", "Cấn · Tây Bắc"
+  chạm "1. Cần chuẩn bị gì?". Các ô tên quẻ (và dòng "Thái Cực · Tiên Thiên Bát Quái") nay được tính là chỗ đã chiếm: nhãn ghi
+  chú nằm dưới thì tạm ẩn, bỏ chuột ra là hiện lại. Thử 16 góc xoay: bản trước 90 chỗ đè, bản này 0.
+- **Nói "mấy giờ" với Mây ở mặt A.I → "Chưa có thông tin về giờ cụ thể trong các ghi chú"** — câu hỏi giờ / ngày bị gửi đi hỏi
+  kho. Nay "mấy giờ (rồi)", "bây giờ là mấy giờ", "hôm nay thứ mấy / ngày mấy" trả lời ngay theo đồng hồ máy (ô Hỏi và giọng nói),
+  không gửi Mây; câu kiến thức có chữ "mấy giờ" ("mấy giờ thì đổ bê tông") vẫn hỏi kho.
+- **Câu "chưa có thông tin" vẫn gắn 2 ghi chú nguồn** — lời dặn Mây thêm: câu báo chưa có thông tin thì không gắn mã ghi chú.
+- Hướng dẫn sửa câu sai: giọng tiếng Anh thì phụ đề câu chào cũng là tiếng Anh (phụ đề = đúng câu đang đọc).
+- Ảnh tiếng Anh ở mặt A.I là đúng thiết kế: Chrome trên Windows không có giọng tiếng Việt nào (cả trong máy lẫn qua mạng),
+  nên tắt / bật loa trên Chrome không có hộp hỏi — hộp hỏi giọng qua mạng chỉ có ở Edge.
+- Trình duyệt: 9 bước mới (16 góc xoay khi rê lõi, câu hỏi giờ / ngày qua ô Hỏi và giọng nói, câu kiến thức vẫn hỏi kho).
+
 ## Quy trình chuyển kiến thức vào kho (SKILL.md mục 2c)
 - Phiên mới chỉ cần câu ngắn ("chuyển kiến thức từ MEMORY.md vào Second Brain") mà vẫn giữ đúng quy trình: chỉ trong chat riêng
   với chủ kho; lọc kiến thức của người dùng, bỏ nhật ký vận hành và bí mật; `categories` trước, kiểm trùng; đề xuất ≤ 15 mục
